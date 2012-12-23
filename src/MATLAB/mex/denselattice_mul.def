@@ -1,0 +1,2 @@
+LIBRARY denselattice_mul.mexw32
+EXPORTS mexFunction
