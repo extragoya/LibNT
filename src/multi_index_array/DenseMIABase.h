@@ -98,6 +98,9 @@ public:
     template<typename... Dims>
     DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...) {}
 
+
+    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims) {}
+
     template<typename... Indices>
     data_type at(Indices... indices){
         static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -110,7 +113,7 @@ public:
         return derived().at(indices);
     }
 
-    data_type atIdx(index_type idx){
+    data_type atIdx(index_type idx) const{
 
         //return lin index
         return derived().atIdx(idx);
@@ -118,9 +121,9 @@ public:
 
 
     template<typename R,typename C, typename T>
-    DenseLattice<data_type> toLatticeExpression(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices)
+    DenseLattice<data_type> toLatticeExpression(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const
     {
-        return toLatticeCopy(row_indices, column_indices, tab_indices );
+        return toLatticeCopy(row_indices, column_indices, tab_indices);
 
     }
 
@@ -187,14 +190,14 @@ private:
 
 template<typename Derived>
 template< typename R, typename C, typename T>
-auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices)->DenseLattice<data_type> const
+auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const ->DenseLattice<data_type>
 {
 
     //statically check number of indices match up
     size_t row_size=1, column_size=1, tab_size=1;
-    std::array<index_type,row_indices.size()> row_dims;
-    std::array<index_type,column_indices.size()> column_dims;
-    std::array<index_type,tab_indices.size()> tab_dims;
+    std::array<index_type, boost::mpl::size<R>::type::value> row_dims;
+    std::array<index_type, boost::mpl::size<C>::type::value> column_dims;
+    std::array<index_type, boost::mpl::size<T>::type::value> tab_dims;
     size_t idx=0;
     //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
     //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";

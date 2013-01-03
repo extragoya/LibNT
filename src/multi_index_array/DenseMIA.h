@@ -95,6 +95,8 @@ protected:
     typedef typename internal::const_storage_iterator<DenseMIA>::type const_storage_iterator;
     typedef typename internal::data_iterator<DenseMIA>::type data_iterator;
     typedef T* raw_pointer;
+    constexpr static size_t value=_order;
+
 
 private:
     typedef boost::shared_array<T> smart_pointer;
@@ -113,7 +115,13 @@ public:
     };
 
 
+    //!  Constructs DenseMIA of specified size.
+    /*!
 
+    */
+    DenseMIA(std::array<index_type,_order> &_dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> >(_dims),m_smart_ptr(scalar_data),m_data(m_smart_ptr.get(),this->m_dims,boost::fortran_storage_order())
+    {
+    }
 
     //!  Constructs DenseMIA of specified size.
     /*!
@@ -156,7 +164,7 @@ public:
 
     }
 
-    data_type atIdx(index_type idx){
+    data_type atIdx(index_type idx) const{
 
         //return lin index
         return *(m_data.data()+idx);

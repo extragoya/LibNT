@@ -187,7 +187,7 @@ public:
     T* release_memptr()
     {
 
-        smart_raw_pointer temp_ptr();
+        smart_raw_pointer temp_ptr;
         m_smart_raw_ptr.swap(temp_ptr);
         m_Data.reset(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order()));
         return temp_ptr.release();

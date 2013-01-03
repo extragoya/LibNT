@@ -9,6 +9,13 @@
 namespace LibMIA
 {
 
+namespace internal
+{
+template<class Derived>
+struct order<MIA<Derived> >: public order<Derived> {};
+}
+
+
 /** \addtogroup mia Multi-Index Array Classes
 *  @{
 */
@@ -43,6 +50,8 @@ public:
 
     }
 
+    MIA(std::array<index_type,internal::order<MIA>::value > &_dims): m_dims(_dims),m_dimensionality(compute_dimensionality()) {}
+
     template<typename... Dims>
     MIA(Dims... dims):m_dims{{dims...}},m_dimensionality(compute_dimensionality()) {
 
@@ -61,6 +70,11 @@ public:
     /** Sets all mia data to one.*/
     void zeros(){
         std::fill ( derived().data_begin(), derived().data_end(), 0);
+    }
+
+    index_type dim(size_t i) const{
+        assert(i<m_order);
+        return m_dims[i];
     }
 
 protected:

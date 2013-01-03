@@ -42,6 +42,16 @@ public:
     }
 };
 
+template<class MIA_type,class array_type1, class array_type2>
+void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order,array_type2& _dims,size_t& curIdx){
+
+    for(auto _order: _sequence_order)    {
+
+        _dims[curIdx++]=_mia.dim((size_t)_order);
+    }
+
+}
+
 //operator*(MIA_Expression)
 
 };
@@ -86,21 +96,28 @@ public:
 
         //perform_mult(Rhs.m_mia,left_inner_product_order,left_outer_product_order,left_inter_product_order,right_inner_product_order,right_outer_product_order,right_inter_product_order);
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        MIA_return_type test(5,5);
+
+
 
         auto cLat=m_mia.toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia.toLatticeExpression(left_inner_product_order,left_outer_product_order,left_inter_product_order);
+        std::array<typename _MIA::index_type,left_outer_product_order.size()+right_outer_product_order.size()+left_inter_product_order.size()> cMIA_dims;
+        size_t curIdx=0;
+        internal::collect_dimensions(m_mia,left_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions(Rhs.m_mia,right_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions(m_mia,left_inter_product_order,cMIA_dims,curIdx);
+        MIA_return_type cMIA(cMIA_dims,cLat.release_memptr());
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence>(test);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence>(cMIA);
 
 
 
     }
 
-    template<class otherMIA,class r_Seq>
+/*    template<class otherMIA,class r_Seq>
     MIA_Atom & operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs){
 
 
-    }
+    }*/
 
 
 
