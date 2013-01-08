@@ -1,18 +1,17 @@
-// Copyright (C) 2011 Adam P. Harrison
+// Copyright (c) 2013, Adam Harrison*
 // http://www.ualberta.ca/~apharris/
-//
-// This file is part of the MIA library, developed at
-// the Electronic Imaging Lab, University of Alberta,
-// Edmonton, Canada
-// http://www.ece.ualberta.ca/~djoseph/
-//
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// All rights reserved.
+
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+// -Redistributions of source code must retain the above copyright notice, the footnote below, this list of conditions and the following disclaimer.
+// -Redistributions in binary form must reproduce the above copyright notice, the footnote below, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// -Neither the name of the University of Alberta nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
+
 
 // Implementation of the DenseLattice class. Underlying data
 // structure and algorithms are those provided by the
@@ -22,6 +21,9 @@
 #ifndef DENSELATTICEBASE_H
 #define DENSELATTICEBASE_H
 #include <iostream>
+#include <fstream>
+#include <string>
+
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
@@ -37,6 +39,7 @@
 
 #include "Util.h"
 #include "Lattice.h"
+#include "Packer.h"
 
 
 
@@ -142,6 +145,11 @@ public:
 
     void print() const;
 
+    bool save(const std::string & _filename) const;
+
+    template<class otherDerived>
+    bool operator==(const DenseLatticeBase<otherDerived> &b) const;
+
     //!  Sets each tab to an identity matrix.
     /*!
         If non-square, it follows <a href="http://eigen.tuxfamily.org/dox/classEigen_1_1MatrixBase.html#a0650b65c6ae6c3d19a138b72a6d68568">this</a> format.
@@ -212,14 +220,14 @@ public:
 
 
 
-    data_iterator data_begin()
+    data_iterator data_begin() const
     {
 
 
         return derived().data_begin();
     }
 
-    data_iterator data_end()
+    data_iterator data_end() const
     {
 
 
@@ -422,6 +430,47 @@ void DenseLatticeBase<Derived>::eye()
 
 
     }
+
+}
+
+template<class Derived>
+template<class otherDerived>
+bool DenseLatticeBase<Derived>::operator==(const DenseLatticeBase<otherDerived> &b) const{
+
+    if(this->height()!=b.height()||this->width()!=b.width()||this->depth()!=b.depth())
+        return false;
+
+    for(auto it=derived().data_begin(), itb=b.data_begin();it<derived().data_end();++it,++itb)
+        if(*it!=*itb)
+            return false;
+
+    return true;
+
+
+}
+
+template<class Derived>
+bool DenseLatticeBase<Derived>::save(const std::string & _filename) const
+{
+    std::ofstream outfile (_filename.c_str(),std::ios_base::binary);
+    if (outfile.fail())
+        return false;
+    uint64_t temp;
+    temp=pack754_64((pack754_type)this->height());
+    outfile.write(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    temp=pack754_64((pack754_type)this->width());
+    outfile.write(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    temp=pack754_64((pack754_type)this->depth());
+    outfile.write(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+
+    for(auto it=derived().data_begin();it<derived().data_end();++it){
+        temp=pack754_64(*it);
+        outfile.write(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    }
+
+    outfile.close();
+
+    return true;
 
 }
 

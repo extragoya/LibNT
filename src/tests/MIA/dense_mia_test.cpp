@@ -9,10 +9,10 @@ typedef LibMIA::DenseMIA<double,3> dmia;
 typedef LibMIA::DenseMIA<double,4> dmia2;
 int main(){
 
-    LibMIA::PRODINDEX i;
-    LibMIA::PRODINDEX j;
-    LibMIA::PRODINDEX k;
-    LibMIA::PRODINDEX l;
+    LibMIA::MIAINDEX i;
+    LibMIA::MIAINDEX j;
+    LibMIA::MIAINDEX k;
+    LibMIA::MIAINDEX l;
     int test=5;
 
     dmia a(5,7,4);

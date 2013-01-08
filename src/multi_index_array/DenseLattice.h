@@ -1,18 +1,17 @@
-// Copyright (C) 2011 Adam P. Harrison
+// Copyright (c) 2013, Adam Harrison*
 // http://www.ualberta.ca/~apharris/
-//
-// This file is part of the MIA library, developed at
-// the Electronic Imaging Lab, University of Alberta,
-// Edmonton, Canada
-// http://www.ece.ualberta.ca/~djoseph/
-//
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// All rights reserved.
+
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+// -Redistributions of source code must retain the above copyright notice, the footnote below, this list of conditions and the following disclaimer.
+// -Redistributions in binary form must reproduce the above copyright notice, the footnote below, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// -Neither the name of the University of Alberta nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
+
 
 // Implementation of the DenseLattice class. Underlying data
 // structure and algorithms are those provided by the
@@ -22,6 +21,7 @@
 #define DENSELATTICE_H
 
 #include <iostream>
+#include <fstream>
 #include <memory>
 
 #include <boost/shared_array.hpp>
@@ -31,6 +31,7 @@
 
 #include "Util.h"
 #include "DenseLatticeBase.h"
+#include "Packer.h"
 
 
 //\defgroup
@@ -99,12 +100,15 @@ public:
     typedef typename internal::const_storage_iterator<DenseLattice>::type const_storage_iterator;
     typedef typename internal::data_iterator<DenseLattice>::type data_iterator;
     typedef T* raw_pointer;
+    typedef typename DenseLatticeBase<DenseLattice<T> >::index_type index_type;
 
 private:
     typedef std::unique_ptr<T []> smart_raw_pointer;
     typedef std::unique_ptr<Data> smart_data_pointer;
 
 public:
+
+
 
     struct null_deleter
     {
@@ -174,7 +178,7 @@ public:
         for (int i=0; i<this->height(); i++)
             for(int j=0; j<this->width(); j++)
                 for(int k=0; k<this->depth(); k++)
-                    *m_Data[i][j][k]=to_mdata_type::convert(other.derived()(i,j,k));
+                    (*m_Data)[i][j][k]=to_mdata_type::convert(other.derived()(i,j,k));
 
     }
 
@@ -199,6 +203,8 @@ public:
 
     template<class otherDerived>
     DenseLattice& operator=(const DenseLatticeBase<otherDerived>& b);
+
+    bool load(const std::string & _filename);
 
     //Move assignment
     DenseLattice& operator=(DenseLattice && other)
@@ -225,17 +231,18 @@ public:
     }
 
 
-    data_iterator data_begin()
+    data_iterator data_begin() const
     {
         return (*m_Data).data();
 
     }
 
-    data_iterator data_end()
+    data_iterator data_end() const
     {
         return (*m_Data).data()+size();
 
     }
+
 
     storage_iterator begin()
     {
@@ -312,6 +319,54 @@ inline DenseLattice<T>& DenseLattice<T>::operator=(const DenseLatticeBase<otherD
     return *this;
 
 
+
+}
+
+template <class T>
+bool DenseLattice<T>::load(const std::string & _filename){
+
+    typedef boost::numeric::converter<index_type,pack754_type> to_index_type;
+    typedef boost::numeric::converter<data_type,pack754_type> to_data_type;
+    std::ifstream infile (_filename.c_str(),std::ios_base::binary);
+    if (infile.fail())
+        return false;
+      // get length of file:
+    infile.seekg (0, std::ios::end);
+    size_t file_length = infile.tellg();
+
+    //get the number of data entries
+    if(file_length%sizeof(uint64_t))
+        return false;
+    file_length/=sizeof(uint64_t);
+    if(file_length<4)
+        return false;
+    file_length-=3;
+
+    infile.seekg (0, std::ios::beg);
+    index_type _height,_width,_depth;
+    uint64_t temp;
+    infile.read(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    _height=to_index_type::convert(unpack754_64(temp));
+    infile.read(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    _width=to_index_type::convert(unpack754_64(temp));
+    infile.read(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+    _depth=to_index_type::convert(unpack754_64(temp));
+
+    //make sure the specified dimensions match up with the actual number of data entries.
+    if(_height*_width*_depth!=file_length)
+        return false;
+
+    smart_raw_pointer temp_ptr(new T[_height*_width*_depth]);
+    m_smart_raw_ptr.swap(temp_ptr);
+    m_Data.reset(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()));
+    this->init( _height, _width, _depth);
+
+    for(auto it=data_begin();it<data_end();++it){
+        infile.read(reinterpret_cast<char *>(&temp),sizeof(uint64_t));
+        *it=to_data_type::convert(unpack754_64(temp));
+    }
+    infile.close();
+    return true;
 
 }
 

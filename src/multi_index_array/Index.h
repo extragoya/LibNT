@@ -1,3 +1,18 @@
+// Copyright (c) 2013, Adam Harrison*
+// http://www.ualberta.ca/~apharris/
+// All rights reserved.
+
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+// -Redistributions of source code must retain the above copyright notice, the footnote below, this list of conditions and the following disclaimer.
+// -Redistributions in binary form must reproduce the above copyright notice, the footnote below, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// -Neither the name of the University of Alberta nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
+
+
 #ifndef INDEX_H_INCLUDED
 #define INDEX_H_INCLUDED
 
@@ -7,7 +22,7 @@
 #include <boost/mpl/vector_c.hpp>
 
 #define __UNIQUE_ID__ __COUNTER__           //should work in gcc 4.3 and later and also MS compiler
-#define PRODINDEX ProdInd<__UNIQUE_ID__>
+#define MIAINDEX ProdInd<__UNIQUE_ID__>
 namespace LibMIA
 {
 
@@ -31,7 +46,7 @@ struct ProdInd
 
 
 
-
+//these provide grammar rules for MIA expressions
 namespace internal
 {
 
@@ -44,12 +59,10 @@ struct is_ProdInd: public boost::false_type {};
 template<int i>
 struct is_ProdInd<ProdInd<i>>: public boost::true_type {};
 
-template<int i>
-struct is_ProdInd<ElemWiseInd<i>>: public boost::true_type {};
-
 template<class T1,int T2>
 struct match_rule;
 
+//number of matches allowed with an ordinary index during an MIA product
 template<int label>
 struct match_rule<ProdInd<label,false>,product_rule>
 {
@@ -57,6 +70,7 @@ struct match_rule<ProdInd<label,false>,product_rule>
 
 };
 
+//number of matches allowed with an elemwise index during an MIA product
 template<int label>
 struct match_rule<ProdInd<label,true>,product_rule>
 {
@@ -67,6 +81,7 @@ struct match_rule<ProdInd<label,true>,product_rule>
 template<class T1,int T2>
 struct auto_match_rule;
 
+//use when we want to ensure no MIA has a repeated index within the same MIA
 template<int id,bool elemwise>
 struct auto_match_rule<ProdInd<id,elemwise>,binary_rule>
 {

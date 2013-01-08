@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 2.6)
 
-project(Lattice_example)
-set (SOURCES lattice1.cpp)
-add_executable(Lattice_example ${SOURCES})
+
+set (SOURCES latticemulttests.cpp)
+add_executable(DenseLatticeMultTests ${SOURCES})
+ADD_TEST(DenseLatticeMultTests ${CMAKE_CURRENT_BINARY_DIR}/DenseLatticeMultTests)
+
+
+file(COPY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+

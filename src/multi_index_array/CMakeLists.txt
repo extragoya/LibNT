@@ -11,6 +11,7 @@ set(LibMIA_headers
      MappedSparseLattice.h
      MIA.h
      MIA_Expr.h
+     Packer.h
      SparseLattice.h
      SparseLatticeBase.h
      tupleit.hh
