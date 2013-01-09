@@ -126,7 +126,10 @@ public:
     }
 
     //!  Constructs empty DenseLattice.
-    DenseLattice():  m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order())) {}
+    DenseLattice():  m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order())) {
+        this->init( 0,  0,  0);
+
+    }
 
     //!  Constructs DenseLattice given already allocated and assigned memory.
     /*!
