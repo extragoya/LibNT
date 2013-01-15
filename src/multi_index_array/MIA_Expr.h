@@ -131,6 +131,15 @@ public:
     template<class otherMIA,class r_Seq>
     MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs)
     {
+        typedef typename internal::cartesian_product_indices<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,internal::assign_rule,0> left_sequence_check;
+        typedef typename internal::cartesian_product_indices<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,internal::assign_rule,0> right_sequence_check;
+        //check to makes sure no left-hand indice is repeated
+        static_assert(internal::auto_cartesian_product_indices<m_Seq,boost::mpl::empty<m_Seq>::value,internal::binary_rule>::value,"Repeated index in left-hand operand.");
+        //check to make sure no right-hand indice is repeated
+        static_assert(internal::auto_cartesian_product_indices<r_Seq,boost::mpl::empty<r_Seq>::value,internal::binary_rule>::value,"Repeated index in right-hand operand.");
+        //now check to make sure left and right-hand operands match up properly
+        static_assert(left_sequence_check::value,"A left-hand index does not match up properly with a right-hand index.");
+        static_assert(right_sequence_check::value,"A right-hand index does not match up properly with a left-hand index.");
 
     }
 
@@ -148,7 +157,11 @@ public:
 private:
 
 
+    template<int rule>
+    struct  perform_cartesian_index{
 
+
+    }
 
     //convert variadic templates to a boost::mpl sequence so that they can be worked with
     //typedef typename internal::FromVariadic<Ts...>::type m_Seq;

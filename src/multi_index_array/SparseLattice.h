@@ -181,6 +181,14 @@ public:
 
     }
 
+    //!  Constructs an empty sparse lattice of specified size.
+    SparseLattice(index_type _height,index_type _width,index_type _depth): m_data(), m_indices()
+    {
+        this->init(_height,_width,_depth);
+        this->sparse_init(false,ColumnMajor);
+
+    }
+
     //!  Constructs a sparse lattice from two prexisting std::vectors.
     /*!
     Swaps the contents of _data and _indices with the lattice's internal vectors, making passed in vectors empty.
@@ -306,6 +314,26 @@ public:
     SparseLattice& operator-=(SparseLatticeBase<otherDerived> &b){
         std::minus<T> op;
         return merge(b,op);
+
+    }
+
+    //!  Sets each tab to an identity matrix.
+    /*!
+        If non-square, it follows <a href="http://eigen.tuxfamily.org/dox/classEigen_1_1MatrixBase.html#a0650b65c6ae6c3d19a138b72a6d68568">this</a> format.
+    */
+    void eye()
+    {
+
+        m_data.clear();
+        m_indices.clear();
+        index_type eye_dim=std::min(this->height(),this->width());
+        m_data.reserve(std::pow(eye_dim,2)*this->depth());
+        m_indices.reserve(std::pow(eye_dim,2)*this->depth());
+        for(index_type _tab=0;_tab<this->depth();++tab)
+            for(index_type _idx=0;_idx<eye_dim;++_idx)
+                this->push_back(1,this->full2lin_index(_idx,_idx,_tab));
+
+
 
     }
 

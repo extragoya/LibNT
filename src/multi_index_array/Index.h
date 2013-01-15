@@ -51,6 +51,7 @@ namespace internal
 {
 
 constexpr int product_rule=0;
+constexpr int assign_rule=1;
 constexpr int binary_rule=0;
 
 template<class T>
@@ -77,6 +78,16 @@ struct match_rule<ProdInd<label,true>,product_rule>
     typedef boost::mpl::vector_c<int,1> allowed_matches;
 
 };
+
+//number of matches allowed with an index during an MIA assignment
+template<int label,bool elemwise>
+struct match_rule<ProdInd<label,elemwise>,assign_rule>
+{
+    typedef boost::mpl::vector_c<int,1> allowed_matches;
+
+};
+
+
 
 template<class T1,int T2>
 struct auto_match_rule;

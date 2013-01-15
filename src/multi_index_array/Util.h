@@ -338,17 +338,17 @@ struct cartesian_product_indices<LSeq,RSeq,false,expression_type,recursive_depth
     >::type no_match_order_sequence;
 
     typedef typename boost::mpl::if_<
-    boost::mpl::and_<
-    boost::mpl::equal_to<
-    n,boost::mpl::int_<1>
-    >,
-    boost::mpl::bool_<first_LSeq::elemval>
-    >,
-    typename boost::mpl::push_front<
-    typename next_cartesian_product::inter_match_order_sequence,
-    boost::mpl::int_<recursive_depth>
-    >::type,
-    typename next_cartesian_product::inter_match_order_sequence
+        boost::mpl::and_<
+            boost::mpl::equal_to<
+                n,boost::mpl::int_<1>
+            >,
+            boost::mpl::bool_<first_LSeq::elemval>
+        >,
+        typename boost::mpl::push_front<
+            typename next_cartesian_product::inter_match_order_sequence,
+            boost::mpl::int_<recursive_depth>
+        >::type,
+        typename next_cartesian_product::inter_match_order_sequence
     >::type inter_match_order_sequence;
 
 };
@@ -361,9 +361,9 @@ struct auto_cartesian_product_indices
     typedef boost::true_type allowed_recursive;
 };
 
-//this structure checks how many times the first element of LSeq occurs in RSeq
+//this structure checks how many times the first element of Seq occurs in the rest of the sequence.
 //Once this is done, it then checks to make sure the frequency follows the expression_type rules
-//finally it recurses to check the next element of LSeq
+//finally it recurses to check the next element of Seq
 template<typename Seq,int expression_type>
 struct auto_cartesian_product_indices<Seq,false,expression_type>
 {

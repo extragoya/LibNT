@@ -11,6 +11,7 @@ SET(SuperLU_INCLUDE  CACHE PATH /path/to/superlu_headers)
 
 INCLUDE_DIRECTORIES(${Boost_ROOT})
 INCLUDE_DIRECTORIES(${Eigen_ROOT})
+INCLUDE_DIRECTORIES(${SuperLU_INCLUDE})
 
 add_subdirectory(multi_index_array)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/multi_index_array)

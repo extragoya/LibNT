@@ -759,7 +759,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-    typedef Eigen::SparseLU<MappedSparseMatrix_cm,Eigen::SuperLU> LU_decomp;    //LU decomposition type for A
+    typedef Eigen::SuperLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
 
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory

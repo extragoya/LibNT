@@ -141,7 +141,7 @@ public:
     {
 
 
-        std::copy(rawdata,rawdata+_height*_width*_depth,begin());
+        std::copy(rawdata,rawdata+_height*_width*_depth,data_begin());
         this->init( _height,  _width,  _depth);
 
     }
