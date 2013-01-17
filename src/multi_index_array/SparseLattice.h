@@ -329,7 +329,7 @@ public:
         index_type eye_dim=std::min(this->height(),this->width());
         m_data.reserve(std::pow(eye_dim,2)*this->depth());
         m_indices.reserve(std::pow(eye_dim,2)*this->depth());
-        for(index_type _tab=0;_tab<this->depth();++tab)
+        for(index_type _tab=0;_tab<this->depth();++_tab)
             for(index_type _idx=0;_idx<eye_dim;++_idx)
                 this->push_back(1,this->full2lin_index(_idx,_idx,_tab));
 
@@ -368,10 +368,18 @@ public:
 
     //void fill(const DenseLattice<T>& dlat);
 
+    const Data& data() const{
+        return m_data;
+    }
+    const Indices& indices() const{
+        return m_indices;
+    }
     index_iterator index_begin() ;
     index_iterator index_end() ;
     data_iterator data_begin();
     data_iterator data_end();
+
+
 protected:
     Data m_data;
     Indices m_indices;

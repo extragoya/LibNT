@@ -400,7 +400,7 @@ public:
     template<class super_data_type>
     void to_matrix_rowmajor(std::vector<index_type> &inner_indices,std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
 
-private:
+protected:
 
 
     index_type full2lin_index(index_type _row, index_type _column, index_type _tab) const;

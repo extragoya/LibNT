@@ -27,9 +27,14 @@
 
 
 #include "Util.h"
+#include "IndexUtil.h"
 #include "Index.h"
 namespace LibMIA
 {
+
+
+
+
 
 
 
@@ -57,17 +62,33 @@ public:
     }
 };
 
-template<class MIA_type,class array_type1, class array_type2>
-void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order,array_type2& _dims,size_t& curIdx){
 
-    for(auto _order: _sequence_order)    {
 
-        _dims[curIdx++]=_mia.dim((size_t)_order);
-    }
+//operator*(MIA_Expression)
 
 }
 
-//operator*(MIA_Expression)
+template<class l_Seq,class r_Seq,int rule>
+struct perform_cartesian_check
+{
+    typedef typename internal::cartesian_product_indices<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value,rule,0> left_sequence_check;
+    typedef typename internal::cartesian_product_indices<r_Seq,l_Seq,boost::mpl::empty<r_Seq>::value,rule,0> right_sequence_check;
+    static void run()
+    {
+        static_assert(left_sequence_check::value,"A left-hand index does not match up properly with a right-hand index.");
+        static_assert(right_sequence_check::value,"A right-hand index does not match up properly with a left-hand index.");
+    }
+
+};
+
+template<class Seq, int rule>
+struct perform_auto_check
+{
+    typedef internal::auto_cartesian_product_indices<Seq,boost::mpl::empty<Seq>::value,rule> sequence_check;
+    static void run()
+    {
+        static_assert(sequence_check::value,"Repeated index in operand.");
+    }
 
 };
 
@@ -128,26 +149,65 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs)
+
+    MIA_Atom& operator=(const MIA_Atom & Rhs)
     {
-        typedef typename internal::cartesian_product_indices<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,internal::assign_rule,0> left_sequence_check;
-        typedef typename internal::cartesian_product_indices<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,internal::assign_rule,0> right_sequence_check;
-        //check to makes sure no left-hand indice is repeated
-        static_assert(internal::auto_cartesian_product_indices<m_Seq,boost::mpl::empty<m_Seq>::value,internal::binary_rule>::value,"Repeated index in left-hand operand.");
-        //check to make sure no right-hand indice is repeated
-        static_assert(internal::auto_cartesian_product_indices<r_Seq,boost::mpl::empty<r_Seq>::value,internal::binary_rule>::value,"Repeated index in right-hand operand.");
-        //now check to make sure left and right-hand operands match up properly
-        static_assert(left_sequence_check::value,"A left-hand index does not match up properly with a right-hand index.");
-        static_assert(right_sequence_check::value,"A right-hand index does not match up properly with a left-hand index.");
+
+
+        //TODO check that no index is an inter product and check that orders match
+
+
+        m_mia=Rhs.m_mia;
+
+
 
     }
 
-/*    template<class otherMIA,class r_Seq>
-    MIA_Atom & operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs){
+    template<class otherMIA>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq> & Rhs)
+    {
+
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
+        //TODO check that no index is an inter product and check that orders match
 
 
-    }*/
+        m_mia=Rhs.m_mia;
+
+
+
+    }
+
+    template<class otherMIA,class r_Seq>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs)
+    {
+
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
+        //TODO check that no index is an inter product and check that orders match
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::assign_rule> cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
+
+        internal::sequence_array<typename cartesian_check::right_sequence_check::match_order_sequence> right_assignment_order;
+        std::array<typename otherMIA::index_type,internal::order<otherMIA>::value> r_Dims;
+
+        std::cout << "Right assign order ";
+        for(auto &i:right_assignment_order)
+            std::cout << i;
+        std::cout << std::endl;
+        m_mia.assign(Rhs.m_mia,right_assignment_order);
+
+
+
+    }
+
+
+
+
+
 
 
 
@@ -157,11 +217,8 @@ public:
 private:
 
 
-    template<int rule>
-    struct  perform_cartesian_index{
 
 
-    }
 
     //convert variadic templates to a boost::mpl sequence so that they can be worked with
     //typedef typename internal::FromVariadic<Ts...>::type m_Seq;

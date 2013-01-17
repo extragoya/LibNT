@@ -38,11 +38,16 @@
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/begin_end.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+
 
 #include "Index.h"
 
 namespace LibMIA
 {
+boost::random::mt19937 gen(time(0));
 /** \addtogroup util Utilities
  *  @{
 */
@@ -209,44 +214,7 @@ struct is_SparseLattice<SparseLatticeBase<Derived > >: public boost::true_type {
 template<class Derived>
 struct is_DenseLattice<DenseLatticeBase<Derived > >: public boost::true_type {};
 
-//should be undefined
-template<class index_type,typename...Args>
-struct check_mia_dim_args;
 
-
-//base case, inherit from true_type
-template<class index_type>
-struct check_mia_dim_args<index_type>:public boost::true_type {};
-
-//checks to ensure dimension arguments are all convertable to index_type. Uses recursion to allow
-//check to happen regardless of number of arguments. Checking is controlled through inheritance
-template<class index_type,typename arg,typename...Args>
-struct check_mia_dim_args<index_type,arg,Args...> :
-        boost::mpl::and_<
-        boost::is_same<
-        typename boost::numeric::conversion_traits<index_type,arg >::supertype,
-        index_type
-        >,
-        check_mia_dim_args<index_type,Args...>
-        >
-    {};
-
-//checks to make sure size of variadic arguments is equal to order of MIA
-template<class _MIA,typename...Args>
-struct check_dims_count : boost::mpl::bool_<sizeof...( Args ) ==internal::order<_MIA>::value>
-{ };
-
-template<class _MIA, typename...Args>
-struct check_mia_constructor
-{
-
-    typedef typename
-    boost::mpl::and_<
-    check_dims_count<_MIA,Args...>,
-    check_mia_dim_args<typename internal::index_type<_MIA>::type,Args...>
-    >::type type;
-
-};
 
 template<class T> struct incomplete;
 
@@ -305,19 +273,20 @@ struct cartesian_product_indices<LSeq,RSeq,false,expression_type,recursive_depth
     constexpr static bool value= allowed_recursive::value;
 
     typedef typename boost::mpl::if_<
-    boost::mpl::and_<
-    boost::mpl::equal_to<
-    n,boost::mpl::int_<1>
-    >,
-    boost::mpl::not_<
-    boost::mpl::bool_<first_LSeq::elemval>
-    >
-    >,
-    typename boost::mpl::push_front<
-    typename next_cartesian_product::match_order_sequence,
-    boost::mpl::int_<recursive_depth>
-    >::type,
-    typename next_cartesian_product::match_order_sequence
+        boost::mpl::and_<
+            boost::mpl::equal_to<
+                n,
+                boost::mpl::int_<1>
+            >,
+            boost::mpl::not_<
+                boost::mpl::bool_<first_LSeq::elemval>
+            >
+        >,
+        typename boost::mpl::push_front<
+            typename next_cartesian_product::match_order_sequence,
+            boost::mpl::int_<recursive_depth>
+        >::type,
+        typename next_cartesian_product::match_order_sequence
     >::type match_order_sequence;
 
 
@@ -601,60 +570,7 @@ struct MIAProductUtil
 
 };
 
-//check, probably std::array second parameter templated by size_t
-template<typename indexType,size_t T>
-std::array<indexType,T> ind2sub(indexType i, std::array<indexType,T> dims)
-{
 
-    std::array<indexType,T> indices;
-    indexType divisor=1;
-    for(size_t i=0; i<T; ++i)
-    {
-        indices[i]=i/divisor;
-        indices[i]%=dims[i];
-        divisor*=dims[i];
-    }
-
-}
-
-template<typename indexType,size_t T>
-indexType sub2ind(std::array<indexType,T> indices, std::array<indexType,T> dims)
-{
-
-
-    indexType idx=0;
-    indexType multiplier=1;
-    for(size_t i=0; i<T; ++i)
-    {
-        idx+=indices[i]*multiplier;
-        multiplier*=dims[i];
-    }
-
-}
-
-template<typename accessType, typename accessType2,typename dimType>
-typename dimType::value_type sub2ind(accessType indices, accessType2 order, dimType dims)
-{
-
-
-
-    typename dimType::value_type idx=0;
-    typename dimType::value_type multiplier;
-
-    for (size_t i=0; i< indices.size(); ++i)
-    {
-        multiplier=1;
-        for(size_t j=0; j<order[i]; ++j)
-        {
-
-            multiplier*=dims[j];
-        }
-        idx+=indices[i]*multiplier;
-
-    }
-
-
-}
 
 /*! @} */
 /*! @} */

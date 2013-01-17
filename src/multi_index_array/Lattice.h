@@ -23,18 +23,16 @@
 #include <algorithm>
 
 #include <boost/operators.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/variate_generator.hpp>
 
-#include "LatticeException.h"
+
+#include "LibMIAException.h"
 #include "Util.h"
 
 //, boost::multipliable<Derived>
 //
 namespace LibMIA
 {
-boost::random::mt19937 gen(time(0));
+
 /** \addtogroup lattice Lattice Classes
 *  @{
 */

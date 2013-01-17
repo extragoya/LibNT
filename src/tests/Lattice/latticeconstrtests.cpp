@@ -37,6 +37,7 @@ void dense_constructor_work(){
     typedef T Lat1;
     constructor_work<T>();
     Lat1 test2(dim,dim,dim);
+
     BOOST_CHECK_EQUAL(test2.data_end()-test2.data_begin(),dim*dim*dim);
     for(auto it=test2.data_begin();it<test2.data_end();++it)
         BOOST_CHECK_EQUAL(*it,0);
@@ -64,7 +65,7 @@ void sparse_constructor_work(){
     BOOST_CHECK_EQUAL(test2.data_end()-test2.data_begin(),0);
     BOOST_CHECK_EQUAL(test2.index_end()-test2.index_begin(),0);
     test2.eye();
-    Lat1 test3(test2.data_begin(),test2.index_begin(),test2.height(),test2.width(),test2.depth());
+    Lat1 test3(test2.data(),test2.indices(),test2.height(),test2.width(),test2.depth());
 
 
 

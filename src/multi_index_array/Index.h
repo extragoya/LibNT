@@ -33,7 +33,7 @@ struct ElemWiseInd {};
 
 
 
-template<int id,bool ElemWise=false>
+template<size_t id,bool ElemWise=false>
 struct ProdInd
 {
     constexpr static bool elemval=ElemWise;
@@ -57,14 +57,14 @@ constexpr int binary_rule=0;
 template<class T>
 struct is_ProdInd: public boost::false_type {};
 
-template<int i>
+template<size_t i>
 struct is_ProdInd<ProdInd<i>>: public boost::true_type {};
 
 template<class T1,int T2>
 struct match_rule;
 
 //number of matches allowed with an ordinary index during an MIA product
-template<int label>
+template<size_t label>
 struct match_rule<ProdInd<label,false>,product_rule>
 {
     typedef boost::mpl::vector_c<int,0,1> allowed_matches;
@@ -72,7 +72,7 @@ struct match_rule<ProdInd<label,false>,product_rule>
 };
 
 //number of matches allowed with an elemwise index during an MIA product
-template<int label>
+template<size_t label>
 struct match_rule<ProdInd<label,true>,product_rule>
 {
     typedef boost::mpl::vector_c<int,1> allowed_matches;
@@ -80,7 +80,7 @@ struct match_rule<ProdInd<label,true>,product_rule>
 };
 
 //number of matches allowed with an index during an MIA assignment
-template<int label,bool elemwise>
+template<size_t label,bool elemwise>
 struct match_rule<ProdInd<label,elemwise>,assign_rule>
 {
     typedef boost::mpl::vector_c<int,1> allowed_matches;
@@ -93,7 +93,7 @@ template<class T1,int T2>
 struct auto_match_rule;
 
 //use when we want to ensure no MIA has a repeated index within the same MIA
-template<int id,bool elemwise>
+template<size_t id,bool elemwise>
 struct auto_match_rule<ProdInd<id,elemwise>,binary_rule>
 {
     typedef boost::mpl::vector_c<int,0> allowed_matches;

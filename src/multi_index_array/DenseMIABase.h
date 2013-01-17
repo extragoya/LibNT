@@ -98,7 +98,13 @@ public:
     DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...) {}
 
 
+    DenseMIABase(): MIA<DenseMIABase<Derived > >() {}
+
+
     DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims) {}
+
+    template<class otherDerived>
+    bool operator==(const DenseMIABase<otherDerived>& otherMIA);
 
     template<typename... Indices>
     data_type at(Indices... indices){
@@ -106,6 +112,10 @@ public:
         return m_data({{indices...}});
     }
 
+    template<class otherDerived,class index_param_type>
+    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<DenseMIABase>::value>& index_order){
+        derived().assign(otherMIA.derived(),index_order);
+    }
 
     data_type at(std::array<index_type, internal::order<DenseMIABase>::value> indices){
 
@@ -118,7 +128,6 @@ public:
         return derived().atIdx(idx);
     }
 
-
     template<typename R,typename C, typename T>
     DenseLattice<data_type> toLatticeExpression(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const
     {
@@ -130,14 +139,14 @@ public:
     DenseLattice<data_type> toLatticeCopy(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const;
 
 
-    data_iterator data_begin()
+    data_iterator data_begin() const
     {
 
 
         return derived().data_begin();
     }
 
-    data_iterator data_end()
+    data_iterator data_end() const
     {
 
 
@@ -239,7 +248,20 @@ auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indice
 
 }
 
+template<typename Derived>
+template<typename otherDerived>
+bool DenseMIABase<Derived>::operator==(const DenseMIABase<otherDerived> & otherMIA )
+{
+    if(this->m_dims!=otherMIA.dims())
+        return false;
 
+    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+        if(*it1!=*it2)
+            return false;
+
+    return true;
+
+}
 
 
 

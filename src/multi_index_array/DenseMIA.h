@@ -22,9 +22,11 @@
 #include <boost/multi_array.hpp>
 #include <boost/type_traits.hpp>
 
-
+#include "LibMiaException.h"
 #include "Util.h"
+#include "IndexUtil.h"
 #include "DenseMIABase.h"
+
 
 
 //\defgroup
@@ -114,9 +116,10 @@ protected:
 
 
 private:
-    typedef boost::shared_array<T> smart_pointer;
-    smart_pointer m_smart_ptr;
-    Data m_data;
+    typedef std::unique_ptr<T []> smart_raw_pointer;
+    typedef std::unique_ptr<Data> smart_data_pointer;
+    smart_raw_pointer m_smart_raw_ptr;
+    smart_data_pointer m_Data;
 
 
 
@@ -129,12 +132,15 @@ public:
         }
     };
 
+    DenseMIA():DenseMIABase<DenseMIA<T,_order> >(0),m_smart_raw_ptr(nullptr),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
+    {
+    }
 
     //!  Constructs DenseMIA of specified size.
     /*!
 
     */
-    DenseMIA(std::array<index_type,_order> &_dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> >(_dims),m_smart_ptr(scalar_data),m_data(m_smart_ptr.get(),this->m_dims,boost::fortran_storage_order())
+    DenseMIA(std::array<index_type,_order> &_dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> >(_dims),m_smart_raw_ptr(scalar_data),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
     {
     }
 
@@ -144,11 +150,11 @@ public:
 
     */
     template<typename... Dims>
-    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> >{dims...}, m_smart_ptr(new T[this->m_dimensionality]),m_data(m_smart_ptr.get(),this->m_dims,boost::fortran_storage_order())
+    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(new T[this->m_dimensionality]),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
     {
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::cout<<this->m_dimensionality;
+
 
 
 
@@ -161,7 +167,7 @@ public:
 
     */
     template<typename... Dims>
-    DenseMIA(Dims... dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> >{dims...}, m_smart_ptr(scalar_data),m_data(m_smart_ptr.get(),this->m_dims,boost::fortran_storage_order())
+    DenseMIA(Dims... dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(scalar_data),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
     {
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -170,19 +176,30 @@ public:
 
     }
 
+    template<typename otherDerived,typename index_param_type>
+    void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
+
+    template<typename otherDerived>
+    DenseMIA& operator=(const DenseMIABase<otherDerived>& otherMIA);
+
+
+    DenseMIA& operator=(const DenseMIA& otherMIA);
+
     template<class...Ts>
-    inline data_type at(Ts...ts){
+    inline data_type at(Ts...ts)
+    {
         static_assert(internal::check_mia_constructor<DenseMIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,_order> temp ={{ts...}};
-        return m_data(temp);
+        std::array<index_type,_order> temp = {{ts...}};
+        return (*m_Data)(temp);
 
 
     }
 
-    data_type atIdx(index_type idx) const{
+    data_type atIdx(index_type idx) const
+    {
 
         //return lin index
-        return *(m_data.data()+idx);
+        return *((*m_Data).data()+idx);
     }
 
 //    //!  Constructs empty DenseMIA.
@@ -260,15 +277,15 @@ public:
 //    }
 //
 //
-    data_iterator data_begin()
+    data_iterator data_begin() const
     {
-        return m_data.data();
+        return (*m_Data).data();
 
     }
 
-    data_iterator data_end()
+    data_iterator data_end() const
     {
-        return m_data.data()+size();
+        return (*m_Data).data()+size();
 
     }
 //
@@ -301,7 +318,7 @@ public:
     std::size_t size() const
     {
 
-        return m_data.num_elements();
+        return (*m_Data).num_elements();
 
     }
 
@@ -319,7 +336,74 @@ private:
 };
 
 
+template<class T, size_t _order>
+template<typename otherDerived>
+DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerived>& otherMIA)
+{
+    static_assert(_order==internal::order<otherDerived>::value,"Orders of MIAs must be the same to be assigned");
+    if(this->m_dims!=otherMIA.dims()){
+        this->m_dims=otherMIA.dims();
+        this->m_dimensionality=this->compute_dimensionality();
 
+        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+        m_smart_raw_ptr.swap(temp_ptr);
+        temp_ptr.release();
+        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+    }
+
+
+     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+        *it1=*it2;
+
+    return *this;
+
+}
+
+template<class T, size_t _order>
+DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<T,_order>& otherMIA)
+{
+
+    if(this->m_dims!=otherMIA.dims()){
+        this->m_dims=otherMIA.dims();
+        this->m_dimensionality=this->compute_dimensionality();
+
+        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+        m_smart_raw_ptr.swap(temp_ptr);
+        temp_ptr.release();
+        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+    }
+
+
+     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+        *it1=*it2;
+
+    return *this;
+
+}
+
+template<class T, size_t _order>
+template<typename otherDerived,typename index_param_type>
+void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
+{
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
+    internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+    this->m_dimensionality=this->compute_dimensionality();
+
+    smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+    m_smart_raw_ptr.swap(temp_ptr);
+    temp_ptr.release();
+    m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+
+    index_type curIdx=0;
+
+    for(auto it=data_begin(); it<data_end(); ++it)
+    {
+        *it=*(otherMIA.data_begin()+sub2ind(ind2sub(++curIdx, this->m_dims),index_order,otherMIA.dims()));
+
+    }
+
+
+}
 
 ////****Operators*****
 //

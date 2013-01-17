@@ -17,6 +17,12 @@
 #define MIA_H
 
 #include <array>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+
+
 #include "Index.h"
 #include "MIA_Expr.h"
 #include "Util.h"
@@ -54,6 +60,7 @@ class MIA
 public:
 
     typedef typename internal::index_type<Derived>::type index_type;
+    typedef typename internal::index_type<Derived>::type data_type;
     Derived& derived() { return *static_cast<Derived*>(this); }
     /** \returns a const reference to the derived object */
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
@@ -65,11 +72,27 @@ public:
 
     }
 
+    MIA(){
+        for(auto & i:m_dims)
+            i=0;
+        m_dimensionality=0;
+    }
+
     MIA(std::array<index_type,internal::order<MIA>::value > &_dims): m_dims(_dims),m_dimensionality(compute_dimensionality()) {}
 
     template<typename... Dims>
     MIA(Dims... dims):m_dims{{dims...}},m_dimensionality(compute_dimensionality()) {
 
+    }
+
+    void init(const std::array<index_type,internal::order<MIA>::value> _dims){
+        m_dims(_dims);
+        m_dimensionality(compute_dimensionality());
+    }
+
+    template<class otherDerived>
+    void assign(const MIA<otherDerived>& otherMIA,const std::array<typename otherDerived::index_type,internal::order<MIA>::value>& index_order){
+        derived().assign(otherMIA,index_order);
     }
 
 //    toLatticeExpression(std::array<size_t> outer_product_indices, std::array<size_t> inner_product_indices,,std::array<size_t> inter_product_indices){
@@ -90,6 +113,29 @@ public:
     index_type dim(size_t i) const{
         assert(i<m_order);
         return m_dims[i];
+    }
+
+    //!  Sets MIA data to uniformly distributed random values.
+    /*!
+    If MIA is sparse, only elements already designated as nonzero are set to random values.
+    Range is specified using parameters. Will throw a MIAParameterException exception if \f$low>high\f$.
+
+    */
+    void randu(int low=0, int high=1){
+        if (low>=high){
+            throw MIAParameterException("Lower bound of random numbers must be stricly smaller than upper bound.");
+        }
+        boost::uniform_real<> uni_dist(low,high);
+        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
+        typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
+        for (auto i=derived().data_begin();i<derived().data_end();++i){
+            *i=to_mdata_type::convert(uni());
+        }
+
+    }
+
+    const std::array<index_type,internal::order<MIA>::value>& dims() const{
+        return m_dims;
     }
 
 protected:
