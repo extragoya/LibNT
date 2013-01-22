@@ -25,11 +25,14 @@ BOOST_AUTO_TEST_CASE( MIAAssignTests )
     c=a;
     BOOST_CHECK_MESSAGE(a==c,"Straight MIA assignment");
 
-
+    b.zeros();
+    c.zeros();
     b(i,j,k)=a(i,j,k);
     c(i,j,k)=b(i,j,k);
     BOOST_CHECK_MESSAGE(a==c,"Non-shuffled MIA Expression assignment");
 
+    b.zeros();
+    c.zeros();
     b(i,j,k)=a(i,k,j);
     c(i,j,k)=b(i,k,j);
     BOOST_CHECK_MESSAGE(a==c,"Shuffled MIA Expression assignment");

@@ -25,6 +25,7 @@
 #include <boost/mpl/logical.hpp>
 #include <boost/mpl/bool.hpp>
 #include <boost/mpl/vector.hpp>
+#include <boost/mpl/print.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/begin_end.hpp>
@@ -35,12 +36,14 @@
 #include <boost/mpl/deref.hpp>
 #include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/comparison.hpp>
+#include <boost/mpl/distance.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/begin_end.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
+
 
 
 #include "Index.h"
@@ -369,6 +372,78 @@ struct auto_cartesian_product_indices<Seq,false,expression_type>
 
 };
 
+
+
+template<typename LSeq, typename RSeq,bool empty_LSeq>
+struct pull_right_index_order
+{
+
+    typedef boost::mpl::vector_c<int> match_order;
+    typedef boost::mpl::vector_c<int> inter_match_order;
+
+
+};
+
+template <class T> struct incomplete;
+template<typename LSeq, typename RSeq>
+struct pull_right_index_order<LSeq,RSeq,false>
+{
+
+    //Pull first index type off of left sequence
+    typedef typename boost::mpl::deref<typename boost::mpl::begin<LSeq>::type>::type first_LSeq;
+    //find its position in RSeq
+    typedef typename boost::mpl::find<RSeq,first_LSeq>::type find_pos;
+
+    //incomplete<find_pos> check_find_pos;
+
+    typedef typename boost::mpl::not_<
+                        boost::is_same<
+                            find_pos,
+                            typename boost::mpl::end<RSeq>::type
+                        >
+                    >::type was_found;
+
+    //pop the first type off of LSeq
+    typedef typename boost::mpl::pop_front<LSeq>::type poppedLSeq;
+    //obtain next match for rest of LSeq
+    typedef  pull_right_index_order<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value> next_pull_right_index_order;
+
+    //if first_LSeq was found in RSeq and it's elementwise, add the match location to the runing inter_match_order
+    typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            was_found,
+            boost::mpl::bool_<first_LSeq::elemval>
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_right_index_order::inter_match_order,
+            typename boost::mpl::distance<
+                typename boost::mpl::begin<RSeq>::type,
+                find_pos
+            >::type
+        >::type,
+        typename next_pull_right_index_order::inter_match_order
+    >::type inter_match_order;
+
+    //if first_LSeq was found in RSeq and it's not elementwise, add the match location to the runing match_order
+    typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            was_found,
+            boost::mpl::not_<
+                boost::mpl::bool_<first_LSeq::elemval>
+            >
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_right_index_order::match_order,
+            typename boost::mpl::distance<
+                typename boost::mpl::begin<RSeq>::type,
+                find_pos
+            >::type
+        >::type,
+        typename next_pull_right_index_order::match_order
+    >::type match_order;
+
+
+};
 
 
 template<typename LSeq, typename RSeq,bool empty_LSeq>

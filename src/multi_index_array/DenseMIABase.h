@@ -112,6 +112,16 @@ public:
         return m_data({{indices...}});
     }
 
+    template<class otherDerived>
+    DenseMIABase& operator=(const DenseMIABase<otherDerived>& otherMIA){
+        return derived()=otherMIA;
+    }
+
+
+    DenseMIABase& operator=(const DenseMIABase& otherMIA){
+        return derived()=otherMIA.derived();
+    }
+
     template<class otherDerived,class index_param_type>
     void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<DenseMIABase>::value>& index_order){
         derived().assign(otherMIA.derived(),index_order);

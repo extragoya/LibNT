@@ -191,13 +191,11 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
 
-        internal::sequence_array<typename cartesian_check::right_sequence_check::match_order_sequence> right_assignment_order;
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value> pulling_index_order;
+
+        internal::sequence_array<typename pulling_index_order::match_order> right_assignment_order;
         std::array<typename otherMIA::index_type,internal::order<otherMIA>::value> r_Dims;
 
-        std::cout << "Right assign order ";
-        for(auto &i:right_assignment_order)
-            std::cout << i;
-        std::cout << std::endl;
         m_mia.assign(Rhs.m_mia,right_assignment_order);
 
 

@@ -137,6 +137,9 @@ public:
     const std::array<index_type,internal::order<MIA>::value>& dims() const{
         return m_dims;
     }
+    index_type dimensionality() const{
+        return m_dimensionality;
+    }
 
 protected:
 

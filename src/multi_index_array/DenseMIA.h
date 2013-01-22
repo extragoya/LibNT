@@ -183,7 +183,9 @@ public:
     DenseMIA& operator=(const DenseMIABase<otherDerived>& otherMIA);
 
 
-    DenseMIA& operator=(const DenseMIA& otherMIA);
+    DenseMIA& operator=(const DenseMIA& otherMIA){
+        return *this=static_cast<const DenseMIABase<DenseMIA>&>(otherMIA);
+    }
 
     template<class...Ts>
     inline data_type at(Ts...ts)
@@ -341,7 +343,10 @@ template<typename otherDerived>
 DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerived>& otherMIA)
 {
     static_assert(_order==internal::order<otherDerived>::value,"Orders of MIAs must be the same to be assigned");
-    if(this->m_dims!=otherMIA.dims()){
+    if(this->m_dims!=otherMIA.dims())
+        this->m_dims=otherMIA.dims();
+
+    if(this->m_dimensionality!=otherMIA.dimensionality()){
         this->m_dims=otherMIA.dims();
         this->m_dimensionality=this->compute_dimensionality();
 
@@ -351,35 +356,37 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerive
         m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
     }
 
-
-     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        *it1=*it2;
-
-    return *this;
-
-}
-
-template<class T, size_t _order>
-DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<T,_order>& otherMIA)
-{
-
-    if(this->m_dims!=otherMIA.dims()){
-        this->m_dims=otherMIA.dims();
-        this->m_dimensionality=this->compute_dimensionality();
-
-        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-        m_smart_raw_ptr.swap(temp_ptr);
-        temp_ptr.release();
-        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-    }
-
-
-     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        *it1=*it2;
+    typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
+    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+        *it1=to_mdata_type::convert(*it2);
 
     return *this;
 
 }
+
+//template<class T, size_t _order>
+//DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<T,_order>& otherMIA)
+//{
+//    if(this->m_dims!=otherMIA.dims())
+//        this->m_dims=otherMIA.dims();
+//
+//    if(this->m_dimensionality!=otherMIA.dimensionality()){
+//
+//        this->m_dimensionality=this->compute_dimensionality();
+//
+//        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+//        m_smart_raw_ptr.swap(temp_ptr);
+//        temp_ptr.release();
+//        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+//    }
+//
+//
+//    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+//        *it1=*it2;
+//
+//    return *this;
+//
+//}
 
 template<class T, size_t _order>
 template<typename otherDerived,typename index_param_type>
@@ -387,19 +394,22 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
 {
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
     internal::collect_dimensions(otherMIA,index_order,this->m_dims);
-    this->m_dimensionality=this->compute_dimensionality();
 
-    smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-    m_smart_raw_ptr.swap(temp_ptr);
-    temp_ptr.release();
-    m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+    if(this->m_dimensionality!=otherMIA.dimensionality()){
 
+        this->m_dimensionality=this->compute_dimensionality();
+
+        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+        m_smart_raw_ptr.swap(temp_ptr);
+        temp_ptr.release();
+        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+    }
+    typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
     index_type curIdx=0;
 
     for(auto it=data_begin(); it<data_end(); ++it)
     {
-        *it=*(otherMIA.data_begin()+sub2ind(ind2sub(++curIdx, this->m_dims),index_order,otherMIA.dims()));
-
+        *it=to_mdata_type::convert(*(otherMIA.data_begin()+sub2ind(ind2sub(curIdx++, this->m_dims),index_order,otherMIA.dims())));
     }
 
 
