@@ -19,7 +19,7 @@
 #define LATTICE_H
 
 #include <stdlib.h>
-#include <time.h>
+
 #include <algorithm>
 
 #include <boost/operators.hpp>

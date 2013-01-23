@@ -18,6 +18,7 @@
 #define UTIL_H
 
 #include<array>
+#include <time.h>
 
 #include <boost/type_traits.hpp>
 #include <boost/numeric/conversion/converter.hpp>
@@ -130,7 +131,7 @@ class DenseMIABase;
 template <class T,size_t _order>
 class DenseMIA;
 
-template<class _MIA,class m_Seq>
+template<class _MIA,class m_Seq,bool has_ownership=false>
 struct MIA_Atom;
 
 

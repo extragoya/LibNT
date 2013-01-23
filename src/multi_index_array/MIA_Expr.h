@@ -92,20 +92,26 @@ struct perform_auto_check
 
 };
 
-template<class _MIA,class m_Seq>
+template<class _MIA,class m_Seq,bool has_ownership>
 class MIA_Atom
 {
 public:
 
-    MIA_Atom(_MIA& mia): m_mia(mia)
+
+    MIA_Atom(_MIA* mia): m_mia(mia)
     {
         static_assert(internal::is_MIA<_MIA>::value,"Somehow expression was instantiated with a non-MIA class.");
 
 
     }
+    ~MIA_Atom(){
+        if(has_ownership)
+            delete m_mia;
 
-    template<class otherMIA,class r_Seq>
-    auto operator*(const MIA_Atom<otherMIA,r_Seq> & Rhs)->MIA_Atom<typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence>
+    }
+
+    template<class otherMIA,class r_Seq,bool other_has_ownership>
+    auto operator*(const MIA_Atom<otherMIA,r_Seq,other_has_ownership> & Rhs)->MIA_Atom<typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true>
     {
 
         //typedef typename internal::Indicial_Sequence<Rhs_inds...>::sequence r_Seq;
@@ -113,7 +119,7 @@ public:
 
         typedef typename internal::cartesian_product_indices<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,internal::product_rule,0> left_sequence_check;
         typedef typename internal::cartesian_product_indices<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,internal::product_rule,0> right_sequence_check;
-
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value> pulling_index_order;
         //check to makes sure no left-hand indice is repeated
         static_assert(internal::auto_cartesian_product_indices<m_Seq,boost::mpl::empty<m_Seq>::value,internal::binary_rule>::value,"Repeated index in left-hand operand.");
         //check to make sure no right-hand indice is repeated
@@ -126,24 +132,27 @@ public:
         internal::sequence_array<typename left_sequence_check::no_match_order_sequence> left_outer_product_order;
         internal::sequence_array<typename left_sequence_check::inter_match_order_sequence> left_inter_product_order;
 
-        internal::sequence_array<typename right_sequence_check::match_order_sequence> right_inner_product_order;
+        internal::sequence_array<typename pulling_index_order::match_order> right_inner_product_order;
         internal::sequence_array<typename right_sequence_check::no_match_order_sequence> right_outer_product_order;
-        internal::sequence_array<typename right_sequence_check::inter_match_order_sequence> right_inter_product_order;
+        internal::sequence_array<typename pulling_index_order::inter_match_order> right_inter_product_order;
 
         //perform_mult(Rhs.m_mia,left_inner_product_order,left_outer_product_order,left_inter_product_order,right_inner_product_order,right_outer_product_order,right_inter_product_order);
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
 
 
 
-        auto cLat=m_mia.toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia.toLatticeExpression(left_inner_product_order,left_outer_product_order,left_inter_product_order);
+        auto cLat=m_mia->toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia->toLatticeExpression(right_inner_product_order,right_outer_product_order,right_inter_product_order);
+
         std::array<typename _MIA::index_type,left_outer_product_order.size()+right_outer_product_order.size()+left_inter_product_order.size()> cMIA_dims;
         size_t curIdx=0;
-        internal::collect_dimensions(m_mia,left_outer_product_order,cMIA_dims,curIdx);
-        internal::collect_dimensions(Rhs.m_mia,right_outer_product_order,cMIA_dims,curIdx);
-        internal::collect_dimensions(m_mia,left_inter_product_order,cMIA_dims,curIdx);
-        MIA_return_type cMIA(cMIA_dims,cLat.release_memptr());
+        internal::collect_dimensions(*m_mia,left_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions(*(Rhs.m_mia),right_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
+
+        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
+
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence>(cMIA);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true>(cMIA);
 
 
 
@@ -157,29 +166,32 @@ public:
         //TODO check that no index is an inter product and check that orders match
 
 
-        m_mia=Rhs.m_mia;
+        *(m_mia)=*(Rhs.m_mia);
+
 
 
 
     }
 
-    template<class otherMIA>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq> & Rhs)
+    template<class otherMIA,bool other_has_ownership>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq,other_has_ownership> & Rhs)
     {
+
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
         //TODO check that no index is an inter product and check that orders match
 
 
-        m_mia=Rhs.m_mia;
+        *(m_mia)=*(Rhs.m_mia);
 
 
 
     }
 
-    template<class otherMIA,class r_Seq>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq> & Rhs)
+    template<class otherMIA,class r_Seq,bool other_has_ownership>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq,other_has_ownership> & Rhs)
     {
+
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
         //TODO check that no index is an inter product and check that orders match
@@ -196,7 +208,7 @@ public:
         internal::sequence_array<typename pulling_index_order::match_order> right_assignment_order;
         std::array<typename otherMIA::index_type,internal::order<otherMIA>::value> r_Dims;
 
-        m_mia.assign(Rhs.m_mia,right_assignment_order);
+        m_mia->assign(*(Rhs.m_mia),right_assignment_order);
 
 
 
@@ -210,7 +222,7 @@ public:
 
 
 
-    _MIA& m_mia;
+    _MIA* m_mia;
 
 private:
 

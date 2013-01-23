@@ -8,18 +8,18 @@
 
 
 
-typedef LibMIA::DenseMIA<double,3> dmia;
+//typedef LibMIA::DenseMIA<double,3> dmia;
 
-BOOST_AUTO_TEST_CASE( MIAAssignTests )
-{
+template<class MIAType>
+void assign_work(){
 
     LibMIA::MIAINDEX i;
     LibMIA::MIAINDEX j;
     LibMIA::MIAINDEX k;
 
-    dmia a(5,7,4);
-    dmia b;
-    dmia c;
+    MIAType a(5,7,4);
+    MIAType b;
+    MIAType c;
     a.randu(-5,5);
 
     c=a;
@@ -36,6 +36,16 @@ BOOST_AUTO_TEST_CASE( MIAAssignTests )
     b(i,j,k)=a(i,k,j);
     c(i,j,k)=b(i,k,j);
     BOOST_CHECK_MESSAGE(a==c,"Shuffled MIA Expression assignment");
+
+}
+
+BOOST_AUTO_TEST_CASE( MIAAssignTests )
+{
+
+    assign_work<LibMIA::DenseMIA<double,3>>();
+    assign_work<LibMIA::DenseMIA<float,3>>();
+    assign_work<LibMIA::DenseMIA<int,3>>();
+    assign_work<LibMIA::DenseMIA<long,3>>();
 
 
 }

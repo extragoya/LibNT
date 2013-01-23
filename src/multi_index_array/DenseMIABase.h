@@ -107,9 +107,17 @@ public:
     bool operator==(const DenseMIABase<otherDerived>& otherMIA);
 
     template<typename... Indices>
-    data_type at(Indices... indices){
+    const data_type& at(Indices... indices) const {
         static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        return m_data({{indices...}});
+        std::array<index_type,internal::order<DenseMIABase>::value> temp = {{indices...}};
+        return (*(derived().data()))(temp);
+    }
+
+    template<typename... Indices>
+    data_type& at(Indices... indices) {
+        static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+        std::array<index_type,internal::order<DenseMIABase>::value> temp = {{indices...}};
+        return (*(derived().data()))(temp);
     }
 
     template<class otherDerived>
@@ -127,15 +135,26 @@ public:
         derived().assign(otherMIA.derived(),index_order);
     }
 
-    data_type at(std::array<index_type, internal::order<DenseMIABase>::value> indices){
+    const data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices) const{
 
-        return derived().at(indices);
+        return (*(derived().data()))(indices);
     }
 
-    data_type atIdx(index_type idx) const{
+    data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices){
+
+        return (*(derived().data()))(indices);
+    }
+
+    const data_type& atIdx(index_type idx) const{
 
         //return lin index
-        return derived().atIdx(idx);
+        return *(derived().data_begin()+idx);
+    }
+
+    data_type& atIdx(index_type idx) {
+
+        //return lin index
+        return *(derived().data_begin()+idx);
     }
 
     template<typename R,typename C, typename T>
@@ -219,25 +238,34 @@ auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indice
     size_t idx=0;
     //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
     //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
     for(auto _row: row_indices)
     {
+
         row_size*=this->m_dims[_row];
         row_dims[idx++]=this->m_dims[_row];
     }
+
     idx=0;
+
     for(auto _column: column_indices)
     {
+
         column_size*=this->m_dims[_column];
         column_dims[idx++]=this->m_dims[_column];
     }
     idx=0;
+
     for(auto _tab: tab_indices)
     {
+
         tab_size*=this->m_dims[_tab];
         tab_dims[idx++]=this->m_dims[_tab];
     }
+
     //std::cout<< "Tab dims " << tab_dims[0] << "\n";
     DenseLattice<data_type> lat(row_size, column_size, tab_size);
+
 
     tab_size=1;
     index_type row_idx=0, column_idx=0,tab_idx=0;
@@ -247,7 +275,9 @@ auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indice
             column_idx=tab_idx+sub2ind(ind2sub(k,column_dims),column_indices,this->m_dims);
             for (index_type i=0;i<row_size;++i){
                 row_idx=column_idx+sub2ind(ind2sub(k,row_dims),row_indices,this->m_dims);
+                //std::cout << "Idx " << row_idx << " ijk " << i << " " << j << " " << k << std::endl;
                 lat(i,j,k)=this->atIdx(row_idx);
+
             }
         }
 

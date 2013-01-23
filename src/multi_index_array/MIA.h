@@ -68,7 +68,7 @@ public:
     template<class...Ts>
     auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence> {
 
-        return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence>(derived());
+        return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence>(&derived());
 
     }
 

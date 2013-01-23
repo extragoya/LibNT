@@ -103,7 +103,7 @@ class DenseMIA: public DenseMIABase<DenseMIA<T,_order> > //, boost::multipliable
 
 
 
-protected:
+public:
 
     typedef typename internal::data_type<DenseMIA>::type data_type;
     typedef typename internal::index_type<DenseMIA>::type index_type;
@@ -187,22 +187,26 @@ public:
         return *this=static_cast<const DenseMIABase<DenseMIA>&>(otherMIA);
     }
 
-    template<class...Ts>
-    inline data_type at(Ts...ts)
-    {
-        static_assert(internal::check_mia_constructor<DenseMIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,_order> temp = {{ts...}};
-        return (*m_Data)(temp);
-
-
+    const smart_data_pointer & data(){
+        return m_Data;
     }
 
-    data_type atIdx(index_type idx) const
-    {
-
-        //return lin index
-        return *((*m_Data).data()+idx);
-    }
+//    template<class...Ts>
+//    inline data_type at(Ts...ts)
+//    {
+//        static_assert(internal::check_mia_constructor<DenseMIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+//        std::array<index_type,_order> temp = {{ts...}};
+//        return (*m_Data)(temp);
+//
+//
+//    }
+//
+//    data_type atIdx(index_type idx) const
+//    {
+//
+//        //return lin index
+//        return *((*m_Data).data()+idx);
+//    }
 
 //    //!  Constructs empty DenseMIA.
 //    //DenseMIA(): m_data() {}
@@ -415,27 +419,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
 
 }
 
-////****Operators*****
-//
-////self assignment is benign - no check is made
-//template <class T>
-//template <class otherDerived>
-//inline DenseMIA<T>& DenseMIA<T>::operator=(const DenseMIABase<otherDerived> &other)
-//{
-//
-//    m_data.resize(boost::extents[other.height()][other.width()][other.depth()]);
-//    this->init( other.height(), other.width(), other.depth());
-//    typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
-//
-//    for (int i=0;i<this->height();i++)
-//        for (int j=0;j<this->width();j++)
-//            for (int k=0;k<this->depth();k++)
-//                (*this)(i,j,k)= to_mdata_type::convert(other.derived()(i,j,k));
-//    return *this;
-//
-//
-//
-//}
+
 
 
 /*! @} */
