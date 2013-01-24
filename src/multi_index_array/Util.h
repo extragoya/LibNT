@@ -482,7 +482,7 @@ struct pull_product_indices<LSeq,RSeq,false>
     >,
     typename boost::mpl::push_front<
     typename next_pull_product_indices::inter_product_indices,
-    first_LSeq
+    ProdInd<first_LSeq::id,false>
     >::type,
     typename next_pull_product_indices::inter_product_indices
     >::type inter_product_indices;

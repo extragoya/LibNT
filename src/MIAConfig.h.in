@@ -1,0 +1,10 @@
+#ifndef MIACONFIG_H
+#define MIACONFIG_H
+
+// the configured options and settings for LibMIA
+#define LibMIA_VERSION_MAJOR @LibMIA_VERSION_MAJOR@
+#define LibMIA_VERSION_MINOR @LibMIA_VERSION_MINOR@
+
+#cmakedefine MIA_USE_HEADER_ONLY_TESTS
+
+#endif // MIACONFIG_H

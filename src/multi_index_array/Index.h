@@ -33,13 +33,14 @@ struct ElemWiseInd {};
 
 
 
-template<size_t id,bool ElemWise=false>
+template<size_t ID,bool ElemWise=false>
 struct ProdInd
 {
     constexpr static bool elemval=ElemWise;
+    constexpr static size_t id=ID;
     ProdInd<id,true> operator !()
     {
-        return ProdInd<id,!ElemWise>();
+        return ProdInd<ID,!ElemWise>();
     }
 
 };
