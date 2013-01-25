@@ -331,6 +331,15 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b) co
         c.derived().tab_matrix(i)=(tab_matrix(i))*(b.derived().tab_matrix(i));
 
     }
+//    std::cout << "a: " << std::endl;
+//    this->print();
+//    std::cout << "b: " << std::endl;
+//    b.print();
+//    std::cout << "c: " << std::endl;
+//    c.print();
+
+
+
 
     return c;
 }

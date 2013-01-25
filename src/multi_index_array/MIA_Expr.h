@@ -136,10 +136,13 @@ public:
         internal::sequence_array<typename right_sequence_check::no_match_order_sequence> right_outer_product_order;
         internal::sequence_array<typename pulling_index_order::inter_match_order> right_inter_product_order;
 
-        //perform_mult(Rhs.m_mia,left_inner_product_order,left_outer_product_order,left_inter_product_order,right_inner_product_order,right_outer_product_order,right_inter_product_order);
+
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
 
 
+//        print_array(left_outer_product_order, "left_outer");
+//        print_array(left_inner_product_order,"left_inner");
+//        print_array(left_inter_product_order,"left_inter");
 
         auto cLat=m_mia->toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia->toLatticeExpression(right_inner_product_order,right_outer_product_order,right_inter_product_order);
 
@@ -150,6 +153,7 @@ public:
         internal::collect_dimensions(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
 
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
+
 
         //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true>(cMIA);

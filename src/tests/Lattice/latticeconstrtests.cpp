@@ -1,12 +1,18 @@
 #include <string>
 
 #define BOOST_TEST_MODULE LatticeConstrTests
-#include <boost/test/included/unit_test.hpp>
+
 
 
 #include "DenseLattice.h"
 #include "SparseLattice.h"
+#include "MIAConfig.h"
 
+#ifdef MIA_USE_HEADER_ONLY_TESTS
+#include <boost/test/included/unit_test.hpp>
+#else
+#include <boost/test/unit_test.hpp>
+#endif
 
 constexpr int dim=5;
 

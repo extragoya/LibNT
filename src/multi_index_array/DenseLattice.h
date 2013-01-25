@@ -160,6 +160,7 @@ public:
     DenseLattice(DenseLattice && other) :m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order()))
     {
 
+
         m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
         m_Data.swap(other.m_Data);
         this->init( other.height(), other.width(), other.depth());
@@ -174,6 +175,7 @@ public:
     template<class otherDerived>
     DenseLattice(const DenseLatticeBase<otherDerived> & other): m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
     {
+
 
         typedef  typename internal::data_type<otherDerived>::type other_data_type;
         typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
@@ -203,6 +205,11 @@ public:
     }
 
 
+    DenseLattice& operator=(const DenseLattice& b){
+
+            return *this=static_cast<const DenseLatticeBase<DenseLattice>&>(b);
+
+    }
 
     template<class otherDerived>
     DenseLattice& operator=(const DenseLatticeBase<otherDerived>& b);
@@ -210,17 +217,17 @@ public:
     bool load(const std::string & _filename);
 
     //Move assignment
-    DenseLattice& operator=(DenseLattice && other)
-    {
-        if (this != &other)
-        {
-            m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
-            m_Data.swap(other.m_Data);
-            this->init( other.height(), other.width(), other.depth());
-        }
-        return *this;
-
-    }
+//    DenseLattice& operator=(DenseLattice && other)
+//    {
+//        if (this != &other)
+//        {
+//            m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
+//            m_Data.swap(other.m_Data);
+//            this->init( other.height(), other.width(), other.depth());
+//        }
+//        return *this;
+//
+//    }
 
     const data_type& operator()(int i, int j, int k) const
     {
@@ -306,6 +313,7 @@ template <class otherDerived>
 inline DenseLattice<T>& DenseLattice<T>::operator=(const DenseLatticeBase<otherDerived> &other)
 {
 
+
     if (this != &other)
     {
         smart_raw_pointer temp_ptr(new T[other.height()*other.width()*other.depth()]);
@@ -318,7 +326,9 @@ inline DenseLattice<T>& DenseLattice<T>::operator=(const DenseLatticeBase<otherD
             for (int j=0; j<this->width(); j++)
                 for (int k=0; k<this->depth(); k++)
                     (*this)(i,j,k)= to_mdata_type::convert(other.derived()(i,j,k));
+        //std::cout << "??" << (*this)(0,0,1) << std::endl;
     }
+
     return *this;
 
 

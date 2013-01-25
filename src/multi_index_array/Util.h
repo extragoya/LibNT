@@ -647,6 +647,15 @@ struct MIAProductUtil
 };
 
 
+template<class array_type>
+void print_array(const array_type & _array, const std::string &header){
+    std::cout << header;
+    for(auto & _i:_array){
+        std::cout << " " << _i;
+    }
+    std::cout << std::endl;
+
+}
 
 /*! @} */
 /*! @} */

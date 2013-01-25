@@ -267,15 +267,15 @@ auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indice
     DenseLattice<data_type> lat(row_size, column_size, tab_size);
 
 
-    tab_size=1;
+
     index_type row_idx=0, column_idx=0,tab_idx=0;
     for (index_type k=0;k<tab_size;++k){
         tab_idx=sub2ind(ind2sub(k,tab_dims),tab_indices,this->m_dims);
         for (index_type j=0;j<column_size;++j){
-            column_idx=tab_idx+sub2ind(ind2sub(k,column_dims),column_indices,this->m_dims);
+            column_idx=tab_idx+sub2ind(ind2sub(j,column_dims),column_indices,this->m_dims);
             for (index_type i=0;i<row_size;++i){
-                row_idx=column_idx+sub2ind(ind2sub(k,row_dims),row_indices,this->m_dims);
-                //std::cout << "Idx " << row_idx << " ijk " << i << " " << j << " " << k << std::endl;
+                row_idx=column_idx+sub2ind(ind2sub(i,row_dims),row_indices,this->m_dims);
+
                 lat(i,j,k)=this->atIdx(row_idx);
 
             }

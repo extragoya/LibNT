@@ -1,11 +1,17 @@
 #include <string>
 
 #define BOOST_TEST_MODULE DenseLatticeMultTests
-#include <boost/test/included/unit_test.hpp>
+
 
 
 #include "DenseLattice.h"
+#include "MIAConfig.h"
 
+#ifdef MIA_USE_HEADER_ONLY_TESTS
+#include <boost/test/included/unit_test.hpp>
+#else
+#include <boost/test/unit_test.hpp>
+#endif
 
 
 template<typename T1,typename T2,typename T3>
