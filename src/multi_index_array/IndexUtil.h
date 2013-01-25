@@ -102,14 +102,25 @@ template<class _MIA,typename...Args>
 struct check_dims_count : boost::mpl::bool_<sizeof...( Args ) ==internal::order<_MIA>::value>
 { };
 
+//checks to make sure size of variadic arguments is equal to order of MIA
+template<class _MIA>
+struct check_order : boost::mpl::bool_<(internal::order<_MIA>::value >0)>
+{ };
+
+template<typename _MIA, typename...Args>
+struct check_mia_constructor;
+
 template<class _MIA, typename...Args>
 struct check_mia_constructor
 {
 
     typedef typename
     boost::mpl::and_<
-    check_dims_count<_MIA,Args...>,
-    check_mia_dim_args<typename internal::index_type<_MIA>::type,Args...>
+        boost::mpl::and_<
+            check_dims_count<_MIA,Args...>,
+            check_mia_dim_args<typename internal::index_type<_MIA>::type,Args...>
+        >,
+        check_order<_MIA>
     >::type type;
 
 };

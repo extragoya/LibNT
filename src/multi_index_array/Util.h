@@ -527,8 +527,7 @@ struct IndexPromoteType
 };
 
 
-template<typename _MIA, typename...Args>
-struct check_mia_constructor;
+
 
 
 //sparse sparse lattice product only enabled if operands share both data and index types

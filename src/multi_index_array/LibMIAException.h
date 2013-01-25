@@ -78,6 +78,14 @@ class MIAParameterException: public MIAException
     private:
 };
 
+class MIAMemoryException: public MIAException
+{
+    public:
+        MIAMemoryException(): MIAException("Invalid Memory Operation") {}
+        MIAMemoryException(const std::string& __arg): MIAException(__arg) {}
+    protected:
+    private:
+};
 
 
 }

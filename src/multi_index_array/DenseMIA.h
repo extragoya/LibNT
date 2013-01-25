@@ -120,7 +120,7 @@ private:
     typedef std::unique_ptr<Data> smart_data_pointer;
     smart_raw_pointer m_smart_raw_ptr;
     smart_data_pointer m_Data;
-
+    bool hasOwnership;
 
 
 public:
@@ -132,7 +132,7 @@ public:
         }
     };
 
-    DenseMIA():DenseMIABase<DenseMIA<T,_order> >(0),m_smart_raw_ptr(nullptr),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
+    DenseMIA():DenseMIABase<DenseMIA<T,_order> >(0),m_smart_raw_ptr(nullptr),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order())),hasOwnership(true)
     {
     }
 
@@ -140,8 +140,20 @@ public:
     /*!
 
     */
-    DenseMIA(std::array<index_type,_order> &_dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> >(_dims),m_smart_raw_ptr(scalar_data),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
+    template<class test>
+    DenseMIA(const std::array<test,_order> &_dims,T* scalar_data,bool _ownership=true):DenseMIABase<DenseMIA<T,_order> >(_dims),hasOwnership(_ownership)
     {
+        if(hasOwnership){
+            m_smart_raw_ptr.reset(scalar_data);
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        }
+        else{
+            m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+            std::copy(scalar_data,scalar_data+this->m_dimensionality,this->data_begin());
+
+        }
+
     }
 
     //!  Constructs DenseMIA of specified size.
@@ -150,11 +162,11 @@ public:
 
     */
     template<typename... Dims>
-    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(new T[this->m_dimensionality]),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
+    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(new T[this->m_dimensionality]),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order())),hasOwnership(true)
     {
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-
+        this->zeros();
 
 
 
@@ -167,11 +179,20 @@ public:
 
     */
     template<typename... Dims>
-    DenseMIA(Dims... dims,T* scalar_data):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(scalar_data),m_Data(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()))
+    DenseMIA(T* scalar_data,bool _ownership,Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...},hasOwnership(_ownership)
     {
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+        if(hasOwnership){
+            m_smart_raw_ptr.reset(scalar_data);
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        }
+        else{
+            m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+            std::copy(scalar_data,scalar_data+this->m_dimensionality(),this->data_begin());
 
+        }
 
 
     }
@@ -189,6 +210,16 @@ public:
 
     const smart_data_pointer & data(){
         return m_Data;
+    }
+
+
+
+    T* raw_data_ptr(){
+        return m_smart_raw_ptr.get();
+    }
+
+    void release_ownership(){
+        hasOwnership=false;
     }
 
 //    template<class...Ts>
@@ -328,7 +359,10 @@ public:
 
     }
 
-
+    ~DenseMIA(){
+        if(!hasOwnership)
+            m_smart_raw_ptr.release();
+    }
 
 protected:
 
@@ -347,18 +381,22 @@ template<typename otherDerived>
 DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerived>& otherMIA)
 {
     static_assert(_order==internal::order<otherDerived>::value,"Orders of MIAs must be the same to be assigned");
-    if(this->m_dims!=otherMIA.dims())
-        this->m_dims=otherMIA.dims();
+
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
-        this->m_dims=otherMIA.dims();
-        this->m_dimensionality=this->compute_dimensionality();
-
-        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-        m_smart_raw_ptr.swap(temp_ptr);
-        temp_ptr.release();
-        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        if(hasOwnership){
+            this->m_dimensionality=otherMIA.dimensionality();
+            this->m_dims=otherMIA.dims();
+            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            m_smart_raw_ptr.swap(temp_ptr);
+            temp_ptr.release();
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        }
+        else
+            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
+    else if(this->m_dims!=otherMIA.dims())
+        this->m_dims=otherMIA.dims();
 
     typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
@@ -397,17 +435,23 @@ template<typename otherDerived,typename index_param_type>
 void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
-    internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
-
-        this->m_dimensionality=this->compute_dimensionality();
-
-        smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-        m_smart_raw_ptr.swap(temp_ptr);
-        temp_ptr.release();
-        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        if(hasOwnership){
+            internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+            this->m_dimensionality=otherMIA.dimensionality();
+            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            m_smart_raw_ptr.swap(temp_ptr);
+            temp_ptr.release();
+            m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        }
+        else
+            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
+    else
+        internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+
     typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
     index_type curIdx=0;
 
