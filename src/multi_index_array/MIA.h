@@ -24,6 +24,7 @@
 
 
 #include "Index.h"
+#include "IndexUtil.h"
 #include "MIA_Expr.h"
 #include "Util.h"
 
@@ -67,7 +68,7 @@ public:
 
     template<class...Ts>
     auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence> {
-
+        static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
         return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence>(&derived());
 
     }

@@ -76,6 +76,26 @@ void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order
 }
 
 //should be undefined
+template<typename...Args>
+struct check_mia_index_args;
+
+
+//base case, inherit from true_type
+template<>
+struct check_mia_index_args<>:public boost::true_type {};
+
+//checks to ensure dimension arguments are all convertable to index_type. Uses recursion to allow
+//check to happen regardless of number of arguments. Checking is controlled through inheritance
+template<typename arg,typename...Args>
+struct check_mia_index_args<arg,Args...> :
+        boost::mpl::and_<
+            internal::is_ProdInd<arg>,
+            check_mia_index_args<Args...>
+        >
+    {};
+
+
+//should be undefined
 template<class index_type,typename...Args>
 struct check_mia_dim_args;
 
@@ -121,6 +141,21 @@ struct check_mia_constructor
             check_mia_dim_args<typename internal::index_type<_MIA>::type,Args...>
         >,
         check_order<_MIA>
+    >::type type;
+
+};
+
+template<typename _MIA, typename...Args>
+struct check_mia_indexing;
+
+template<class _MIA, typename...Args>
+struct check_mia_indexing
+{
+
+    typedef typename
+    boost::mpl::and_<
+        check_dims_count<_MIA,Args...>,
+        check_mia_index_args<Args...>
     >::type type;
 
 };
