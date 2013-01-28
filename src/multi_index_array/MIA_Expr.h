@@ -28,6 +28,7 @@
 
 #include "Util.h"
 #include "IndexUtil.h"
+#include "ExprUtil.h"
 #include "Index.h"
 namespace LibMIA
 {

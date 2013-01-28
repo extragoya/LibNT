@@ -26,6 +26,7 @@ void mult_work(size_t dim1, size_t dim2){
 
     LibMIA::DenseMIA<_data_type,4> a(dim1,dim2,dim1,dim2);
     LibMIA::DenseMIA<_data_type,4> b(dim2,dim2,dim1,dim1);
+
     LibMIA::DenseMIA<_data_type,4> c;
     LibMIA::DenseMIA<_data_type,2> c2;
     LibMIA::DenseMIA<_data_type,4> c_result(dim1,dim1,dim1,dim1);

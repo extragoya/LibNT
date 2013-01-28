@@ -3,7 +3,8 @@ set(LibMIA_headers
      DenseLattice.h
      DenseLatticeBase.h
      DenseMIA.h
-     DenseMIABase
+     DenseMIABase.h
+	 ExprUtil.h
      Lattice.h
      Index.h
 	 IndexUtil.h

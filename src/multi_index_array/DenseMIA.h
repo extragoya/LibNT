@@ -140,8 +140,8 @@ public:
     /*!
 
     */
-    template<class test>
-    DenseMIA(const std::array<test,_order> &_dims,T* scalar_data,bool _ownership=true):DenseMIABase<DenseMIA<T,_order> >(_dims),hasOwnership(_ownership)
+    template<class array_index_type>
+    DenseMIA(const std::array<array_index_type,_order> &_dims,T* scalar_data,bool _ownership=true):DenseMIABase<DenseMIA<T,_order> >(_dims),hasOwnership(_ownership)
     {
         if(hasOwnership){
             m_smart_raw_ptr.reset(scalar_data);
@@ -155,6 +155,8 @@ public:
         }
 
     }
+
+
 
     //!  Constructs DenseMIA of specified size.
     /*!
@@ -208,18 +210,19 @@ public:
         return *this=static_cast<const DenseMIABase<DenseMIA>&>(otherMIA);
     }
 
-    const smart_data_pointer & data(){
+    const smart_data_pointer & data() const{
         return m_Data;
     }
 
 
 
-    T* raw_data_ptr(){
+    T* raw_data_ptr() const{
         return m_smart_raw_ptr.get();
     }
 
-    void release_ownership(){
+    T* release_raw_data() const{
         hasOwnership=false;
+        return raw_data_ptr();
     }
 
 //    template<class...Ts>
