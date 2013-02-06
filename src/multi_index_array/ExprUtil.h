@@ -28,7 +28,10 @@
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/begin_end.hpp>
 #include <boost/mpl/push_front.hpp>
+#include <boost/mpl/push_back.hpp>
 #include <boost/mpl/pop_front.hpp>
+#include <boost/mpl/pop_back.hpp>
+#include <boost/mpl/next_prior.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/print.hpp>
 #include <boost/mpl/deref.hpp>
@@ -38,13 +41,19 @@
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/begin_end.hpp>
-
-
-
+#include <boost/mpl/range_c.hpp>
+#include <boost/mpl/transform_view.hpp>
+#include <boost/mpl/transform.hpp>
+#include <boost/mpl/placeholders.hpp>
+#include <boost/mpl/bind.hpp>
+#include <boost/mpl/erase.hpp>
+#include <boost/mpl/quote.hpp>
+#include <boost/mpl/apply.hpp>
+#include <boost/utility/enable_if.hpp>
 
 #include "Index.h"
 #include "Util.h"
-
+using namespace boost::mpl::placeholders;
 namespace LibMIA
 {
 
@@ -64,18 +73,98 @@ namespace LibMIA
 namespace internal
 {
 
-
-
-
-
-//base case - set to true. This only occurs when LSeq is an empty mpl sequence
-template<typename LSeq,typename RSeq,bool empty_LSeq,int expression_type,int recursive_depth>
-struct cartesian_product_indices
+//used to get the order of inner, inter, and outer product indices for left operands
+template<typename LSeq,typename RSeq,bool empty_LSeq,int recursive_depth,typename Pred=boost::mpl::quote2<boost::is_same> >
+struct pull_left_operand_index_sequence
 {
-    typedef boost::true_type allowed_recursive;
+
     typedef boost::mpl::vector_c<int> match_order_sequence;
     typedef boost::mpl::vector_c<int> inter_match_order_sequence;
     typedef boost::mpl::vector_c<int> no_match_order_sequence;
+};
+
+template<typename LSeq,typename RSeq,int recursive_depth,typename Pred >
+struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
+{
+
+    //Pull first index type off of left sequence
+    typedef typename boost::mpl::deref<typename boost::mpl::begin<LSeq>::type>::type first_LSeq;
+    //count its occurences in the right sequence
+    typedef typename boost::mpl::count_if<
+        RSeq,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            _1,
+            first_LSeq
+        >
+    >::type n;
+
+    //pop the first type off of LSeq
+    typedef typename boost::mpl::pop_front<LSeq>::type poppedLSeq;
+
+    //obtain index sequence
+    typedef  pull_left_operand_index_sequence<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value,recursive_depth+1,Pred> next_pull_left_operand_index_sequence;
+
+
+    typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            boost::mpl::equal_to<
+                n,
+                boost::mpl::int_<1>
+            >,
+            boost::mpl::equal_to<
+                boost::mpl::int_<first_LSeq::elemval>,
+                boost::mpl::int_<0>
+            >
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_left_operand_index_sequence::match_order_sequence,
+            boost::mpl::int_<recursive_depth>
+        >::type,
+        typename next_pull_left_operand_index_sequence::match_order_sequence
+    >::type match_order_sequence;
+
+
+    typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            boost::mpl::equal_to<
+                n,boost::mpl::int_<0>
+            >,
+            boost::mpl::equal_to<
+                boost::mpl::int_<first_LSeq::elemval>,
+                boost::mpl::int_<0>
+            >
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_left_operand_index_sequence::no_match_order_sequence,
+            boost::mpl::int_<recursive_depth>>::type,
+        typename next_pull_left_operand_index_sequence::no_match_order_sequence
+    >::type no_match_order_sequence;
+
+    typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            boost::mpl::equal_to<
+                n,boost::mpl::int_<1>
+            >,
+            boost::mpl::greater<
+                boost::mpl::int_<first_LSeq::elemval>,
+                boost::mpl::int_<0>
+            >
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_left_operand_index_sequence::inter_match_order_sequence,
+            boost::mpl::int_<recursive_depth>
+        >::type,
+        typename next_pull_left_operand_index_sequence::inter_match_order_sequence
+    >::type inter_match_order_sequence;
+};
+
+//base case - set to true. This only occurs when LSeq is an empty mpl sequence
+template<typename LSeq,typename RSeq,bool empty_LSeq,int expression_type, typename Pred=boost::mpl::quote2<boost::is_same> >
+struct check_cartesian_product_indices
+{
+    typedef boost::true_type allowed_recursive;
+
 
 
 };
@@ -83,14 +172,21 @@ struct cartesian_product_indices
 //this structure checks how many times the first element of LSeq occurs in RSeq
 //Once this is done, it then checks to make sure the frequency follows the expression_type rules
 //finally it recurses to check the next element of LSeq
-template<typename LSeq,typename RSeq,int expression_type,int recursive_depth>
-struct cartesian_product_indices<LSeq,RSeq,false,expression_type,recursive_depth>
+template<typename LSeq,typename RSeq,int expression_type,typename Pred>
+struct check_cartesian_product_indices<LSeq,RSeq,false,expression_type,Pred>
 {
 
     //Pull first index type off of left sequence
     typedef typename boost::mpl::deref<typename boost::mpl::begin<LSeq>::type>::type first_LSeq;
     //count its occurences in the right sequence
-    typedef typename boost::mpl::count<RSeq,first_LSeq>::type n;
+    typedef typename boost::mpl::count_if<
+        RSeq,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            _1,
+            first_LSeq
+        >
+    >::type n;
     //pull the allowed matches for LSeq's first index type
     typedef typename internal::match_rule<
     first_LSeq,expression_type
@@ -110,69 +206,21 @@ struct cartesian_product_indices<LSeq,RSeq,false,expression_type,recursive_depth
     //pop the first type off of LSeq
     typedef typename boost::mpl::pop_front<LSeq>::type poppedLSeq;
     //obtain next cartesion_product in recursion depth
-    typedef  cartesian_product_indices<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value,expression_type,recursive_depth+1> next_cartesian_product;
+    typedef  check_cartesian_product_indices<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value,expression_type,Pred> next_check_cartesian_product_indices;
 
 
     //now check the remaining LSeq types using recursive calls
     typedef typename boost::mpl::and_<
     allowed,
-    typename next_cartesian_product::allowed_recursive
+    typename next_check_cartesian_product_indices::allowed_recursive
     > allowed_recursive;
     constexpr static bool value= allowed_recursive::value;
 
-    typedef typename boost::mpl::if_<
-        boost::mpl::and_<
-            boost::mpl::equal_to<
-                n,
-                boost::mpl::int_<1>
-            >,
-            boost::mpl::equal_to<
-                boost::mpl::int_<first_LSeq::elemval>,
-                boost::mpl::int_<0>
-            >
-        >,
-        typename boost::mpl::push_front<
-            typename next_cartesian_product::match_order_sequence,
-            boost::mpl::int_<recursive_depth>
-        >::type,
-        typename next_cartesian_product::match_order_sequence
-    >::type match_order_sequence;
 
-
-    typedef typename boost::mpl::if_<
-        boost::mpl::and_<
-            boost::mpl::equal_to<
-                n,boost::mpl::int_<0>
-            >,
-            boost::mpl::equal_to<
-                boost::mpl::int_<first_LSeq::elemval>,
-                boost::mpl::int_<0>
-            >
-        >,
-        typename boost::mpl::push_front<
-            typename next_cartesian_product::no_match_order_sequence,
-            boost::mpl::int_<recursive_depth>>::type,
-        typename next_cartesian_product::no_match_order_sequence
-    >::type no_match_order_sequence;
-
-    typedef typename boost::mpl::if_<
-        boost::mpl::and_<
-            boost::mpl::equal_to<
-                n,boost::mpl::int_<1>
-            >,
-            boost::mpl::greater<
-                boost::mpl::int_<first_LSeq::elemval>,
-                boost::mpl::int_<0>
-            >
-        >,
-        typename boost::mpl::push_front<
-            typename next_cartesian_product::inter_match_order_sequence,
-            boost::mpl::int_<recursive_depth>
-        >::type,
-        typename next_cartesian_product::inter_match_order_sequence
-    >::type inter_match_order_sequence;
 
 };
+
+
 
 
 //base case - set to true. This only occurs when LSeq is an empty mpl sequence
@@ -194,7 +242,10 @@ struct auto_cartesian_product_indices<Seq,false,expression_type>
     //pop the first type off of Seq
     typedef typename boost::mpl::pop_front<Seq>::type poppedSeq;
     //count its occurences in the sequence
-    typedef typename boost::mpl::count<poppedSeq,first_Seq>::type n;
+    typedef typename boost::mpl::count_if<
+        poppedSeq,
+        internal::same_product_index_id<_,first_Seq>
+    >::type n;
     //pull the allowed matches for Seq's first index type
     typedef typename internal::auto_match_rule<
     first_Seq,expression_type
@@ -221,9 +272,60 @@ struct auto_cartesian_product_indices<Seq,false,expression_type>
 
 };
 
+template<typename Seq, typename Seq_toMatch,bool empty_LSeq,typename Pred=boost::mpl::quote2<boost::is_same> >
+struct pull_match_order
+{
+    typedef boost::mpl::vector_c<int> match_order;
+
+};
+
+template<typename Seq, typename Seq_toMatch,typename Pred>
+struct pull_match_order<Seq,Seq_toMatch,false,Pred>
+{
+
+    //Pull first index type off of left sequence
+    typedef typename boost::mpl::deref<typename boost::mpl::begin<Seq>::type>::type first_Seq;
+    //find its position in RSeq
+    typedef typename boost::mpl::find_if<
+        Seq_toMatch,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            _1,
+            first_Seq
+        >
+    >::type find_pos;
 
 
-template<typename LSeq, typename RSeq,bool empty_LSeq>
+
+    typedef typename boost::mpl::not_<
+                        boost::is_same<
+                            find_pos,
+                            typename boost::mpl::end<Seq_toMatch>::type
+                        >
+                    >::type was_found;
+
+    //pop the first type off of Seq
+    typedef typename boost::mpl::pop_front<Seq>::type poppedSeq;
+    //obtain next match for rest of Seq (must include Pred!!)
+    typedef  pull_match_order<poppedSeq,Seq_toMatch,boost::mpl::empty<poppedSeq>::value,Pred> next_match_order;
+
+    //if first_LSeq was found in RSeq and it's elementwise, add the match location to the runing inter_match_order
+    typedef typename boost::mpl::if_<
+        was_found,
+        typename boost::mpl::push_front<
+            typename next_match_order::match_order,
+            typename boost::mpl::distance<
+                typename boost::mpl::begin<Seq_toMatch>::type,
+                find_pos
+            >::type
+        >::type,
+        typename next_match_order::match_order
+    >::type match_order;
+
+
+};
+
+template<typename LSeq, typename RSeq,bool empty_LSeq,typename Pred=boost::mpl::quote2<boost::is_same> >
 struct pull_right_index_order
 {
 
@@ -233,17 +335,24 @@ struct pull_right_index_order
 
 };
 
-template <class T> struct incomplete;
-template<typename LSeq, typename RSeq>
-struct pull_right_index_order<LSeq,RSeq,false>
+
+template<typename LSeq, typename RSeq,typename Pred>
+struct pull_right_index_order<LSeq,RSeq,false,Pred>
 {
 
     //Pull first index type off of left sequence
     typedef typename boost::mpl::deref<typename boost::mpl::begin<LSeq>::type>::type first_LSeq;
     //find its position in RSeq
-    typedef typename boost::mpl::find<RSeq,first_LSeq>::type find_pos;
+    typedef typename boost::mpl::find_if<
+        RSeq,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            _1,
+            first_LSeq
+        >
+    >::type find_pos;
 
-    //incomplete<find_pos> check_find_pos;
+
 
     typedef typename boost::mpl::not_<
                         boost::is_same<
@@ -255,7 +364,7 @@ struct pull_right_index_order<LSeq,RSeq,false>
     //pop the first type off of LSeq
     typedef typename boost::mpl::pop_front<LSeq>::type poppedLSeq;
     //obtain next match for rest of LSeq
-    typedef  pull_right_index_order<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value> next_pull_right_index_order;
+    typedef  pull_right_index_order<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value,Pred> next_pull_right_index_order;
 
     //if first_LSeq was found in RSeq and it's elementwise, add the match location to the runing inter_match_order
     typedef typename boost::mpl::if_<
@@ -337,7 +446,7 @@ struct pull_product_indices<LSeq,RSeq,false>
         >,
         typename boost::mpl::push_front<
             typename next_pull_product_indices::inter_product_indices,
-            ProdInd<first_LSeq::id,first_LSeq::elemval-1>
+            first_LSeq
         >::type,
         typename next_pull_product_indices::inter_product_indices
     >::type inter_product_indices;
@@ -361,8 +470,69 @@ struct pull_product_indices<LSeq,RSeq,false>
 
 };
 
+//base case, just an empty vector
+template<class Seq, size_t range_to_decrement,class Enable = void>
+struct get_decremented_prod_index
+{
+    typedef boost::mpl::vector<> decremented_Seq;
+};
+
+//only enabled when range_to_decrement>0
+template<class Seq, size_t range_to_decrement>
+struct get_decremented_prod_index<
+        Seq,
+        range_to_decrement,
+        typename boost::enable_if<
+            boost::mpl::greater<
+                boost::mpl::size_t<range_to_decrement>,
+                boost::mpl::size_t<0>
+            >
+        >::type
+    >
+{
+    //Pull first index type off of sequence
+    typedef typename boost::mpl::deref<
+        typename boost::mpl::prior<
+            typename boost::mpl::end<Seq>::type
+        >::type
+    >::type first_Seq;
+    //pop the last seq from the seq
+    typedef typename boost::mpl::pop_back<Seq>::type popped_Seq;
 
 
+    typedef typename boost::mpl::push_back<
+        typename get_decremented_prod_index<popped_Seq,range_to_decrement-1>::decremented_Seq,
+        typename first_Seq::decrement_type
+    >::type decremented_Seq;
+};
+
+template<class Seq,size_t range_to_decrement>
+struct decrement_back_indices
+{
+
+
+
+    typedef typename boost::mpl::advance<
+        typename boost::mpl::end<Seq>::type,
+        boost::mpl::int_<-1*range_to_decrement>
+    >::type erase_iterator;
+
+    typedef typename boost::mpl::erase<
+        Seq,
+        erase_iterator,
+        typename boost::mpl::end<Seq>::type
+    >::type erased_Seq;
+    typedef typename get_decremented_prod_index<Seq,range_to_decrement>::decremented_Seq decremented_Seq;
+    typedef typename boost::mpl::insert_range<erased_Seq,typename boost::mpl::end<erased_Seq>::type,decremented_Seq>::type newSeq;
+
+
+};
+
+template<class Seq>
+struct decrement_back_indices<Seq,0>
+{
+    typedef Seq newSeq;
+};
 
 }
 
@@ -380,7 +550,8 @@ struct MIAProductUtil
     typedef typename boost::mpl::insert_range<l_indices,typename boost::mpl::end<l_indices>::type,r_indices>::type concat;
 
     typedef typename boost::mpl::insert_range<concat,typename boost::mpl::end<concat>::type,inter_product_indices>::type final_sequence;
-    static constexpr int MIA_return_order= boost::mpl::size<final_sequence>::value;
+    static constexpr size_t MIA_return_order= boost::mpl::size<final_sequence>::value;
+    static constexpr size_t inter_product_number=boost::mpl::size<inter_product_indices>::value;
     typedef typename MIAProductReturnType<L_MIA,R_MIA,MIA_return_order>::MIA_return_type MIA_return_type;
 
 };

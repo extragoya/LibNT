@@ -20,7 +20,10 @@
 
 #include <boost/mpl/bool.hpp>
 #include <boost/mpl/vector_c.hpp>
-
+#include <boost/mpl/min_max.hpp>
+#include <boost/mpl/int.hpp>
+#include <boost/mpl/integral_c_tag.hpp>
+#include <boost/mpl/aux_/config/static_constant.hpp>
 #define __UNIQUE_ID__ __COUNTER__           //should work in gcc 4.3 and later and also MS compiler
 #define MIAINDEX ProdInd<__UNIQUE_ID__>
 namespace LibMIA
@@ -37,6 +40,15 @@ struct ProdInd
 {
     constexpr static int elemval=ElemWise;
     constexpr static size_t id=ID;
+    typedef typename
+        boost::mpl::max<
+            boost::mpl::int_<elemval-1>,
+            boost::mpl::int_<0>
+        >::type max_elem;
+    typedef ProdInd<
+        id,
+        max_elem::value
+    > decrement_type;
     ProdInd<id,ElemWise+1> operator !()
     {
         return ProdInd<ID,ElemWise+1>();
@@ -143,6 +155,20 @@ struct Indicial_Sequence
 {
     typedef typename internal::FromVariadic<Ts...>::type sequence;
 };
+
+template<typename T1, typename T2>
+struct same_product_index_id: public boost::false_type {};
+
+template<size_t id1, int elem_val1,size_t id2, int elem_val2>
+struct same_product_index_id<ProdInd<id1,elem_val1>,ProdInd<id2,elem_val2>> {
+
+    BOOST_STATIC_CONSTANT(bool, value = id1==id2);
+    typedef boost::mpl::integral_c_tag tag;
+    typedef same_product_index_id type;
+    typedef bool value_type;
+    operator bool() const { return this->value; }
+};
+
 
 
 } //namespace internal

@@ -34,6 +34,8 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::DenseMIA<_data_type,2> c_result2(dim1,dim1);
     LibMIA::DenseMIA<_data_type,4> c_result3(dim1,dim2,dim1,dim2);
 
+    LibMIA::DenseMIA<_data_type,1> d(dim2);
+
     b.ones();
 
     //set each the values of a to increment along inner product indices
@@ -70,7 +72,7 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,k,m,n)=a(i,j,k,l)*b(l,j,m,n);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Inner/Outer Product 3 for ")+typeid(_data_type).name());
 
-//    test inner and element-wise product. Have b be assigned a scalar value that increases while traversing i
+    //test inner and element-wise product. Have b be assigned a scalar value that increases while traversing i
     val=0;
     for(size_t _i=0;_i<dim1;++_i){
         val++;
@@ -118,6 +120,26 @@ void mult_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
     c(i,j,k,l)=a(k,!l,i,!j)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
+
+    val=1;
+    for(size_t _i;_i<dim2;++_i)
+        d.at(_i)=val++;
+
+    size_t val2;
+    c_result3.zeros();
+    for(size_t _i=0;_i<dim1;++_i){
+        for(size_t _k=0;_k<dim1;++_k){
+            val=1;
+            val2=1;
+            for(size_t _j=0;_j<dim2;++_j){
+                val2++;
+                for(size_t _l=0;_l<dim2;++_l){
+                    c_result3.at(_i,_j,_k,_l)=val++*val2;
+                }
+            }
+        }
+    }
+    c(i,j,k,l)=~(a(i,!!j,k,!l)*b2(!!j,!l))*d(!j);
 
 
 }

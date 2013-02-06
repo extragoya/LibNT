@@ -43,6 +43,12 @@ void assign_work(){
     c(i,j,k)=b(i,k,j);
     BOOST_CHECK_MESSAGE(a==c,"Shuffled MIA Expression assignment");
 
+    b.zeros();
+    c.zeros();
+    b(i,j,k)=a(i,!k,j);
+    c(!i,j,k)=b(i,k,j);
+    BOOST_CHECK_MESSAGE(a==c,"Shuffled MIA Expression assignment with mismatched elem-wise indices");
+
 }
 
 BOOST_AUTO_TEST_CASE( MIAAssignTests )

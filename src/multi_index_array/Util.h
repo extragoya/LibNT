@@ -131,7 +131,7 @@ class DenseMIABase;
 template <class T,size_t _order>
 class DenseMIA;
 
-template<class _MIA,class m_Seq,bool has_ownership=false>
+template<class _MIA,class m_Seq,size_t inter_product_size=0>
 struct MIA_Atom;
 
 
@@ -328,22 +328,32 @@ struct DenseSolveReturnType
 
     typedef
     typename boost::enable_if<
-    boost::is_floating_point<
-    typename internal::data_type<Lhs>::type
-    > //floating point datatypes
-    , typename DenseProductReturnType<Lhs,Rhs>::type //return type
+        boost::is_floating_point<
+            typename internal::data_type<Lhs>::type
+        > //floating point datatypes
+        , typename DenseProductReturnType<Lhs,Rhs>::type //return type
     >::type type;
 };
 
-template<class L_MIA, class R_MIA, size_t order>
+template<class L_MIA, class R_MIA, size_t order,class Enable = void>
 struct MIAProductReturnType
 {
 };
 
-template<class Derived,class otherDerived, size_t order>
-struct MIAProductReturnType<DenseMIABase<Derived>,DenseMIABase<otherDerived>,order>
+
+//only enable when Derived and otherDerived are MIAs
+template<class L_MIA,class R_MIA, size_t order
+>
+struct MIAProductReturnType<L_MIA,R_MIA,order,
+    typename boost::enable_if<
+        boost::mpl::and_<
+            internal::is_MIA<L_MIA>,
+            internal::is_MIA<R_MIA>
+        >
+    >::type
+>
 {
-    typedef DenseMIA<typename ScalarPromoteType<Derived,otherDerived>::type,order> MIA_return_type;
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> MIA_return_type;
 
 };
 
