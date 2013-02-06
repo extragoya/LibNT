@@ -442,7 +442,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
         if(hasOwnership){
-            internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+            internal::collect_dimensions_to_order(otherMIA,index_order,this->m_dims);
             this->m_dimensionality=otherMIA.dimensionality();
             smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
             m_smart_raw_ptr.swap(temp_ptr);
@@ -453,14 +453,16 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
     else
-        internal::collect_dimensions(otherMIA,index_order,this->m_dims);
+        internal::collect_dimensions_to_order(otherMIA,index_order,this->m_dims);
 
     typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
     index_type curIdx=0;
 
-    for(auto it=data_begin(); it<data_end(); ++it)
+
+    auto this_it=this->data_begin();
+    for(auto it=otherMIA.data_begin(); it<otherMIA.data_end(); ++it)
     {
-        *it=to_mdata_type::convert(*(otherMIA.data_begin()+sub2ind(ind2sub(curIdx++, this->m_dims),index_order,otherMIA.dims())));
+        *(this_it+sub2ind(ind2sub(curIdx++, otherMIA.dims()),index_order,this->dims()))=to_mdata_type::convert(*it);
     }
 
 

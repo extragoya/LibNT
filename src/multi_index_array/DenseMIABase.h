@@ -283,6 +283,8 @@ auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indice
 
 
     }
+
+    //lat.print();
     return lat;
 
 

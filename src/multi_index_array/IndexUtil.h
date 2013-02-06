@@ -55,11 +55,32 @@ namespace LibMIA
 namespace internal
 {
 
+
 template<class MIA_type,class array_type1, class array_type2>
-void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order,array_type2& _dims,size_t& curIdx)
+void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_sequence_order,array_type2& _dims,size_t& curIdx)
 {
 
-    for(auto _order: _sequence_order)
+    for(auto _order: to_sequence_order)
+    {
+
+        _dims[(size_t)_order]=_mia.dim((size_t)curIdx++);
+    }
+
+}
+
+template<class MIA_type,class array_type1, class array_type2>
+void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_sequence_order,array_type2& _dims)
+{
+
+    size_t curIdx=0;
+    collect_dimensions_to_order(_mia,to_sequence_order,_dims,curIdx);
+}
+
+template<class MIA_type,class array_type1, class array_type2>
+void collect_dimensions_from_order(const MIA_type& _mia, const array_type1& from_sequence_order,array_type2& _dims,size_t& curIdx)
+{
+
+    for(auto _order: from_sequence_order)
     {
 
         _dims[curIdx++]=_mia.dim((size_t)_order);
@@ -68,11 +89,11 @@ void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order
 }
 
 template<class MIA_type,class array_type1, class array_type2>
-void collect_dimensions(const MIA_type& _mia, const array_type1& _sequence_order,array_type2& _dims)
+void collect_dimensions_from_order(const MIA_type& _mia, const array_type1& from_sequence_order,array_type2& _dims)
 {
 
     size_t curIdx=0;
-    collect_dimensions(_mia,_sequence_order,_dims,curIdx);
+    collect_dimensions_from_order(_mia,from_sequence_order,_dims,curIdx);
 }
 
 //should be undefined

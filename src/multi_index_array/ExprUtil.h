@@ -224,7 +224,7 @@ struct check_cartesian_product_indices<LSeq,RSeq,false,expression_type,Pred>
 
 
 //base case - set to true. This only occurs when LSeq is an empty mpl sequence
-template<typename Seq,bool empty_LSeq,int expression_type>
+template<typename Seq,bool empty_LSeq,int expression_type, typename Pred=boost::mpl::quote2<internal::same_product_index_id> >
 struct auto_cartesian_product_indices
 {
     typedef boost::true_type allowed_recursive;
@@ -233,8 +233,8 @@ struct auto_cartesian_product_indices
 //this structure checks how many times the first element of Seq occurs in the rest of the sequence.
 //Once this is done, it then checks to make sure the frequency follows the expression_type rules
 //finally it recurses to check the next element of Seq
-template<typename Seq,int expression_type>
-struct auto_cartesian_product_indices<Seq,false,expression_type>
+template<typename Seq,int expression_type, typename Pred>
+struct auto_cartesian_product_indices<Seq,false,expression_type,Pred>
 {
 
     //Pull first index type off of the sequence
@@ -244,7 +244,11 @@ struct auto_cartesian_product_indices<Seq,false,expression_type>
     //count its occurences in the sequence
     typedef typename boost::mpl::count_if<
         poppedSeq,
-        internal::same_product_index_id<_,first_Seq>
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            _1,
+            first_Seq
+        >
     >::type n;
     //pull the allowed matches for Seq's first index type
     typedef typename internal::auto_match_rule<

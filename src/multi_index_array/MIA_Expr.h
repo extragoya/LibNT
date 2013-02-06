@@ -197,12 +197,13 @@ public:
 //        print_array(right_inter_product_order,"right_inter");
 
         auto cLat=m_mia->toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia->toLatticeExpression(right_inner_product_order,right_outer_product_order,right_inter_product_order);
-
+        //std::cout << "cLat " << std::endl;
+        //cLat.print();
         std::array<typename _MIA::index_type,left_outer_product_order.size()+right_outer_product_order.size()+left_inter_product_order.size()> cMIA_dims;
         size_t curIdx=0;
-        internal::collect_dimensions(*m_mia,left_outer_product_order,cMIA_dims,curIdx);
-        internal::collect_dimensions(*(Rhs.m_mia),right_outer_product_order,cMIA_dims,curIdx);
-        internal::collect_dimensions(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions_from_order(*m_mia,left_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions_from_order(*(Rhs.m_mia),right_outer_product_order,cMIA_dims,curIdx);
+        internal::collect_dimensions_from_order(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
 
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
 
@@ -264,9 +265,11 @@ public:
         typedef internal::pull_match_order<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,boost::mpl::quote2<internal::same_product_index_id> > pulling_index_order;
 
         internal::sequence_array<typename pulling_index_order::match_order> right_assignment_order;
+        //print_array(right_assignment_order, "assign_order");
         std::array<typename otherMIA::index_type,internal::order<otherMIA>::value> r_Dims;
 
         m_mia->assign(*(Rhs.m_mia),right_assignment_order);
+
         return *this;
 
 

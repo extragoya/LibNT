@@ -35,6 +35,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::DenseMIA<_data_type,4> c_result3(dim1,dim2,dim1,dim2);
 
     LibMIA::DenseMIA<_data_type,1> d(dim2);
+    LibMIA::DenseMIA<_data_type,2> d2(dim2,dim2);
 
     b.ones();
 
@@ -118,11 +119,12 @@ void mult_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
     c(i,j,k,l)=a(k,!j,i,!l)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
+
     c(i,j,k,l)=a(k,!l,i,!j)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
 
     val=1;
-    for(size_t _i;_i<dim2;++_i)
+    for(size_t _i=0;_i<dim2;++_i)
         d.at(_i)=val++;
 
     size_t val2;
@@ -130,27 +132,60 @@ void mult_work(size_t dim1, size_t dim2){
     for(size_t _i=0;_i<dim1;++_i){
         for(size_t _k=0;_k<dim1;++_k){
             val=1;
-            val2=1;
             for(size_t _j=0;_j<dim2;++_j){
-                val2++;
+                val2=1;
                 for(size_t _l=0;_l<dim2;++_l){
-                    c_result3.at(_i,_j,_k,_l)=val++*val2;
+                    c_result3.at(_i,_j,_k,_l)=val++*val2++;
                 }
             }
         }
     }
-    c(i,j,k,l)=~(a(i,!!j,k,!l)*b2(!!j,!l))*d(!j);
 
+
+    c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
+    BOOST_CHECK_MESSAGE(c==c_result3,std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
+
+    //repeat inner/outer product test but use a ternary inner product instead
+    d2.ones();
+    b.ones();
+    for(size_t _i=0;_i<dim1;++_i){
+        for(size_t _k=0;_k<dim1;++_k){
+            val=1;
+            for(size_t _j=0;_j<dim2;++_j){
+                for(size_t _l=0;_l<dim2;++_l){
+                    a.at(_i,_j,_k,_l)=val++;
+                }
+            }
+        }
+    }
+    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(j,l);
+    BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 1 for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
 
 }
 
 BOOST_AUTO_TEST_CASE( DenseMIAMultTests )
 {
 
+    mult_work<double>(3,3);
+    mult_work<float>(3,3);
+    mult_work<int>(3,3);
+    mult_work<long>(3,3);
+
+
     mult_work<double>(4,3);
     mult_work<float>(4,3);
     mult_work<int>(4,3);
     mult_work<long>(4,3);
+
+
+    mult_work<double>(3,4);
+    mult_work<float>(3,4);
+    mult_work<int>(3,4);
+    mult_work<long>(3,4);
 
 
 }
