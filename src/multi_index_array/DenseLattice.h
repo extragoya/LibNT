@@ -366,7 +366,7 @@ bool DenseLattice<T>::load(const std::string & _filename){
     _depth=to_index_type::convert(unpack754_64(temp));
 
     //make sure the specified dimensions match up with the actual number of data entries.
-    if(_height*_width*_depth!=file_length)
+    if(_height*_width*_depth!=(index_type)file_length)
         return false;
 
     smart_raw_pointer temp_ptr(new T[_height*_width*_depth]);
