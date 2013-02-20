@@ -220,7 +220,7 @@ public:
         return m_smart_raw_ptr.get();
     }
 
-    T* release_raw_data() const{
+    T* release_raw_data() {
         hasOwnership=false;
         return raw_data_ptr();
     }

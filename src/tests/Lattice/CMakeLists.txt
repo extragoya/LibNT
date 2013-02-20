@@ -12,3 +12,7 @@ ADD_TEST(LatticeConstrTests ${CMAKE_CURRENT_BINARY_DIR}/LatticeConstrTests)
 
 file(COPY data DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
+if(NOT MIA_USE_HEADER_ONLY_TESTS)
+	target_link_libraries(DenseLatticeMultTests ${Boost_LIBRARIES})
+	target_link_libraries(LatticeConstrTests ${Boost_LIBRARIES})
+endif()

@@ -6,8 +6,6 @@ set (SOURCES slattice_1.cpp slattice_test.h)
 add_executable(SparseLattice_example ${SOURCES})
 
 INCLUDE_DIRECTORIES(${SuperLU_INCLUDE})
-TARGET_LINK_LIBRARIES(SparseLattice_example ${blas_LIB}
-                      ${SuperLU_LIB}
-)
+TARGET_LINK_LIBRARIES(SparseLattice_example ${SuperLU_LIB} ${blas_LIB})
 
 

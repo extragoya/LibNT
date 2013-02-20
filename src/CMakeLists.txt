@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8)
 
 
 
@@ -8,7 +8,7 @@ SET(USE_SPARSE_SOLVE TRUE CACHE BOOL "build routines requiring sparse solver lib
 #only change this flag if you've built the boost::test libs
 SET(MIA_USE_HEADER_ONLY_TESTS TRUE CACHE BOOL "use the single header option in boost::test, which will work universally but will compile slowly")
 
-SET(BOOST_ROOT  CACHE PATH /path/to/blas_lib)
+SET(BOOST_ROOT  CACHE PATH /path/to/boost)
 
 SET(blas_LIB  CACHE FILEPATH /path/to/blas_lib)
 SET(SuperLU_LIB  CACHE FILEPATH /path/to/superlu_lib)
@@ -32,6 +32,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 		include_directories(${Boost_INCLUDE_DIRS}) 
 	endif()
 endif(MIA_USE_HEADER_ONLY_TESTS)
+set(Boost_install_include "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
 
 #setup the config file for LibMIA
 configure_file (

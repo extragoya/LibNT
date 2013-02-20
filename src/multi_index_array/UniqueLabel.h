@@ -20,6 +20,7 @@
 #if !defined(UNIQUE_LABEL)
 #define UNIQUE_LABEL
 #define BOOST_PP_VALUE 1
+
 #include BOOST_PP_ASSIGN_SLOT(1)
 #undef BOOST_PP_VALUE
 #else

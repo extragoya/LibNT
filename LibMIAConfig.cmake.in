@@ -1,0 +1,27 @@
+# - Config file for the FooBar package
+# It defines the following variables
+#  LIBMIA_INCLUDE_DIRS - include directories for LibMIA
+#  LIBMIA_LIBRARIES    - libraries to link against
+#  LIBMIA_EXECUTABLE   - the bar executable
+ 
+# Compute paths
+get_filename_component(LIBMIA_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+if(EXISTS "${LIBMIA_CMAKE_DIR}/CMakeCache.txt")
+   # In build tree
+   include("${LIBMIA_CMAKE_DIR}/LibMIABuildTreeSettings.cmake")
+else()
+	set(LIBMIA_INCLUDE_DIRS "${LIBMIA_CMAKE_DIR}/@CONF_REL_INCLUDE_DIR@")
+	SET(BOOST_ROOT  CACHE PATH /path/to/boost)
+	find_package(Boost 1.52.0 REQUIRED)
+	set(LIBMIA_INCLUDE_DIRS "${LIBMIA_INCLUDE_DIRS}" ${Boost_INCLUDE_DIRS})
+endif()
+
+
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${LIBMIA_CMAKE_DIR}/LibMIALibraryDepends.cmake")
+ 
+# These are IMPORTED targets created by FooBarLibraryDepends.cmake
+set(LIBMIA_LIBRARIES LibMIA)
+set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES, 0)
+#set(FOOBAR_EXECUTABLE bar)

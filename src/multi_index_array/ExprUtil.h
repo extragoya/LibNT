@@ -542,7 +542,7 @@ struct decrement_back_indices<Seq,0>
 
 
 
-template<class L_MIA, class R_MIA,class l_Seq,class r_Seq>
+template<class L_MIA, class R_MIA,class l_Seq,class r_Seq >
 struct MIAProductUtil
 {
 
@@ -556,7 +556,7 @@ struct MIAProductUtil
     typedef typename boost::mpl::insert_range<concat,typename boost::mpl::end<concat>::type,inter_product_indices>::type final_sequence;
     static constexpr size_t MIA_return_order= boost::mpl::size<final_sequence>::value;
     static constexpr size_t inter_product_number=boost::mpl::size<inter_product_indices>::value;
-    typedef typename MIAProductReturnType<L_MIA,R_MIA,MIA_return_order>::MIA_return_type MIA_return_type;
+    typedef typename MIAProductReturnType<L_MIA,R_MIA,MIA_return_order>::type MIA_return_type;
 
 };
 

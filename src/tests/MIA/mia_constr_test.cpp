@@ -54,7 +54,7 @@ void dense_constructor_work(size_t dim1, size_t dim2, size_t dim3){
 
     test2.randu(-5,5);
     MIAType test3(test2.dims(),test2.raw_data_ptr(),true);
-    test2.release_ownership();
+    test2.release_raw_data();
     BOOST_CHECK_EQUAL(test3.dims()[0],dim1);
     BOOST_CHECK_EQUAL(test3.dims()[1],dim2);
     BOOST_CHECK_EQUAL(test3.dims()[2],dim3);

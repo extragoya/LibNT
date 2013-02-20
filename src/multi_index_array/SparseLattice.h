@@ -493,7 +493,7 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
     m_data.reserve(m_data.size());
     m_indices.reserve(m_data.size());
     const index_type& (SparseLattice::*index)(const_full_tuple) const = &SparseLattice::index;
-    std::inplace_merge(this->begin(),a_end,this->end(),boost::bind(&SparseLattice::idx_less, this,boost::bind(index,this,_1),boost::bind(index,this,_2)));
+    std::inplace_merge(this->begin(),a_end,this->end(),boost::bind(&SparseLattice::idx_less, this,boost::bind(index,this,std::placeholders::_1),boost::bind(index,this,std::placeholders::_2)));
 
     return *this;
 }

@@ -85,10 +85,10 @@ struct perform_cartesian_check
 
 };
 
-template<class Seq, int rule>
+template<class Seq, int rule,typename Pred=boost::mpl::quote2<internal::same_product_index_id> >
 struct perform_auto_check
 {
-    typedef internal::auto_cartesian_product_indices<Seq,boost::mpl::empty<Seq>::value,rule> sequence_check;
+    typedef internal::auto_cartesian_product_indices<Seq,boost::mpl::empty<Seq>::value,rule,Pred> sequence_check;
     static void run()
     {
         static_assert(sequence_check::value,"Repeated index in operand.");
@@ -156,25 +156,24 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq>
-    auto operator*(const MIA_Atom<otherMIA,r_Seq> & Rhs)->MIA_Atom<typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number>
-    {
+    template<class otherMIA,class r_Seq,size_t other_inter_number>
+    auto operator*(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
+        >
+    { return 0;
 
-        //typedef typename internal::Indicial_Sequence<Rhs_inds...>::sequence r_Seq;
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
+        perform_cartesian_check<m_Seq,r_Seq,internal::product_rule>::run();
 
-
-        typedef typename internal::check_cartesian_product_indices<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,internal::product_rule> left_sequence_check;
         typedef typename internal::pull_left_operand_index_sequence<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,0> left_index_order;
-        typedef typename internal::check_cartesian_product_indices<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,internal::product_rule> right_sequence_check;
         typedef typename internal::pull_left_operand_index_sequence<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,0> right_outer_index_order;
         typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
-        //check to makes sure no left-hand indice is repeated
-        static_assert(internal::auto_cartesian_product_indices<m_Seq,boost::mpl::empty<m_Seq>::value,internal::binary_rule>::value,"Repeated index in left-hand operand.");
-        //check to make sure no right-hand indice is repeated
-        static_assert(internal::auto_cartesian_product_indices<r_Seq,boost::mpl::empty<r_Seq>::value,internal::binary_rule>::value,"Repeated index in right-hand operand.");
-        //now check to make sure left and right-hand operands match up properly
-        static_assert(left_sequence_check::value,"A left-hand index does not match up properly with a right-hand index.");
-        static_assert(right_sequence_check::value,"A right-hand index does not match up properly with a left-hand index.");
 
         internal::sequence_array<typename left_index_order::match_order_sequence> left_inner_product_order;
         internal::sequence_array<typename left_index_order::no_match_order_sequence> left_outer_product_order;
@@ -185,8 +184,7 @@ public:
         internal::sequence_array<typename pulling_index_order::inter_match_order> right_inter_product_order;
 
 
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+
 
 //        print_array(left_outer_product_order, "left_outer");
 //        print_array(left_inner_product_order,"left_inner");
@@ -205,6 +203,8 @@ public:
         internal::collect_dimensions_from_order(*(Rhs.m_mia),right_outer_product_order,cMIA_dims,curIdx);
         internal::collect_dimensions_from_order(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
 
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
 
 
@@ -216,6 +216,61 @@ public:
 
     }
 
+//    template<class otherMIA,class r_Seq>
+//    auto operator|(const MIA_Atom<otherMIA,r_Seq> & Rhs)->MIA_Atom<typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number>
+//    {
+//
+//        //check to makes sure no left-hand indice is repeated
+//        perform_auto_check<m_Seq,internal::binary_rule>::run();
+//        //check to makes sure no left-hand indice is repeated
+//        perform_auto_check<r_Seq,internal::binary_rule>::run();
+//        perform_cartesian_check<m_Seq,r_Seq,internal::product_rule>::run();
+//
+//        typedef typename internal::pull_left_operand_index_sequence<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,0> left_index_order;
+//        typedef typename internal::pull_left_operand_index_sequence<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,0> right_outer_index_order;
+//        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+//
+//        internal::sequence_array<typename left_index_order::match_order_sequence> left_inner_product_order;
+//        internal::sequence_array<typename left_index_order::no_match_order_sequence> left_outer_product_order;
+//        internal::sequence_array<typename left_index_order::inter_match_order_sequence> left_inter_product_order;
+//
+//        internal::sequence_array<typename pulling_index_order::match_order> right_inner_product_order;
+//        internal::sequence_array<typename right_outer_index_order::no_match_order_sequence> right_outer_product_order;
+//        internal::sequence_array<typename pulling_index_order::inter_match_order> right_inter_product_order;
+//
+//
+//
+//
+////        print_array(left_outer_product_order, "left_outer");
+////        print_array(left_inner_product_order,"left_inner");
+////        print_array(left_inter_product_order,"left_inter");
+////
+////        print_array(right_outer_product_order, "right_outer");
+////        print_array(right_inner_product_order,"right_inner");
+////        print_array(right_inter_product_order,"right_inter");
+//
+//        auto cLat=m_mia->toLatticeExpression(left_outer_product_order,left_inner_product_order,left_inter_product_order)*Rhs.m_mia->toLatticeExpression(right_inner_product_order,right_outer_product_order,right_inter_product_order);
+//        //std::cout << "cLat " << std::endl;
+//        //cLat.print();
+//        std::array<typename _MIA::index_type,left_outer_product_order.size()+right_outer_product_order.size()+left_inter_product_order.size()> cMIA_dims;
+//        size_t curIdx=0;
+//        internal::collect_dimensions_from_order(*m_mia,left_outer_product_order,cMIA_dims,curIdx);
+//        internal::collect_dimensions_from_order(*(Rhs.m_mia),right_outer_product_order,cMIA_dims,curIdx);
+//        internal::collect_dimensions_from_order(*m_mia,left_inter_product_order,cMIA_dims,curIdx);
+//
+//        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+//        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+//        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
+//
+//
+//        //create an MIA from cLat
+//        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+//
+//
+//
+//
+//    }
+
 
 
 
@@ -223,13 +278,7 @@ public:
     {
 
 
-        //TODO check that no index is an inter product and check that orders match
-
-
-            *m_mia=*(Rhs.m_mia);
-
-
-
+        *m_mia=*(Rhs.m_mia);
     }
 
     template<class otherMIA,size_t other_inter_number>
@@ -238,9 +287,6 @@ public:
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
-        //TODO check that no index is an inter product and check that orders match
-
-
         *(m_mia)=*(Rhs.m_mia);
 
 
@@ -291,12 +337,6 @@ public:
 private:
 
 
-
-
-
-    //convert variadic templates to a boost::mpl sequence so that they can be worked with
-    //typedef typename internal::FromVariadic<Ts...>::type m_Seq;
-    //std::tuple<Ts...> m_tuple;
 
 };
 

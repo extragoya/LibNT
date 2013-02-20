@@ -353,7 +353,7 @@ struct MIAProductReturnType<L_MIA,R_MIA,order,
     >::type
 >
 {
-    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> MIA_return_type;
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 

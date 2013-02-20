@@ -18,17 +18,19 @@
 #define SPARSELATTICEBASE_H
 #include <algorithm>
 #include <vector>
-#include <functional>
+
 #include <cmath>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <map>
+//#include <functional>
 
-#include <boost/mpl/assert.hpp>
-#include <boost/mpl/if.hpp>
-#include <boost/mpl/bool.hpp>
+//#include <boost/mpl/assert.hpp>
+//#include <boost/mpl/if.hpp>
+//#include <boost/mpl/bool.hpp>
 #include <boost/bind.hpp>
+#include <boost/lambda/lambda.hpp>
 #include <boost/function.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/iterator/zip_iterator.hpp>
@@ -43,6 +45,7 @@
 #include "Lattice.h"
 #include "Util.h"
 #include "tupleit.hh"
+//using namespace std::placeholders;
 
 namespace LibMIA
 {
@@ -218,10 +221,10 @@ public:
         {
 
             if (sort_order==ColumnMajor)
-                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less, this,boost::bind(index,this,_1),boost::bind(index,this,_2)));
+                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less, this,boost::bind(index,this,boost::lambda::_1),boost::bind(index,this,boost::lambda::_2)));
 
             else
-                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less_rowmajor, this,boost::bind(index,this,_1),boost::bind(index,this,_2)));
+                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less_rowmajor, this,boost::bind(index,this,boost::lambda::_1),boost::bind(index,this,boost::lambda::_2)));
 
             m_is_sorted=true;
             m_sort_order=sort_order;
@@ -556,8 +559,8 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
 
         //find the last occurence of current tab in both lattices
-        a_temp_end=std::upper_bound(a_temp_begin,a_index_end,k,boost::bind(std::less<index_type>(), _1, boost::bind(tab,this,_2)));
-        b_temp_end=std::upper_bound(b_temp_begin,b_index_end,k,boost::bind(std::less<b_index_type>(), _1, boost::bind(tab_other,&b_d,_2)));
+        a_temp_end=std::upper_bound(a_temp_begin,a_index_end,k,boost::bind(std::less<index_type>(), boost::lambda::_1, boost::bind(tab,this,boost::lambda::_2)));
+        b_temp_end=std::upper_bound(b_temp_begin,b_index_end,k,boost::bind(std::less<b_index_type>(), boost::lambda::_1, boost::bind(tab_other,&b_d,boost::lambda::_2)));
 
         //if both tabs have nonzeros, then perform matrix multiplication
         if (a_temp_end!=a_temp_begin && b_temp_end!=b_temp_begin)
@@ -565,14 +568,14 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
             //get unique columns of A //***todo - just use a binary predicate in std::unique_copy, avoiding having to store needless values
             a_columns.resize(a_temp_end-a_temp_begin);
-            std::transform(a_temp_begin,a_temp_end,a_columns.begin(),boost::bind(column, this,_1));
+            std::transform(a_temp_begin,a_temp_end,a_columns.begin(),boost::bind(column, this,boost::lambda::_1));
             a_column_end=std::unique(a_columns.begin(),a_columns.end());
             a_columns.resize( a_column_end - a_columns.begin() );
 
 
             //get unique and sorted rows of A. This creates a map from compressed indices to actual ones //***todo - just a series of set unions to create a unique row index
             a_rows.resize(a_temp_end-a_temp_begin);
-            std::transform(a_temp_begin,a_temp_end,a_rows.begin(),boost::bind(row, this,_1));
+            std::transform(a_temp_begin,a_temp_end,a_rows.begin(),boost::bind(row, this,boost::lambda::_1));
             std::sort(a_rows.begin(),a_rows.end());
             a_row_end=std::unique(a_rows.begin(),a_rows.end());
             a_rows.resize( a_row_end - a_rows.begin() );
@@ -581,13 +584,13 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
             //get unique rows of B and a map from compressed indices to actual ones
             b_rows.resize(b_temp_end-b_temp_begin);
-            std::transform(b_temp_begin,b_temp_end,b_rows.begin(),boost::bind(other_row, &b_d,_1));
+            std::transform(b_temp_begin,b_temp_end,b_rows.begin(),boost::bind(other_row, &b_d,boost::lambda::_1));
             b_row_end=std::unique(b_rows.begin(),b_rows.end());
             b_rows.resize(b_row_end - b_rows.begin());
 
             //get unique and sorted columns of B. This creates a map from compressed indices to actual ones
             b_columns.resize(b_temp_end-b_temp_begin);
-            std::transform(b_temp_begin,b_temp_end,b_columns.begin(),boost::bind(other_column, &b_d,_1));
+            std::transform(b_temp_begin,b_temp_end,b_columns.begin(),boost::bind(other_column, &b_d,boost::lambda::_1));
             std::sort(b_columns.begin(),b_columns.end());
             b_column_end=std::unique(b_columns.begin(),b_columns.end());
             b_columns.resize( b_column_end - b_columns.begin() );
@@ -782,8 +785,8 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
         //find the last occurence of current tab in both lattices
-        a_temp_end=std::upper_bound(a_temp_begin,a_index_end,k,boost::bind(std::less<index_type>(), _1, boost::bind(tab,this,_2)));
-        b_temp_end=std::upper_bound(b_temp_begin,b_index_end,k,boost::bind(std::less<index_type>(), _1, boost::bind(tab_other,&b_d,_2)));
+        a_temp_end=std::upper_bound(a_temp_begin,a_index_end,k,boost::bind(std::less<index_type>(),boost::lambda::_1, boost::bind(tab,this,boost::lambda::_2)));
+        b_temp_end=std::upper_bound(b_temp_begin,b_index_end,k,boost::bind(std::less<index_type>(), boost::lambda::_1, boost::bind(tab_other,&b_d,boost::lambda::_2)));
 
         //tab from a must have nonzeros
         if (a_temp_end!=a_temp_begin)
@@ -791,7 +794,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //get rows of current tab of A
             a_rows.resize(a_temp_end-a_temp_begin);
-            std::transform(a_temp_begin,a_temp_end,a_rows.begin(),boost::bind(row, this,_1));
+            std::transform(a_temp_begin,a_temp_end,a_rows.begin(),boost::bind(row, this,boost::lambda::_1));
 
             //created CCS matrix of current tab
             index_iterator cur_spot=a_temp_begin;
@@ -799,7 +802,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             for (int j=0; j<this->width(); j++)
             {
                 //find the upper bound of values in the current column
-                cur_spot=std::lower_bound(cur_spot,a_temp_end,j,boost::bind(std::less<index_type>(),boost::bind(column,this,_1), _2));
+                cur_spot=std::lower_bound(cur_spot,a_temp_end,j,boost::bind(std::less<index_type>(),boost::bind(column,this,boost::lambda::_1), boost::lambda::_2));
                 if (cur_spot==a_index_end)
                 {
                     std::stringstream t;
@@ -820,7 +823,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //compute LU decomposition
             LU_decomp lu_of_A(A);
-            if(!lu_of_A.succeeded())
+            if(lu_of_A.info()!=Eigen::Success)
             {
                 std::stringstream t;
                 t << "Could not perform LU decomp on tab " << k << ".";
@@ -836,7 +839,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             {
                 b_vector.setZero(); //reset dense temp vector
                 //find upper bound of current column in current tab of b
-                other_storage_iterator cur_end=std::upper_bound(cur_begin,tab_end,j,boost::bind(std::less<b_index_type>(),_1, boost::bind(column_other,&b_d,boost::bind(index_bind_other,&b_d,_2))));
+                other_storage_iterator cur_end=std::upper_bound(cur_begin,tab_end,j,boost::bind(std::less<b_index_type>(),boost::lambda::_1, boost::bind(column_other,&b_d,boost::bind(index_bind_other,&b_d,boost::lambda::_2))));
                 //store nonzero values in dense temp vector
                 for (; cur_begin<cur_end; cur_begin++)
                 {
@@ -846,7 +849,8 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 //get wrapper for corresponding column of lattice c
                 c_vector_type c_vector=c.column_vector(j,k);
                 //solve and store in lattice c
-                if(!lu_of_A.solve(b_vector,&c_vector))
+                lu_of_A._solve(b_vector,c_vector);
+                if(lu_of_A.info()!=Eigen::Success)
                 {
                     std::stringstream t;
                     t << "Solution process on tab " << k << " and column "<< j << "of RHS failed.";
