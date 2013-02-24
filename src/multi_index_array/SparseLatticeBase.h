@@ -722,7 +722,7 @@ template <class otherDerived>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b)
 {
 
-    check_solve_dims(b);
+    this->check_solve_dims(b);
 
 
 

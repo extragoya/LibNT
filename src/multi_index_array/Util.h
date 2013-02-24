@@ -341,7 +341,7 @@ struct MIAProductReturnType
 };
 
 
-//only enable when Derived and otherDerived are MIAs
+//only enable when Derived and otherDerived are MIAs - needs to be extended to detect for dense vs sparse mias
 template<class L_MIA,class R_MIA, size_t order
 >
 struct MIAProductReturnType<L_MIA,R_MIA,order,
@@ -357,7 +357,23 @@ struct MIAProductReturnType<L_MIA,R_MIA,order,
 
 };
 
+template<class L_MIA, class R_MIA, size_t order,class Enable = void>
+struct MIASolveReturnType
+{
+};
+template<class L_MIA,class R_MIA, size_t order>
+struct MIASolveReturnType<L_MIA,R_MIA,order,
+    typename boost::enable_if<
+        boost::mpl::and_<
+            internal::is_MIA<L_MIA>,
+            internal::is_MIA<R_MIA>
+        >
+    >::type
+>
+{
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
+};
 
 
 template<class array_type>

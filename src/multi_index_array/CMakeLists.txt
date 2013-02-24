@@ -18,8 +18,7 @@ set(LibMIA_headers
      SparseLatticeBase.h
      tupleit.hh
      UniqueLabel.h
-     Util.h
-     
+     Util.h     
      )
 add_library(LibMIA STATIC ${LibMIA_headers})
 set_target_properties(LibMIA PROPERTIES LINKER_LANGUAGE CXX)
@@ -31,11 +30,12 @@ set_target_properties(LibMIA PROPERTIES
   PUBLIC_HEADER "${LibMIA_headers};${CMAKE_BINARY_DIR}/MIAConfig.h")
  
 install(TARGETS LibMIA
-  # IMPORTANT: Add the foo library to the "export-set"
+  # IMPORTANT: Add the LibMIA library to the "export-set"
   EXPORT LibMIALibraryDepends  
+  #we make a dummy LibMIA library, so another library can link to it and have it resolve its own library dependencies.
   ARCHIVE DESTINATION "${INSTALL_INCLUDE_DIR}" OPTIONAL
   #LIBRARY DESTINATION "${INSTALL_LIB_DIR}/shlib" 
   #ARCHIVE DESTINATION include OPTIONAL 
   PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}"
     )
-#add_custom_target(LibMIA SOURCES ${LibMIA_headers})
+

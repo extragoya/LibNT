@@ -106,6 +106,9 @@ public:
     template<class otherDerived>
     bool operator==(const DenseMIABase<otherDerived>& otherMIA);
 
+    template<class otherDerived>
+    bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
+
     template<typename... Indices>
     const data_type& at(Indices... indices) const {
         static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -157,15 +160,15 @@ public:
         return *(derived().data_begin()+idx);
     }
 
-    template<typename R,typename C, typename T>
-    DenseLattice<data_type> toLatticeExpression(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const
     {
         return toLatticeCopy(row_indices, column_indices, tab_indices);
 
     }
 
-    template<typename R,typename C, typename T>
-    DenseLattice<data_type> toLatticeCopy(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const;
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
 
 
     data_iterator data_begin() const
@@ -226,15 +229,19 @@ private:
 
 
 template<typename Derived>
-template< typename R, typename C, typename T>
-auto DenseMIABase<Derived>::toLatticeCopy(internal::sequence_array<R> row_indices, internal::sequence_array<C> column_indices,internal::sequence_array<T> tab_indices) const ->DenseLattice<data_type>
+template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const ->DenseLattice<data_type>
 {
+
+    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
 
     //statically check number of indices match up
     size_t row_size=1, column_size=1, tab_size=1;
-    std::array<index_type, boost::mpl::size<R>::type::value> row_dims;
-    std::array<index_type, boost::mpl::size<C>::type::value> column_dims;
-    std::array<index_type, boost::mpl::size<T>::type::value> tab_dims;
+    std::array<index_type, R> row_dims;
+    std::array<index_type, C> column_dims;
+    std::array<index_type, T> tab_dims;
     size_t idx=0;
     //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
     //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
@@ -299,6 +306,22 @@ bool DenseMIABase<Derived>::operator==(const DenseMIABase<otherDerived> & otherM
 
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
         if(*it1!=*it2)
+            return false;
+
+    return true;
+
+}
+
+
+template<typename Derived>
+template<typename otherDerived>
+bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision )
+{
+    if(this->m_dims!=otherMIA.dims())
+        return false;
+
+    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
+        if(abs(*it1-*it2)>precision)
             return false;
 
     return true;

@@ -237,7 +237,7 @@ typename dimType::value_type sub2ind(const accessType & indices, const accessTyp
     for (size_t i=0; i< indices.size(); ++i)
     {
         multiplier=1;
-        for(size_t j=0; j<order[i]; ++j)
+        for(size_t j=0; j<(size_t)order[i]; ++j)
         {
 
             multiplier*=dims[j];

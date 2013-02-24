@@ -315,7 +315,7 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b) co
 {
 
 
-    check_mult_dims(b);
+    this->check_mult_dims(b);
 
 
 
@@ -352,7 +352,7 @@ typename DenseSolveReturnType<Derived,otherDerived>::type
 DenseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b) const{
 
 
-    check_solve_dims(b);
+    this->check_solve_dims(b);
 
 
 

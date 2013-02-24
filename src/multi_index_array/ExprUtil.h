@@ -540,14 +540,9 @@ struct decrement_back_indices<Seq,0>
 
 }
 
-
-
-template<class L_MIA, class R_MIA,class l_Seq,class r_Seq >
-struct MIAProductUtil
+template<class l_Seq,class r_Seq>
+struct MIAPullIndicesUtil
 {
-
-
-
     typedef typename internal::pull_product_indices<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value>::outer_product_indices l_indices;
     typedef typename internal::pull_product_indices<r_Seq,l_Seq,boost::mpl::empty<r_Seq>::value>::outer_product_indices r_indices;
     typedef typename internal::pull_product_indices<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value>::inter_product_indices inter_product_indices;
@@ -556,7 +551,27 @@ struct MIAProductUtil
     typedef typename boost::mpl::insert_range<concat,typename boost::mpl::end<concat>::type,inter_product_indices>::type final_sequence;
     static constexpr size_t MIA_return_order= boost::mpl::size<final_sequence>::value;
     static constexpr size_t inter_product_number=boost::mpl::size<inter_product_indices>::value;
-    typedef typename MIAProductReturnType<L_MIA,R_MIA,MIA_return_order>::type MIA_return_type;
+};
+
+template<class L_MIA, class R_MIA,class l_Seq,class r_Seq >
+struct MIAProductUtil: MIAPullIndicesUtil<l_Seq,r_Seq>
+{
+
+
+
+
+    typedef typename MIAProductReturnType<L_MIA,R_MIA,MIAPullIndicesUtil<l_Seq,r_Seq>::MIA_return_order>::type MIA_return_type;
+
+};
+
+template<class L_MIA, class R_MIA,class l_Seq,class r_Seq >
+struct MIASolveUtil: MIAPullIndicesUtil<l_Seq,r_Seq>
+{
+
+
+
+
+    typedef typename MIASolveReturnType<L_MIA,R_MIA,MIAPullIndicesUtil<l_Seq,r_Seq>::MIA_return_order>::type MIA_return_type;
 
 };
 
