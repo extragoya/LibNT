@@ -9,6 +9,7 @@ SET(USE_SPARSE_SOLVE TRUE CACHE BOOL "build routines requiring sparse solver lib
 SET(MIA_USE_HEADER_ONLY_TESTS TRUE CACHE BOOL "use the single header option in boost::test, which will work universally but will compile slowly")
 
 SET(BOOST_ROOT  CACHE PATH /path/to/boost)
+set(Boost_DIR ${BOOST_ROOT})
 
 SET(blas_LIB  CACHE FILEPATH /path/to/blas_lib)
 SET(SuperLU_LIB  CACHE FILEPATH /path/to/superlu_lib)
@@ -17,7 +18,7 @@ SET(SuperLU_INCLUDE  CACHE PATH /path/to/superlu_headers)
 #if we're using the single-header option in boost::test, only include the boost directories
 if(MIA_USE_HEADER_ONLY_TESTS)
 	
-	find_package(Boost 1.52.0 REQUIRED)
+	find_package(Boost 1.53.0 REQUIRED EXACT)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
 		
@@ -27,7 +28,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 	set(Boost_USE_STATIC_LIBS        ON)
 	set(Boost_USE_MULTITHREADED      ON)
 	set(Boost_USE_STATIC_RUNTIME    OFF)
-	find_package(Boost 1.52.0 REQUIRED COMPONENTS unit_test_framework )
+	find_package(Boost 1.53.0 REQUIRED EXACT COMPONENTS unit_test_framework  )
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
 	endif()

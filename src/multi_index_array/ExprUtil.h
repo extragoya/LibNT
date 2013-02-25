@@ -94,7 +94,7 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
         RSeq,
         typename boost::mpl::apply_wrap2<
             Pred,
-            _1,
+            boost::mpl::_1,
             first_LSeq
         >
     >::type n;
@@ -183,7 +183,7 @@ struct check_cartesian_product_indices<LSeq,RSeq,false,expression_type,Pred>
         RSeq,
         typename boost::mpl::apply_wrap2<
             Pred,
-            _1,
+            boost::mpl::_1,
             first_LSeq
         >
     >::type n;
@@ -246,7 +246,7 @@ struct auto_cartesian_product_indices<Seq,false,expression_type,Pred>
         poppedSeq,
         typename boost::mpl::apply_wrap2<
             Pred,
-            _1,
+            boost::mpl::_1,
             first_Seq
         >
     >::type n;
@@ -294,7 +294,7 @@ struct pull_match_order<Seq,Seq_toMatch,false,Pred>
         Seq_toMatch,
         typename boost::mpl::apply_wrap2<
             Pred,
-            _1,
+            boost::mpl::_1,
             first_Seq
         >
     >::type find_pos;
@@ -351,7 +351,7 @@ struct pull_right_index_order<LSeq,RSeq,false,Pred>
         RSeq,
         typename boost::mpl::apply_wrap2<
             Pred,
-            _1,
+            boost::mpl::_1,
             first_LSeq
         >
     >::type find_pos;

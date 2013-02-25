@@ -7,9 +7,9 @@
 
 #cmakedefine MIA_USE_HEADER_ONLY_TESTS
 
-//template<typename T> inline T test_precision() { return 1e-6;}
-//template<> inline float test_precision<float>() { return 1e-3f; }
-//template<> inline double test_precision<double>() { return 1e-6; }
+template<typename T> inline T test_precision() { return 1e-6;}
+template<> inline float test_precision<float>() { return 1e-3f; }
+template<> inline double test_precision<double>() { return 1e-6; }
 
 
 #endif // MIACONFIG_H
