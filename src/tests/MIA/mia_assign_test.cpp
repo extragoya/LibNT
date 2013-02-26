@@ -3,8 +3,7 @@
 #define BOOST_TEST_MODULE MIAAssignTests
 
 
-#include "DenseMIA.h"
-#include "Index.h"
+
 #include "MIAConfig.h"
 
 #ifdef MIA_USE_HEADER_ONLY_TESTS
@@ -12,7 +11,8 @@
 #else
 #include <boost/test/unit_test.hpp>
 #endif
-
+#include "DenseMIA.h"
+#include "Index.h"
 
 //typedef LibMIA::DenseMIA<double,3> dmia;
 

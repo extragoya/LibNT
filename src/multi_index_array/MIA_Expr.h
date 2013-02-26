@@ -323,6 +323,7 @@ public:
 
 
         *m_mia=*(Rhs.m_mia);
+        return *this;
     }
 
     template<class otherMIA,size_t other_inter_number>

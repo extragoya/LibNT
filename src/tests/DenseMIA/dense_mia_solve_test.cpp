@@ -3,8 +3,7 @@
 #define BOOST_TEST_MODULE DenseMIASolveTests
 
 
-#include "DenseMIA.h"
-#include "Index.h"
+
 #include "MIAConfig.h"
 
 #ifdef MIA_USE_HEADER_ONLY_TESTS
@@ -13,6 +12,8 @@
 #include <boost/test/unit_test.hpp>
 #endif
 
+#include "DenseMIA.h"
+#include "Index.h"
 
 template<class _data_type>
 void solve_work(size_t dim1){
