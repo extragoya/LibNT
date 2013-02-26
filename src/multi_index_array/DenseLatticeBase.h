@@ -15,8 +15,7 @@
 
 // Implementation of the DenseLattice class. Underlying data
 // structure and algorithms are those provided by the
-// Armadillo C++ Library. Uses the boost::operators class to
-// implement operators.
+// Eigen C++ Library.
 
 #ifndef DENSELATTICEBASE_H
 #define DENSELATTICEBASE_H
@@ -402,11 +401,11 @@ inline void DenseLatticeBase<Derived>::lsqr_solve(const DenseLatticeBase<otherDe
     typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
     typedef typename RType::matrix_type return_matrix_type;
     typedef typename otherDerived::const_matrix_type b_matrix_type;
-
+    using namespace Eigen;
     for (int i=0; i<this->depth(); i++)
     {
 
-        c.derived().tab_matrix(i)=tab_matrix(i).jacobiSvd().solve(b.derived().tab_matrix(i));
+        c.derived().tab_matrix(i)=tab_matrix(i).jacobiSvd(ComputeThinU | ComputeThinV).solve(b.derived().tab_matrix(i));
     }
 
 
