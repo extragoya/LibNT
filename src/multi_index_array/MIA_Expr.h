@@ -333,6 +333,7 @@ public:
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
         *(m_mia)=*(Rhs.m_mia);
+        return *this;
 
 
 
@@ -344,7 +345,7 @@ public:
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
-        //TODO check that no index is an inter product and check that orders match
+
         typedef perform_cartesian_check<m_Seq,r_Seq,internal::assign_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
 
@@ -365,8 +366,98 @@ public:
 
     }
 
+    template<class otherMIA,class r_Seq,size_t other_inter_number>
+    MIA_Atom& operator+=(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)
+    {
 
 
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
+
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+
+
+
+        m_mia->plus_equal(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
+
+        return *this;
+
+
+    }
+
+
+    template<class otherMIA,class r_Seq,size_t other_inter_number>
+    auto operator+(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAMergeReturnType<_MIA,otherMIA>::type,
+            m_Seq,
+            inter_product_number
+        >
+    {
+
+
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+        cType* cMIA(new cType(*m_mia));
+        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
+        C+=Rhs;
+        return C;
+
+
+    }
+
+
+    template<class otherMIA,class r_Seq,size_t other_inter_number>
+    MIA_Atom& operator-=(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)
+    {
+
+
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
+
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+
+
+
+        m_mia->minus_equal(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
+
+        return *this;
+
+
+    }
+
+
+    template<class otherMIA,class r_Seq,size_t other_inter_number>
+    auto operator-(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAMergeReturnType<_MIA,otherMIA>::type,
+            m_Seq,
+            inter_product_number
+        >
+    {
+
+
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+        cType* cMIA(new cType(*m_mia));
+        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
+        C-=Rhs;
+        return C;
+
+
+    }
 
 
     auto operator~()->MIA_Atom<_MIA,typename internal::decrement_back_indices<m_Seq,inter_product_number>::newSeq>{

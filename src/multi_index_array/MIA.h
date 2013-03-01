@@ -62,6 +62,7 @@ public:
 
     typedef typename internal::index_type<Derived>::type index_type;
     typedef typename internal::index_type<Derived>::type data_type;
+    constexpr static size_t order=internal::order<Derived>::value;
     Derived& derived() { return *static_cast<Derived*>(this); }
     /** \returns a const reference to the derived object */
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
@@ -111,8 +112,13 @@ public:
         std::fill ( derived().data_begin(), derived().data_end(), 0);
     }
 
+    /** Sets all mia data to given value.*/
+    void init(data_type val){
+        std::fill ( derived().data_begin(), derived().data_end(), val);
+    }
+
     index_type dim(size_t i) const{
-        assert(i<m_order);
+        assert(i<order);
         return m_dims[i];
     }
 
@@ -159,9 +165,18 @@ protected:
 
     }
 
-    constexpr static size_t m_order=internal::order<Derived>::value;
-    std::array<index_type,m_order> m_dims;
+
+    std::array<index_type,MIA::order> m_dims;
     index_type m_dimensionality;
+
+    template<class otherDerived,class index_param_type>
+    void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,MIA::order>& index_order)
+    {
+        for(size_t i=0;i<index_order.size();++i)
+            if(b.dim(index_order[i])!=m_dims[i])
+                throw MIAParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
+
+    }
 
 
 };

@@ -64,6 +64,7 @@ namespace internal
 
 constexpr int product_rule=0;
 constexpr int assign_rule=1;
+constexpr int merge_rule=2;
 constexpr int binary_rule=0;
 
 template<class T>
@@ -101,6 +102,14 @@ struct match_rule<ProdInd<id,elemval>,assign_rule>
 
 };
 
+
+//number of matches allowed with an ordinary index during an MIA merge (add/subtract)
+template<size_t id,int elemval>
+struct match_rule<ProdInd<id,elemval>,merge_rule>
+{
+    typedef boost::mpl::vector_c<int,1> allowed_matches;
+
+};
 
 
 template<class T,int rule_id>

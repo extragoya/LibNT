@@ -375,6 +375,25 @@ struct MIASolveReturnType<L_MIA,R_MIA,order,
 
 };
 
+template<typename Lhs, typename Rhs,class Enable = void>
+struct MIAMergeReturnType
+{
+};
+
+template<typename Lhs, typename Rhs>
+struct MIAMergeReturnType<Lhs,Rhs,
+    typename
+        boost::enable_if<
+            boost::mpl::and_<
+                internal::is_MIA<Lhs>,
+                internal::is_MIA<Rhs>
+            >
+        >::type
+    >
+{
+
+    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+};
 
 template<class array_type>
 void print_array(const array_type & _array, const std::string &header){

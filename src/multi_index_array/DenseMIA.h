@@ -15,12 +15,16 @@
 
 #ifndef DENSEMIA_H_INCLUDED
 #define DENSEMIA_H_INCLUDED
+
 #include <type_traits>
 #include <iostream>
 #include <algorithm>
 #include <boost/shared_array.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/type_traits.hpp>
+
+
+#include <boost/mpl/quote.hpp>
 
 #include "LibMiaException.h"
 #include "Util.h"
@@ -111,8 +115,9 @@ public:
     typedef typename internal::storage_iterator<DenseMIA>::type storage_iterator;
     typedef typename internal::const_storage_iterator<DenseMIA>::type const_storage_iterator;
     typedef typename internal::data_iterator<DenseMIA>::type data_iterator;
+
     typedef T* raw_pointer;
-    constexpr static size_t value=_order;
+    constexpr static size_t mOrder=_order;
 
 
 private:
@@ -124,6 +129,8 @@ private:
 
 
 public:
+
+
 
     struct null_deleter
     {
@@ -156,6 +163,46 @@ public:
 
     }
 
+    //!  Copy constructor.
+    /*!
+
+
+    */
+    DenseMIA(const DenseMIA& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims())
+    {
+
+
+        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        std::copy(otherMIA.data_begin(),otherMIA.data_end(),this->data_begin());
+
+
+    }
+
+    //!  Copy constructor.
+    /*!
+
+
+    */
+    template<class otherDerived>
+    DenseMIA(const DenseMIABase<otherDerived>& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims())
+    {
+
+
+
+        static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+        m_Data.reset(new Data(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        size_t idx=0;
+        std::for_each( otherMIA.data_begin(), otherMIA.data_end(), [this,&idx] (typename otherDerived::data_type val)
+        {
+            *(this->data_begin()+idx++)=this->convert<typename otherDerived::data_type>(val);
+        } );
+
+
+
+
+    }
 
 
     //!  Constructs DenseMIA of specified size.
@@ -168,6 +215,9 @@ public:
     {
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+
+
+
         this->zeros();
 
 
@@ -237,32 +287,13 @@ public:
         return (*m_Data).data()+size();
 
     }
-//
-//    storage_iterator begin()
-//    {
-//        return m_data.begin();
-//
-//    }
-//
-//    storage_iterator end()
-//    {
-//        return m_data.end();
-//
-//    }
-//
-//    const_storage_iterator begin() const
-//    {
-//        return m_data.begin();
-//
-//    }
-//
-//    const_storage_iterator end() const
-//    {
-//        return m_data.end();
-//
-//    }
-//
-//
+
+
+    template<class from_data_type>
+    data_type convert(const from_data_type from) const{
+        return boost::numeric::converter<data_type,from_data_type>::convert(from);
+    }
+
     //in dense case this is equivalent to dimensionality, but not in sparse case
     std::size_t size() const
     {
@@ -341,6 +372,9 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerive
 //    return *this;
 //
 //}
+
+
+
 
 template<class T, size_t _order>
 template<typename otherDerived,typename index_param_type>
