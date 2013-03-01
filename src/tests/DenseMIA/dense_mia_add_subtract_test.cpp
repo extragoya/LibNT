@@ -55,6 +55,31 @@ void do_work(size_t dim1,size_t dim2){
     BOOST_CHECK_MESSAGE(b==c2,std::string("Destructive Subtract 1 for ")+typeid(_data_type).name());
 
 
+    a.zeros();
+    b.zeros();
+    a.at(dim1-1,dim1-1,dim2-1,dim2-1)=1;
+    b.at(dim2-1,dim1-1,dim2-1,dim1-1)=1;
+
+
+    c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
+    c2.zeros();
+    c2.at(dim2-1,dim1-1,dim2-1,dim1-1)=2;
+    BOOST_CHECK_MESSAGE(c==c2,std::string("Non-destructive Add 2 for ")+typeid(_data_type).name());
+
+
+    b(i,j,k,l)+=a(j,l,i,k);
+    BOOST_CHECK_MESSAGE(b==c2,std::string("Destructive Add 2 for ")+typeid(_data_type).name());
+
+    a.at(dim1-1,dim1-1,dim2-1,dim2-1)=3;
+    b.at(dim2-1,dim1-1,dim2-1,dim1-1)=5;
+    c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
+    BOOST_CHECK_MESSAGE(c==c2,std::string("Non-destructive Subtract 2 for ")+typeid(_data_type).name());
+
+
+    b(i,j,k,l)-=a(j,l,i,k);
+    BOOST_CHECK_MESSAGE(b==c2,std::string("Destructive Subtract 2 for ")+typeid(_data_type).name());
+
+
 
 }
 
@@ -67,6 +92,11 @@ BOOST_AUTO_TEST_CASE( DenseMIAAddSubtractTests )
     do_work<float>(8,10);
     do_work<int>(8,10);
     do_work<long long int>(8,10);
+
+    do_work<double>(10,8);
+    do_work<float>(10,8);
+    do_work<int>(10,8);
+    do_work<long long int>(10,8);
 
 
 
