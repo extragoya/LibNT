@@ -354,12 +354,10 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
 
-        typedef internal::pull_match_order<r_Seq,m_Seq,boost::mpl::empty<r_Seq>::value,boost::mpl::quote2<internal::same_product_index_id> > pulling_index_order;
+        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
-        internal::sequence_array<typename pulling_index_order::match_order> right_assignment_order;
-        //print_array(right_assignment_order, "assign_order");
 
-        m_mia->assign(*(Rhs.m_mia),right_assignment_order);
+        m_mia->assign(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
 
         return *this;
 

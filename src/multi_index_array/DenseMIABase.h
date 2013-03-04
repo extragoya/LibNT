@@ -32,7 +32,9 @@
 
 namespace LibMIA
 {
-
+/** \addtogroup mia Multi-Index Array Classes
+ *  @{
+ */
 namespace internal
 {
 
@@ -58,16 +60,14 @@ struct const_storage_iterator<DenseMIABase<Derived> >: public const_storage_iter
 
 }
 
-/** \addtogroup mia Multi-Index Array Classes
- *  @{
- */
+
 
 //!  Base class for dense multi-index array classes.
 /*!
   This class acts as the base class for the parametric subclass pattern,
   which is more commonly known as the CTRP. It is the base class for all
   dense multi-index array types. Provides operations and functions common to all dense
-  multi-index array.
+  multi-index arrays.
 
   \tparam Derived   should only be a dense multi-index array class.
 */
@@ -109,6 +109,10 @@ public:
     template<class otherDerived>
     bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
 
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+    */
     template<typename... Indices>
     const data_type& at(Indices... indices) const {
         static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -116,6 +120,10 @@ public:
         return (*(derived().data()))(temp);
     }
 
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+    */
     template<typename... Indices>
     data_type& at(Indices... indices) {
         static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -123,43 +131,63 @@ public:
         return (*(derived().data()))(temp);
     }
 
+    //!Assignment operator. Will call Derived's operator
     template<class otherDerived>
     DenseMIABase& operator=(const DenseMIABase<otherDerived>& otherMIA){
         return derived()=otherMIA;
     }
 
 
+    //!Assignment operator. Will call Derived's operator
     DenseMIABase& operator=(const DenseMIABase& otherMIA){
         return derived()=otherMIA.derived();
     }
 
+    //!  Assignment based on given order. Will call Derived's operator
+    /*!
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
+                                Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
     template<class otherDerived,class index_param_type>
     void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<DenseMIABase>::value>& index_order){
         derived().assign(otherMIA.derived(),index_order);
     }
 
+    //! Returns scalar data at given indices
     const data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices) const{
 
         return (*(derived().data()))(indices);
     }
 
+    //! Returns scalar data at given indices
     data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices){
 
         return (*(derived().data()))(indices);
     }
 
+    //! Returns scalar data at given linear index
     const data_type& atIdx(index_type idx) const{
 
         //return lin index
         return *(derived().data_begin()+idx);
     }
 
+    //! Returns scalar data at given linear index
     data_type& atIdx(index_type idx) {
 
         //return lin index
         return *(derived().data_begin()+idx);
     }
 
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
+    /*!
+        For DenseMIAs, this function calls toLatticeCopy
+    */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const
     {
@@ -167,16 +195,34 @@ public:
 
     }
 
+    //! Flattens the MIA to a Lattice by creating a copy of the data.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return DenseLattice class that owns a copy of this's raw data
+    */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
 
-
+    //! Performs destructive add (+=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(y,z,x).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
     template<class otherDerived,typename index_param_type>
     DenseMIABase & plus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
+
+    //! Performs destructive subtract (-=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(y,z,x).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
     template<class otherDerived,typename index_param_type>
     DenseMIABase & minus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
+    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
     template<typename otherDerived, typename Op,typename index_param_type>
     void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
