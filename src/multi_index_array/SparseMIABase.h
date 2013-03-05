@@ -49,10 +49,19 @@ template<class Derived>
 struct data_iterator<SparseMIABase<Derived> >: public data_iterator<Derived> {};
 
 template<class Derived>
+struct index_iterator<SparseMIABase<Derived> >: public index_iterator<Derived> {};
+
+template<class Derived>
 struct storage_iterator<SparseMIABase<Derived> >: public storage_iterator<Derived> {};
 
 template<class Derived>
 struct const_storage_iterator<SparseMIABase<Derived> >: public const_storage_iterator<Derived> {};
+
+template<class Derived>
+struct Data<SparseMIABase<Derived> >: public Data<Derived> {};
+
+template<class Derived>
+struct Indices<SparseMIABase<Derived> >: public Indices<Derived> {};
 
 }
 
@@ -73,13 +82,13 @@ class SparseMIABase: public MIA<SparseMIABase<Derived > >
 public:
 
 
-    typedef typename internal::data_type<Derived>::type data_type;
-    typedef typename internal::index_type<Derived>::type index_type;
-    typedef typename internal::Data<Derived>::type Data;
-    typedef typename internal::data_iterator<Derived>::type data_iterator;
-    typedef typename internal::storage_iterator<Derived>::type storage_iterator;
-    typedef typename internal::const_storage_iterator<Derived>::type const_storage_iterator;
-    constexpr static size_t order=internal::order<DenseMIABase>::value;
+    typedef typename internal::data_type<SparseMIABase>::type data_type;
+    typedef typename internal::index_type<SparseMIABase>::type index_type;
+    typedef typename internal::Data<SparseMIABase>::type Data;
+    typedef typename internal::data_iterator<SparseMIABase>::type data_iterator;
+    typedef typename internal::storage_iterator<SparseMIABase>::type storage_iterator;
+    typedef typename internal::const_storage_iterator<SparseMIABase>::type const_storage_iterator;
+    constexpr static size_t mOrder=internal::order<SparseMIABase>::value;
     Derived& derived()
     {
         return *static_cast<Derived*>(this);
@@ -97,88 +106,88 @@ public:
     SparseMIABase(): MIA<SparseMIABase<Derived > >() {}
 
 
-    SparseMIABase(std::array<index_type,internal::order<SparseMIABase>::value> &_dims): MIA<SparseMIABase<Derived > >(_dims) {}
+    SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims) {}
 
-    template<class otherDerived>
-    bool operator==(const SparseMIABase<otherDerived>& otherMIA);
-
-    template<class otherDerived>
-    bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
-
-    //! Returns scalar data at given indices
-    /*!
-        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-    */
-    template<typename... Indices>
-    const data_type& at(Indices... indices) const {
-        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
-        return (*(derived().data()))(temp);
-    }
-
-    //! Returns scalar data at given indices
-    /*!
-        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-    */
-    template<typename... Indices>
-    data_type& at(Indices... indices) {
-        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
-        return (*(derived().data()))(temp);
-    }
-
-    //!Assignment operator. Will call Derived's operator
-    template<class otherDerived>
-    SparseMIABase& operator=(const SparseMIABase<otherDerived>& otherMIA){
-        return derived()=otherMIA;
-    }
-
-
-    //!Assignment operator. Will call Derived's operator
-    SparseMIABase& operator=(const SparseMIABase& otherMIA){
-        return derived()=otherMIA.derived();
-    }
-
-    //!  Assignment based on given order. Will call Derived's operator
-    /*!
-
-        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
-        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
-
-        \param[in] otherMIA the other MIA
-        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
-                                Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,class index_param_type>
-    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order){
-        derived().assign(otherMIA.derived(),index_order);
-    }
-
-    //! Returns scalar data at given indices
-    const data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices) const{
-
-        return (*(derived().data()))(indices);
-    }
-
-    //! Returns scalar data at given indices
-    data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices){
-
-        return (*(derived().data()))(indices);
-    }
-
-    //! Returns scalar data at given linear index
-    const data_type& atIdx(index_type idx) const{
-
-        //return lin index
-        return *(derived().data_begin()+idx);
-    }
-
-    //! Returns scalar data at given linear index
-    data_type& atIdx(index_type idx) {
-
-        //return lin index
-        return *(derived().data_begin()+idx);
-    }
+//    template<class otherDerived>
+//    bool operator==(const SparseMIABase<otherDerived>& otherMIA);
+//
+//    template<class otherDerived>
+//    bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
+//
+//    //! Returns scalar data at given indices
+//    /*!
+//        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+//    */
+//    template<typename... Indices>
+//    const data_type& at(Indices... indices) const {
+//        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+//        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
+//        return (*(derived().data()))(temp);
+//    }
+//
+//    //! Returns scalar data at given indices
+//    /*!
+//        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+//    */
+//    template<typename... Indices>
+//    data_type& at(Indices... indices) {
+//        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+//        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
+//        return (*(derived().data()))(temp);
+//    }
+//
+//    //!Assignment operator. Will call Derived's operator
+//    template<class otherDerived>
+//    SparseMIABase& operator=(const SparseMIABase<otherDerived>& otherMIA){
+//        return derived()=otherMIA;
+//    }
+//
+//
+//    //!Assignment operator. Will call Derived's operator
+//    SparseMIABase& operator=(const SparseMIABase& otherMIA){
+//        return derived()=otherMIA.derived();
+//    }
+//
+//    //!  Assignment based on given order. Will call Derived's operator
+//    /*!
+//
+//        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+//        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+//
+//        \param[in] otherMIA the other MIA
+//        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
+//                                Will assert a compile failure is size of index_order is not the same as this->mOrder
+//    */
+//    template<class otherDerived,class index_param_type>
+//    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order){
+//        derived().assign(otherMIA.derived(),index_order);
+//    }
+//
+//    //! Returns scalar data at given indices
+//    const data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices) const{
+//
+//        return (*(derived().data()))(indices);
+//    }
+//
+//    //! Returns scalar data at given indices
+//    data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices){
+//
+//        return (*(derived().data()))(indices);
+//    }
+//
+//    //! Returns scalar data at given linear index
+//    const data_type& atIdx(index_type idx) const{
+//
+//        //return lin index
+//        return *(derived().data_begin()+idx);
+//    }
+//
+//    //! Returns scalar data at given linear index
+//    data_type& atIdx(index_type idx) {
+//
+//        //return lin index
+//        return *(derived().data_begin()+idx);
+//    }
 
 //    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
 //    /*!

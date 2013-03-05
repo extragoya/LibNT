@@ -148,7 +148,7 @@ public:
     };
 
     //!  Constructs empty DenseMIA
-    DenseMIA():DenseMIABase<DenseMIA<T,_order> >(0),m_smart_raw_ptr(nullptr),m_Data(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order())),hasOwnership(true)
+    DenseMIA():DenseMIABase<DenseMIA<T,_order> >(),m_smart_raw_ptr(nullptr),m_Data(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order())),hasOwnership(true)
     {
     }
 

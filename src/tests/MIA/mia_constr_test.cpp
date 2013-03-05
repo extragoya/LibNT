@@ -13,6 +13,7 @@
 #include <boost/test/unit_test.hpp>
 #endif
 #include "DenseMIA.h"
+#include "SparseMIA.h"
 constexpr int dim=5;
 
 
@@ -76,12 +77,12 @@ void dense_constructor_work(size_t dim1, size_t dim2, size_t dim3){
 
 }
 
-//template<typename T>
-//void sparse_constructor_work(){
-//    typedef T Lat1;
-//
-//    constructor_work<T>();
-//
+template<typename T>
+void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
+
+
+    constructor_work<T>(dim1,dim2,dim3);
+
 //    Lat1 test;
 //    BOOST_CHECK_EQUAL(test.index_end()-test.index_begin(),0);
 //
@@ -90,11 +91,11 @@ void dense_constructor_work(size_t dim1, size_t dim2, size_t dim3){
 //    BOOST_CHECK_EQUAL(test2.index_end()-test2.index_begin(),0);
 //    test2.eye();
 //    Lat1 test3(test2.data(),test2.indices(),test2.height(),test2.width(),test2.depth());
-//
-//
-//
-//
-//}
+
+
+
+
+}
 
 BOOST_AUTO_TEST_CASE( DenseMIAConstrTests )
 {
@@ -110,11 +111,12 @@ BOOST_AUTO_TEST_CASE( DenseMIAConstrTests )
 }
 
 
-//BOOST_AUTO_TEST_CASE( SparseLatticeConstrTests )
-//{
-//
-//    sparse_constructor_work<LibMIA::SparseLattice<float> >();
-//    sparse_constructor_work<LibMIA::SparseLattice<double> >();
-//    sparse_constructor_work<LibMIA::SparseLattice<int32_t> >();
-//    sparse_constructor_work<LibMIA::SparseLattice<int64_t> >();
-//}
+BOOST_AUTO_TEST_CASE( SparseMIAConstrTests )
+{
+
+    size_t dim1=3,dim2=4,dim3=5;
+    sparse_constructor_work<LibMIA::SparseMIA<float,3> >(dim1,dim2,dim3);
+    sparse_constructor_work<LibMIA::SparseMIA<double,3> >(dim1,dim2,dim3);
+    sparse_constructor_work<LibMIA::SparseMIA<int32_t,3> >(dim1,dim2,dim3);
+    sparse_constructor_work<LibMIA::SparseMIA<int64_t,3> >(dim1,dim2,dim3);
+}

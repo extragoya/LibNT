@@ -128,8 +128,14 @@ class MIA;
 template <class Derived>
 class DenseMIABase;
 
+template <class Derived>
+class SparseMIABase;
+
 template <class T,size_t _order>
 class DenseMIA;
+
+template <class T,size_t _order>
+class SparseMIA;
 
 template<class _MIA,class m_Seq,size_t inter_product_size=0>
 struct MIA_Atom;

@@ -99,7 +99,7 @@ public:
 
     template<typename... Dims>
     MIA(Dims... dims):m_dims{{dims...}},m_dimensionality(compute_dimensionality()) {
-
+        static_assert(internal::check_mia_constructor<MIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
     }
 
     void init(const std::array<index_type,internal::order<MIA>::value> _dims){

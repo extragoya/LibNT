@@ -25,7 +25,7 @@
 #include "Util.h"
 #include "SparseLatticeBase.h"
 #include "DenseLattice.h"
-
+#include "tupleit.hh"
 
 
 
