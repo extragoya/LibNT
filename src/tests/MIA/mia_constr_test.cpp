@@ -45,7 +45,7 @@ void dense_constructor_work(size_t dim1, size_t dim2, size_t dim3){
     constructor_work<MIAType>(dim1,dim2,dim3);
     MIAType test2(dim1,dim2,dim3);
 
-    BOOST_CHECK_EQUAL(test2.data_end()-test2.data_begin(),(int)dim1*dim2*dim3);
+    BOOST_CHECK_EQUAL(test2.data_end()-test2.data_begin(),(int)(dim1*dim2*dim3));
     bool passed=true;
     for(auto it=test2.data_begin();it<test2.data_end();++it)
         passed=(passed&&*it==0);

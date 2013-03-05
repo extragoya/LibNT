@@ -13,22 +13,15 @@
 // *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
 
 
-#ifndef DENSEMIA_H_INCLUDED
-#define DENSEMIA_H_INCLUDED
-
-#include <type_traits>
-#include <iostream>
-#include <algorithm>
-#include <boost/shared_array.hpp>
-#include <boost/multi_array.hpp>
-#include <boost/type_traits.hpp>
+#ifndef SPARSEMIA_H_INCLUDED
+#define SPARSEMIA_H_INCLUDED
 
 
 
 #include "LibMiaException.h"
 #include "Util.h"
 #include "IndexUtil.h"
-#include "DenseMIABase.h"
+#include "SparseMIABase.h"
 
 
 
@@ -43,44 +36,44 @@ namespace internal
 {
 
 template<typename T,size_t _order>
-struct data_type<DenseMIA<T,_order> >
+struct data_type<SparseMIA<T,_order> >
 {
     typedef T type;
 };
 
 template<typename T,size_t _order>
-struct index_type<DenseMIA<T,_order> >
+struct index_type<SparseMIA<T,_order> >
 {
     typedef long long type;
 };
 
 template<typename T,size_t _order>
-struct order<DenseMIA<T,_order> >
+struct order<SparseMIA<T,_order> >
 {
     constexpr static size_t value=_order;
 };
 
 
 template<typename T,size_t _order>
-struct Data<DenseMIA<T,_order> >
+struct Data<SparseMIA<T,_order> >
 {
     typedef typename boost::multi_array_ref<T,_order> type;
 };
 
 template<typename T,size_t _order>
-struct storage_iterator<DenseMIA<T,_order> >
+struct storage_iterator<SparseMIA<T,_order> >
 {
-    typedef typename Data<DenseMIA<T,_order> >::type::iterator type;
+    typedef typename Data<SparseMIA<T,_order> >::type::iterator type;
 };
 
 template<typename T,size_t _order>
-struct const_storage_iterator<DenseMIA<T,_order> >
+struct const_storage_iterator<SparseMIA<T,_order> >
 {
-    typedef typename Data<DenseMIA<T,_order> >::type::const_iterator type;
+    typedef typename Data<SparseMIA<T,_order> >::type::const_iterator type;
 };
 
 template<typename T,size_t _order>
-struct data_iterator<DenseMIA<T,_order> >
+struct data_iterator<SparseMIA<T,_order> >
 {
     typedef T* type;
 };
@@ -91,7 +84,7 @@ struct data_iterator<DenseMIA<T,_order> >
 
 
 
-//!  MIA class for dense data.
+//!  MIA class for sparse data.
 /*!
   Supports addition, multiplication, and solution of, possibly over-determined, systems of
   linear equations. By default MIA will own underlying raw data, which can be reallocated and resized.
@@ -100,7 +93,7 @@ struct data_iterator<DenseMIA<T,_order> >
   \tparam _order   the order (number of indices) of the MIA.
 */
 template <class T, size_t _order>
-class DenseMIA: public DenseMIABase<DenseMIA<T,_order> >
+class SparseMIA: public SparseMIABase<SparseMIA<T,_order> >
 {
 
 
@@ -110,16 +103,16 @@ class DenseMIA: public DenseMIABase<DenseMIA<T,_order> >
 public:
 
     //! raw data_type
-    typedef typename internal::data_type<DenseMIA>::type data_type;
+    typedef typename internal::data_type<SparseMIA>::type data_type;
     //! raw index_type
-    typedef typename internal::index_type<DenseMIA>::type index_type;
+    typedef typename internal::index_type<SparseMIA>::type index_type;
     //! data container type (that manages raw data)
-    typedef typename internal::Data<DenseMIA>::type data_container_type;
+    typedef typename internal::Data<SparseMIA>::type data_container_type;
 
-    typedef typename internal::storage_iterator<DenseMIA>::type storage_iterator;
-    typedef typename internal::const_storage_iterator<DenseMIA>::type const_storage_iterator;
+    typedef typename internal::storage_iterator<SparseMIA>::type storage_iterator;
+    typedef typename internal::const_storage_iterator<SparseMIA>::type const_storage_iterator;
     //! iterator type for iterating directly through raw data
-    typedef typename internal::data_iterator<DenseMIA>::type data_iterator;
+    typedef typename internal::data_iterator<SparseMIA>::type data_iterator;
     //! raw data pointer type
     typedef T* raw_pointer;
     //! order of the MIA
@@ -335,8 +328,6 @@ public:
 
     }
 
-
-
     //! If this has ownership, the raw data will be deallocated
     ~DenseMIA(){
         if(!hasOwnership)
@@ -418,7 +409,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
     auto other_it=otherMIA.data_begin();
     for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
     {
-        *this_it=this->convert(*(other_it+internal::sub2ind(this->ind2sub(curIdx++),index_order,otherMIA.dims())));
+        *this_it=this->convert(*(other_it+sub2ind(ind2sub(curIdx++, this->dims()),index_order,otherMIA.dims())));
 
     }
 

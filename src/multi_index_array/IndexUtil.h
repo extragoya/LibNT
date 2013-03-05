@@ -189,7 +189,7 @@ struct check_index_compatibility:
     >
 {};
 
-}
+
 
 //check, probably std::array second parameter templated by size_t
 template<typename indexType,size_t T>
@@ -253,7 +253,7 @@ typename dimType::value_type sub2ind(const accessType & indices, const accessTyp
 
 /*! @} */
 /*! @} */
-
+} //namespace internal
 
 }
 

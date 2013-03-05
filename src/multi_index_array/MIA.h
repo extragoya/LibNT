@@ -34,7 +34,22 @@ namespace LibMIA
 namespace internal
 {
 template<class Derived>
+struct data_type<MIA<Derived> >: public data_type<Derived> {};
+
+template<class Derived>
+struct index_type<MIA<Derived> >: public index_type<Derived> {};
+
+template<class Derived>
 struct order<MIA<Derived> >: public order<Derived> {};
+
+template<class Derived>
+struct data_iterator<MIA<Derived> >: public data_iterator<Derived> {};
+
+template<class Derived>
+struct storage_iterator<MIA<Derived> >: public storage_iterator<Derived> {};
+
+template<class Derived>
+struct const_storage_iterator<MIA<Derived> >: public const_storage_iterator<Derived> {};
 }
 
 
@@ -61,8 +76,8 @@ class MIA
 public:
 
     typedef typename internal::index_type<Derived>::type index_type;
-    typedef typename internal::index_type<Derived>::type data_type;
-    constexpr static size_t order=internal::order<Derived>::value;
+    typedef typename internal::data_type<Derived>::type data_type;
+    constexpr static size_t mOrder=internal::order<Derived>::value;
     Derived& derived() { return *static_cast<Derived*>(this); }
     /** \returns a const reference to the derived object */
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
@@ -118,7 +133,7 @@ public:
     }
 
     index_type dim(size_t i) const{
-        assert(i<order);
+        assert(i<mOrder);
         return m_dims[i];
     }
 
@@ -148,6 +163,51 @@ public:
         return m_dimensionality;
     }
 
+
+    index_type sub2ind(const std::array<index_type,mOrder> & indices){
+        return internal::sub2ind(indices,this->dims());
+    }
+
+    std::array<index_type,mOrder> ind2sub(index_type idx){
+        return internal::ind2sub(idx, this->dims());
+    }
+
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+    */
+    template<typename... Indices>
+    const data_type& at(Indices... indices) const {
+        static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+        std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
+        return at(temp);
+    }
+
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
+    */
+    template<typename... Indices>
+    data_type& at(Indices... indices) {
+        static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+        std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
+        return at(temp);
+    }
+
+
+    //! Returns scalar data at given indices
+    const data_type& at(const std::array<index_type, mOrder>& indices) const{
+
+        return derived().atIdx(this->sub2ind(indices));
+
+    }
+
+    //! Returns scalar data at given indices
+    data_type& at(const std::array<index_type, mOrder> & indices) {
+
+        return derived().atIdx(this->sub2ind(indices));
+    }
+
 protected:
 
     index_type compute_dimensionality(){
@@ -166,11 +226,11 @@ protected:
     }
 
 
-    std::array<index_type,MIA::order> m_dims;
+    std::array<index_type,mOrder> m_dims;
     index_type m_dimensionality;
 
     template<class otherDerived,class index_param_type>
-    void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,MIA::order>& index_order)
+    void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order)
     {
         for(size_t i=0;i<index_order.size();++i)
             if(b.dim(index_order[i])!=m_dims[i])

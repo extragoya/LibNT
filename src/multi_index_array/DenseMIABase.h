@@ -109,27 +109,7 @@ public:
     template<class otherDerived>
     bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
 
-    //! Returns scalar data at given indices
-    /*!
-        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-    */
-    template<typename... Indices>
-    const data_type& at(Indices... indices) const {
-        static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,internal::order<DenseMIABase>::value> temp = {{indices...}};
-        return (*(derived().data()))(temp);
-    }
 
-    //! Returns scalar data at given indices
-    /*!
-        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-    */
-    template<typename... Indices>
-    data_type& at(Indices... indices) {
-        static_assert(internal::check_mia_constructor<DenseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,internal::order<DenseMIABase>::value> temp = {{indices...}};
-        return (*(derived().data()))(temp);
-    }
 
     //!Assignment operator. Will call Derived's operator
     template<class otherDerived>
@@ -158,17 +138,7 @@ public:
         derived().assign(otherMIA.derived(),index_order);
     }
 
-    //! Returns scalar data at given indices
-    const data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices) const{
 
-        return (*(derived().data()))(indices);
-    }
-
-    //! Returns scalar data at given indices
-    data_type& at(std::array<index_type, internal::order<DenseMIABase>::value> indices){
-
-        return (*(derived().data()))(indices);
-    }
 
     //! Returns scalar data at given linear index
     const data_type& atIdx(index_type idx) const{
@@ -332,11 +302,11 @@ auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_in
 
     index_type row_idx=0, column_idx=0,tab_idx=0;
     for (index_type k=0;k<tab_size;++k){
-        tab_idx=sub2ind(ind2sub(k,tab_dims),tab_indices,this->m_dims);
+        tab_idx=internal::sub2ind(internal::ind2sub(k,tab_dims),tab_indices,this->m_dims);
         for (index_type j=0;j<column_size;++j){
-            column_idx=tab_idx+sub2ind(ind2sub(j,column_dims),column_indices,this->m_dims);
+            column_idx=tab_idx+internal::sub2ind(internal::ind2sub(j,column_dims),column_indices,this->m_dims);
             for (index_type i=0;i<row_size;++i){
-                row_idx=column_idx+sub2ind(ind2sub(i,row_dims),row_indices,this->m_dims);
+                row_idx=column_idx+internal::sub2ind(internal::ind2sub(i,row_dims),row_indices,this->m_dims);
 
                 lat(i,j,k)=this->atIdx(row_idx);
 
@@ -399,7 +369,7 @@ void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op&
     auto other_it=b.data_begin();
     for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
     {
-        *this_it=op(*this_it,derived().convert(*(other_it+sub2ind(ind2sub(curIdx++, this->dims()),index_order,b.dims()))));
+        *this_it=op(*this_it,derived().convert(*(other_it+internal::sub2ind(this->ind2sub(curIdx++),index_order,b.dims()))));
 
     }
 

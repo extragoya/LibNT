@@ -16,6 +16,8 @@ set(LibMIA_headers
      Packer.h
      SparseLattice.h
      SparseLatticeBase.h
+	 SparseMIA.h
+	 SparseMIABase.h
      tupleit.hh
      UniqueLabel.h
      Util.h  
