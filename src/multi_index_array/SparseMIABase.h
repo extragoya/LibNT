@@ -63,6 +63,9 @@ struct Data<SparseMIABase<Derived> >: public Data<Derived> {};
 template<class Derived>
 struct Indices<SparseMIABase<Derived> >: public Indices<Derived> {};
 
+template<class Derived>
+struct full_tuple<SparseMIABase<Derived> >: public full_tuple<Derived> {};
+
 }
 
 
@@ -88,6 +91,7 @@ public:
     typedef typename internal::data_iterator<SparseMIABase>::type data_iterator;
     typedef typename internal::storage_iterator<SparseMIABase>::type storage_iterator;
     typedef typename internal::const_storage_iterator<SparseMIABase>::type const_storage_iterator;
+    typedef typename internal::full_tuple<SparseMIABase>::type full_tuple;
     constexpr static size_t mOrder=internal::order<SparseMIABase>::value;
     Derived& derived()
     {
@@ -107,6 +111,47 @@ public:
 
 
     SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims) {}
+
+    //! Returns scalar data at given linear index
+    const data_type& atIdx(index_type idx) const{
+
+
+        storage_iterator it=find_idx(idx);
+        return it==derived().data_end()?*derived().data_begin():*it;
+    }
+
+    //! Returns scalar data at given linear index
+    data_type& atIdx(index_type idx) {
+
+        storage_iterator it=find_idx(idx);
+        return it==derived().data_end()?*derived().data_begin():*it;
+    }
+
+    const_storage_iterator storage_begin() const
+    {
+        return iterators::makeTupleIterator(derived().data_begin(),derived().index_begin());
+
+    }
+
+
+    const_storage_iterator storage_end() const
+    {
+        return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
+    }
+
+    storage_iterator storage_begin()
+    {
+        return iterators::makeTupleIterator(derived().data_begin(),derived().index_begin());
+
+    }
+
+
+    storage_iterator storage_end()
+    {
+        return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
+    }
+
+
 
 //    template<class otherDerived>
 //    bool operator==(const SparseMIABase<otherDerived>& otherMIA);
@@ -231,52 +276,22 @@ public:
 //    template<typename otherDerived, typename Op,typename index_param_type>
 //    void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
-    data_iterator data_begin() const
-    {
 
 
-        return derived().data_begin();
-    }
 
-    data_iterator data_end() const
-    {
-
-
-        return derived().data_end();
-    }
-
-    storage_iterator begin()
-    {
-
-
-        return derived().begin();
-    }
-
-    storage_iterator end()
-    {
-
-
-        return derived().end();
-    }
-    const_storage_iterator begin() const
-    {
-
-
-        return derived().begin();
-    }
-
-    const_storage_iterator end() const
-    {
-
-
-        return derived().end();
-    }
 
 
 
 protected:
 
+    storage_iterator & find_idx(const index_type idx) const
+    {
+        return std::lower_bound(storage_begin(),storage_end(),idx,[] (const full_tuple& _tuple,const index_type idx)
+        {
+            return std::get<1>(_tuple)<idx;
+        } );
 
+    }
 
 
 private:

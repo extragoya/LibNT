@@ -207,6 +207,18 @@ template<class T, size_t _order>
 struct is_MIA<DenseMIA<T,_order > >: public boost::true_type {};
 
 template<class T>
+struct is_DenseMIA: public boost::false_type {};
+
+template<class T, size_t _order>
+struct is_DenseMIA<DenseMIA<T,_order > >: public boost::true_type {};
+
+template<class Derived>
+struct is_DenseMIA<DenseMIABase<Derived> >:public boost::true_type {};
+
+template<class Derived>
+struct is_DenseMIA<MIA<Derived> >:public is_DenseMIA<Derived> {};
+
+template<class T>
 struct is_Lattice: public boost::false_type {};
 
 template<class T>

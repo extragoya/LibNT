@@ -18,7 +18,7 @@
 #define SPARSELATTICEBASE_H
 #include <algorithm>
 #include <vector>
-
+#include <type_traits>
 #include <cmath>
 #include <iostream>
 #include <sstream>
@@ -38,9 +38,12 @@
 
 
 
+
 #include <Eigen/Sparse>
+//if we're using sparse_solve then we must include SuperLU support
+#ifdef USE_SPARSE_SOLVE
 #include <Eigen/SuperLUSupport>
-//
+#endif
 
 #include "Lattice.h"
 #include "Util.h"
@@ -118,6 +121,7 @@ public:
     //only enable for operands that have the same index_type
     template <class otherDerived>
     typename SparseProductReturnType<Derived,otherDerived>::type operator*(SparseLatticeBase<otherDerived> &b);
+
 
     //only enable for operands that have the same index_type
     template <class otherDerived>
@@ -717,6 +721,7 @@ inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(std::vector<index_typ
 
 }
 
+#ifdef USE_SPARSE_SOLVE
 template <class Derived>
 template <class otherDerived>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b)
@@ -883,7 +888,15 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     return c;
 }
-
+#else
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b){
+    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
+    struct fake : std::false_type{};
+    static_assert(fake::value,"You must define USE_SPARSE_SOLVE and build and link to SuperLU to perform sparse solution of equations.");
+}
+#endif
 
 
 

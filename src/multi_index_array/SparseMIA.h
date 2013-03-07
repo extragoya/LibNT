@@ -16,16 +16,16 @@
 #ifndef SPARSEMIA_H_INCLUDED
 #define SPARSEMIA_H_INCLUDED
 
-#include "boost/tuple/tuple.hpp"
-#include "tupleit.hh"
+#include <tuple>
 #include <boost/iterator/zip_iterator.hpp>
+#include <boost/utility/enable_if.hpp>
 
+#include "tupleit.hh"
 
 #include "LibMiaException.h"
 #include "Util.h"
 #include "IndexUtil.h"
 #include "SparseMIABase.h"
-
 
 
 //\defgroup
@@ -96,26 +96,26 @@ struct const_data_iterator<SparseMIA<T,_order> >
 template<typename T,size_t _order>
 struct full_iterator_tuple<SparseMIA<T,_order> >
 {
-    typedef typename boost::tuple<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename std::tuple<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_iterator_tuple<SparseMIA<T,_order>>
 {
-    typedef typename boost::tuple<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename std::tuple<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
 
 };
 
 template<typename T,size_t _order>
 struct full_tuple<SparseMIA<T,_order> >
 {
-    typedef boost::tuple<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
+    typedef std::tuple<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_tuple<SparseMIA<T,_order> >
 {
-    typedef boost::tuple< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
+    typedef std::tuple< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
 };
 
 template<typename T,size_t _order>
@@ -192,6 +192,34 @@ public:
     {
     }
 
+
+    //! Copy constructor for DenseMIAs
+    //
+    template<class otherMIA, typename boost::enable_if< internal::is_DenseMIA<otherMIA>,int >::type = 0>
+    SparseMIA(const otherMIA& denseMIA):SparseMIABase<SparseMIA<T,_order>>(denseMIA.dims())
+    {
+        //count the number of nnzs
+        size_t nnz=0;
+        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
+            if(*it)
+                ++nnz;
+
+        //allocate the required data
+        m_data.resize(nnz);
+        m_indices.resize(nnz);
+
+        //set m_data and m_indices
+        index_type idx=0;
+        nnz=0;
+        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it){
+            if(*it){
+                m_data[nnz]=*it;
+                m_indices[nnz++]=idx;
+            }
+            ++idx;
+        }
+
+    }
 
 
 //    //!  Copy constructor.
@@ -386,29 +414,7 @@ public:
 
     }
 
-    const_storage_iterator begin() const
-    {
-        return iterators::makeTupleIterator(data_begin(),index_begin());
 
-    }
-
-
-    const_storage_iterator end() const
-    {
-        return iterators::makeTupleIterator(data_end(),index_end());
-    }
-
-    storage_iterator begin()
-    {
-        return iterators::makeTupleIterator(data_begin(),index_begin());
-
-    }
-
-
-    storage_iterator end()
-    {
-        return iterators::makeTupleIterator(data_end(),index_end());
-    }
 
     //! Converts a scalar value to data_type
     /*!

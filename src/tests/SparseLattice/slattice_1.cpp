@@ -1,10 +1,12 @@
 #define EIGEN_SUPERLU_SUPPORT
 #include <string>
 #include <iostream>
+#include "MIAConfig.h"
 #include "SparseLattice.h"
 #include "MappedSparseLattice.h"
 #include "Lattice.h"
 #include "DenseLattice.h"
+
 #include "slattice_test.h"
 typedef LibMIA::SparseLattice<double> sLattice;
 typedef LibMIA::MappedSparseLattice<double> mLattice;
