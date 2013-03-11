@@ -6,7 +6,7 @@
 #define LibMIA_VERSION_MINOR @LibMIA_VERSION_MINOR@
 
 #cmakedefine MIA_USE_HEADER_ONLY_TESTS
-#cmakedefine USE_SPARSE_SOLVE
+#cmakedefine LIBMIA_USE_SPARSE_SOLVE
 
 template<typename T> inline T test_precision() { return 1e-6;}
 template<> inline float test_precision<float>() { return 1e-3f; }

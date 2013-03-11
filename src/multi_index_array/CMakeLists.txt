@@ -25,9 +25,9 @@ set(LibMIA_headers
      )
 add_library(LibMIA STATIC ${LibMIA_headers})
 set_target_properties(LibMIA PROPERTIES LINKER_LANGUAGE CXX)
-if(USE_SPARSE_SOLVE)
+if(LIBMIA_USE_SPARSE_SOLVE)
 	TARGET_LINK_LIBRARIES(LibMIA ${SuperLU_LIB} ${blas_LIB})
-endif(USE_SPARSE_SOLVE)
+endif(LIBMIA_USE_SPARSE_SOLVE)
 
 set_target_properties(LibMIA PROPERTIES
   PUBLIC_HEADER "${LibMIA_headers};${CMAKE_BINARY_DIR}/MIAConfig.h")

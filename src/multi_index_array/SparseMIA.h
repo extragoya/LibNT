@@ -19,6 +19,7 @@
 #include <tuple>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/utility/enable_if.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "tupleit.hh"
 
@@ -96,26 +97,26 @@ struct const_data_iterator<SparseMIA<T,_order> >
 template<typename T,size_t _order>
 struct full_iterator_tuple<SparseMIA<T,_order> >
 {
-    typedef typename std::tuple<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename boost::tuple<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_iterator_tuple<SparseMIA<T,_order>>
 {
-    typedef typename std::tuple<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename boost::tuple<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
 
 };
 
 template<typename T,size_t _order>
 struct full_tuple<SparseMIA<T,_order> >
 {
-    typedef std::tuple<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
+    typedef boost::tuple<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_tuple<SparseMIA<T,_order> >
 {
-    typedef std::tuple< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
+    typedef boost::tuple< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
 };
 
 template<typename T,size_t _order>
@@ -176,7 +177,7 @@ public:
 
 
 private:
-
+    friend class SparseMIABase<SparseMIA>;
     Data m_data;
     Indices m_indices;
 

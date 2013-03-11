@@ -53,6 +53,9 @@ template<class Derived>
 struct data_iterator<DenseMIABase<Derived> >: public data_iterator<Derived> {};
 
 template<class Derived>
+struct const_data_iterator<DenseMIABase<Derived> >: public const_data_iterator<Derived> {};
+
+template<class Derived>
 struct storage_iterator<DenseMIABase<Derived> >: public storage_iterator<Derived> {};
 
 template<class Derived>
@@ -81,6 +84,7 @@ public:
     typedef typename internal::index_type<Derived>::type index_type;
     typedef typename internal::Data<Derived>::type Data;
     typedef typename internal::data_iterator<Derived>::type data_iterator;
+    typedef typename internal::const_data_iterator<Derived>::type const_data_iterator;
     typedef typename internal::storage_iterator<Derived>::type storage_iterator;
     typedef typename internal::const_storage_iterator<Derived>::type const_storage_iterator;
     constexpr static size_t order=internal::order<DenseMIABase>::value;
@@ -196,19 +200,34 @@ public:
     template<typename otherDerived, typename Op,typename index_param_type>
     void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
-    data_iterator data_begin() const
+    data_iterator data_begin()
     {
 
 
         return derived().data_begin();
     }
 
-    data_iterator data_end() const
+    data_iterator data_end()
     {
 
 
         return derived().data_end();
     }
+
+    const_data_iterator data_begin() const
+    {
+
+
+        return derived().data_begin();
+    }
+
+    const_data_iterator data_end() const
+    {
+
+
+        return derived().data_end();
+    }
+
 
     storage_iterator begin()
     {

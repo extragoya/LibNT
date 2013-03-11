@@ -69,6 +69,13 @@ struct MIAprint
     }
 } ;
 
+template<class T>
+struct select_first
+{
+    T& operator()(T&left, T& right){
+        return left;
+    }
+};
 
 const bool ColumnMajor=true;
 const bool RowMajor=false;

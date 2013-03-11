@@ -16,6 +16,11 @@
 #ifndef SPARSEMIABASE_H_INCLUDED
 #define SPARSEMIABASE_H_INCLUDED
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+
+
 #include "LibMiaException.h"
 #include "Util.h"
 #include "IndexUtil.h"
@@ -49,6 +54,9 @@ template<class Derived>
 struct data_iterator<SparseMIABase<Derived> >: public data_iterator<Derived> {};
 
 template<class Derived>
+struct const_data_iterator<SparseMIABase<Derived> >: public const_data_iterator<Derived> {};
+
+template<class Derived>
 struct index_iterator<SparseMIABase<Derived> >: public index_iterator<Derived> {};
 
 template<class Derived>
@@ -65,6 +73,9 @@ struct Indices<SparseMIABase<Derived> >: public Indices<Derived> {};
 
 template<class Derived>
 struct full_tuple<SparseMIABase<Derived> >: public full_tuple<Derived> {};
+
+template<class Derived>
+struct const_full_tuple<SparseMIABase<Derived> >: public const_full_tuple<Derived> {};
 
 }
 
@@ -89,9 +100,11 @@ public:
     typedef typename internal::index_type<SparseMIABase>::type index_type;
     typedef typename internal::Data<SparseMIABase>::type Data;
     typedef typename internal::data_iterator<SparseMIABase>::type data_iterator;
+    typedef typename internal::const_data_iterator<SparseMIABase>::type const_data_iterator;
     typedef typename internal::storage_iterator<SparseMIABase>::type storage_iterator;
     typedef typename internal::const_storage_iterator<SparseMIABase>::type const_storage_iterator;
     typedef typename internal::full_tuple<SparseMIABase>::type full_tuple;
+    typedef typename internal::const_full_tuple<SparseMIABase>::type const_full_tuple;
     constexpr static size_t mOrder=internal::order<SparseMIABase>::value;
     Derived& derived()
     {
@@ -104,15 +117,21 @@ public:
     }
 
     template<typename... Dims>
-    SparseMIABase(Dims... dims): MIA<SparseMIABase<Derived > >(dims...) {}
+    SparseMIABase(Dims... dims): MIA<SparseMIABase<Derived > >(dims...),mIsSorted(true) {
+        init_sort_order();
+    }
 
 
-    SparseMIABase(): MIA<SparseMIABase<Derived > >() {}
+    SparseMIABase(): MIA<SparseMIABase<Derived > >(),mIsSorted(true) {
+        init_sort_order();
+    }
 
 
-    SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims) {}
+    SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims),mIsSorted(true) {
+        init_sort_order();
+    }
 
-    //! Returns scalar data at given linear index
+    //! Returns scalar data at given linear index or first element if not found
     const data_type& atIdx(index_type idx) const{
 
 
@@ -120,7 +139,7 @@ public:
         return it==derived().data_end()?*derived().data_begin():*it;
     }
 
-    //! Returns scalar data at given linear index
+    //! Returns scalar data at given linear index or first element if not found
     data_type& atIdx(index_type idx) {
 
         storage_iterator it=find_idx(idx);
@@ -151,6 +170,111 @@ public:
         return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
     }
 
+    data_iterator data_begin()
+    {
+
+
+        return derived().data_begin();
+    }
+
+    data_iterator data_end()
+    {
+
+
+        return derived().data_end();
+    }
+
+    const_data_iterator data_begin() const
+    {
+
+
+        return derived().data_begin();
+    }
+
+    const_data_iterator data_end() const
+    {
+
+
+        return derived().data_end();
+    }
+
+
+
+    //!resizes data and index containers. Previous references should be considered invalid
+    void resize(size_t _size)
+    {
+        derived().m_data.resize(_size);
+        derived().m_indices.resize(_size);
+    }
+
+    bool is_sorted() const{
+        return mIsSorted;
+    }
+
+    void sort()
+    {
+
+
+        if(!mIsSorted)
+        {
+            std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
+            {
+                return boost::get<1>(left)<boost::get<1>(right);
+            } );
+        }
+
+
+    }
+
+
+    //!  Sets MIA index data to uniformly distributed random values.
+    /*!
+    May cause duplicates
+
+    */
+    void rand_indices(){
+        boost::uniform_real<> uni_dist(0,this->m_dimensionality);
+        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
+        typedef boost::numeric::converter<index_type,boost::uniform_real<>::result_type> to_mdata_type;
+        for (auto i=derived().index_begin();i<derived().index_end();++i){
+            *i=to_mdata_type::convert(uni());
+        }
+        mIsSorted=false;
+
+    }
+
+    void collect_duplicates()
+    {
+        select_first<data_type> selector;
+        collect_duplicates(selector);
+    }
+
+    void setSorted(bool isSorted){
+        mIsSorted=isSorted;
+    }
+
+    template<class Collector>
+    void collect_duplicates(Collector collector)
+    {
+
+
+        sort();
+        auto result = storage_begin();
+        auto first=result;
+        while (++first != storage_end())
+        {
+            if (!(index_val(*result) == index_val(*first))){
+                *(++result)=*first;
+            }
+            else{
+
+                data_val(*result)=collector(data_val(*result),data_val(*first));
+            }
+        }
+        ++result;
+        size_t diff=result-storage_begin();
+        resize(diff);
+    }
 
 
 //    template<class otherDerived>
@@ -288,11 +412,49 @@ protected:
     {
         return std::lower_bound(storage_begin(),storage_end(),idx,[] (const full_tuple& _tuple,const index_type idx)
         {
-            return std::get<1>(_tuple)<idx;
+            return boost::get<1>(_tuple)<idx;
         } );
 
     }
 
+    std::array<size_t,mOrder> mSortOrder;
+
+    bool mIsSorted;
+
+    void init_sort_order(){
+        for(size_t i=0;i<mSortOrder.size();++i)
+            mSortOrder[i]=i;
+    }
+
+    void init_sort_order(const std::array<size_t,mOrder> & _sort_order){
+        mSortOrder=_sort_order;
+    }
+
+
+
+    index_type& index_val(const full_tuple & a)
+    {
+        return boost::get<1>(a);
+
+    }
+
+    const index_type& index_val(const const_full_tuple & a) const
+    {
+        return boost::get<1>(a);
+
+    }
+
+
+    data_type& data_val(const full_tuple & a)
+    {
+        return boost::get<0>(a);
+
+    }
+    const data_type& data_val(const const_full_tuple & a) const
+    {
+        return boost::get<0>(a);
+
+    }
 
 private:
 

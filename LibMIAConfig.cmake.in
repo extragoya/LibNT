@@ -24,4 +24,3 @@ include("${LIBMIA_CMAKE_DIR}/LibMIALibraryDepends.cmake")
 # These are IMPORTED targets created by FooBarLibraryDepends.cmake
 set(LIBMIA_LIBRARIES LibMIA)
 set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES, 0)
-#set(FOOBAR_EXECUTABLE bar)

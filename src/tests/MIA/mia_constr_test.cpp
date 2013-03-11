@@ -113,14 +113,15 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
     BOOST_CHECK_MESSAGE(passed,std::string("Index content test for DenseMIA with no zeros copy constructor for ")+typeid(MIAType).name());
 
 
-//    denseTest.randu(-1,1);
-//    for(auto it=denseTest.data_begin();it<denseTest.data_end();++it)
-//        if(*it<0)
-//            *it=0;
-//    MIAType test3(denseTest);
-//    bool passed=true;
-//    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
-//        passed=(passed&&*it==*it2);
+    denseTest.randu(-1,1);
+    MIAType test4(denseTest);
+    for(auto it=denseTest.data_begin();it<denseTest.data_end();++it)
+        if(*it<0)
+            *it=0;
+    MIAType test3(denseTest);
+    bool passed=true;
+    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
+        passed=(passed&&*it==*it2);
 
 
 }
