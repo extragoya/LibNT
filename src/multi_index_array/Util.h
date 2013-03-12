@@ -82,7 +82,7 @@ const bool RowMajor=false;
 
 template <class T> struct SparseTolerance
 {
-
+    constexpr static int tolerance=0;
 };
 template <> struct SparseTolerance<float>
 {
@@ -96,16 +96,7 @@ template <> struct SparseTolerance<double>
     //static const double tolerance=1.11e-16;
 
 };
-template <> struct SparseTolerance<int>
-{
-    constexpr static int tolerance=1;
-    //static const int tolerance=1;
-};
-template <> struct SparseTolerance<long>
-{
-    constexpr static long tolerance=1;
-    //static const long tolerance=1;
-};
+
 
 template <class Derived>
 class Lattice;

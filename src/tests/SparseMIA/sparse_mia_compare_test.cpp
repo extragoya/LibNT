@@ -48,8 +48,23 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     BOOST_CHECK_MESSAGE(test1==test2,std::string("Comparison test 4 for ")+typeid(MIAType).name());
 
 
+    //try comparing against a DenseMIA
+    test1.resize(2);
+    std::fill(test1.data_begin(),test1.data_end(),1);
+    *(test1.index_begin())=1;*(test1.index_begin()+1)=2;
 
-
+    DenseMIAType denseTest1(dim1,dim2,dim3);
+    denseTest1.atIdx(1)=1;
+    denseTest1.atIdx(2)=1;
+    BOOST_CHECK_MESSAGE(test1==denseTest1,std::string("Dense Comparison test 1 for ")+typeid(MIAType).name());
+    BOOST_CHECK_MESSAGE(denseTest1==test1,std::string("Dense Comparison test 2 for ")+typeid(MIAType).name());
+    denseTest1.atIdx(2)=2;
+    BOOST_CHECK_MESSAGE(test1!=denseTest1,std::string("Dense Comparison test 3 for ")+typeid(MIAType).name());
+    BOOST_CHECK_MESSAGE(denseTest1!=test1,std::string("Dense Comparison test 4 for ")+typeid(MIAType).name());
+    denseTest1.atIdx(2)=1;
+    denseTest1.atIdx(3)=2;
+    BOOST_CHECK_MESSAGE(test1!=denseTest1,std::string("Dense Comparison test 5 for ")+typeid(MIAType).name());
+    BOOST_CHECK_MESSAGE(denseTest1!=test1,std::string("Dense Comparison test 6 for ")+typeid(MIAType).name());
 }
 
 

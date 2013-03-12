@@ -55,7 +55,7 @@ namespace LibMIA
 namespace internal
 {
 
-
+//! same as collect_dimensions_to_order but we start at i=curIdx instead of 0
 template<class MIA_type,class array_type1, class array_type2>
 void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_sequence_order,array_type2& _dims,size_t& curIdx)
 {
@@ -67,7 +67,7 @@ void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_seq
     }
 
 }
-
+//! collect dimensions of MIA, where order indexes output array _dims, e.g., _dims[order[i]]=_mia.dims[i]
 template<class MIA_type,class array_type1, class array_type2>
 void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_sequence_order,array_type2& _dims)
 {
@@ -75,7 +75,7 @@ void collect_dimensions_to_order(const MIA_type& _mia, const array_type1& to_seq
     size_t curIdx=0;
     collect_dimensions_to_order(_mia,to_sequence_order,_dims,curIdx);
 }
-
+//! same as collect_dimensions_from_order but we start at i=curIdx instead of 0
 template<class MIA_type,class array_type1, class array_type2>
 void collect_dimensions_from_order(const MIA_type& _mia, const array_type1& from_sequence_order,array_type2& _dims,size_t& curIdx)
 {
@@ -87,7 +87,7 @@ void collect_dimensions_from_order(const MIA_type& _mia, const array_type1& from
     }
 
 }
-
+//! collect dimensions of MIA, where order indexes _mia.dims, e.g., _dims[i]=_mia.dims[order[i]]
 template<class MIA_type,class array_type1, class array_type2>
 void collect_dimensions_from_order(const MIA_type& _mia, const array_type1& from_sequence_order,array_type2& _dims)
 {
@@ -209,6 +209,25 @@ std::array<indexType,T> ind2sub(indexType idx, const std::array<indexType,T> & d
     return indices;
 }
 
+//!order is given in the order of dims used to calculate linear index idx
+template<typename idxType, typename orderType,typename dimType>
+dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
+{
+
+    dimType indices;
+
+    for(size_t i=0; i<_order.size(); ++i)
+    {
+
+        indices[_order[i]]=idx%dims[_order[i]];
+        idx/=dims[_order[i]];
+
+    }
+
+    return indices;
+}
+
+
 template<typename indexType,size_t T>
 indexType sub2ind(const std::array<indexType,T> & indices, const std::array<indexType,T> & dims)
 {
@@ -224,7 +243,7 @@ indexType sub2ind(const std::array<indexType,T> & indices, const std::array<inde
     return idx;
 
 }
-
+//!order is given in the order we collect dims
 template<typename accessType, typename accessType2,typename dimType>
 typename dimType::value_type sub2ind(const accessType & indices, const accessType2 &order, const dimType & dims)
 {

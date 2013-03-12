@@ -257,7 +257,17 @@ public:
         return derived().end();
     }
 
+    template<class otherDerived>
+    bool operator==(const SparseMIABase<otherDerived>& otherMIA) const
+    {
+        return otherMIA==*this;
+    }
 
+    template<class otherDerived>
+    bool operator!=(const MIA<otherDerived>& otherMIA) const
+    {
+        return !(*this==otherMIA.derived());
+    }
 
 protected:
 

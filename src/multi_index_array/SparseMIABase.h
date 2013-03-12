@@ -153,14 +153,15 @@ public:
 
     const_storage_iterator storage_begin() const
     {
-        return iterators::makeTupleIterator(derived().data_begin(),derived().index_begin());
+        return boost::make_zip_iterator(boost::make_tuple(derived().data_begin(), derived().index_begin()));
+
 
     }
 
 
     const_storage_iterator storage_end() const
     {
-        return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
+        return boost::make_zip_iterator(boost::make_tuple(derived().data_end(), derived().index_end()));
     }
 
     storage_iterator storage_begin()
@@ -243,6 +244,12 @@ public:
         return mIsSorted;
     }
 
+    void sort(const std::array<size_t,mOrder> & _sort_order)
+    {
+        change_sort_order(_sort_order);
+        sort();
+    }
+
     void sort()
     {
 
@@ -257,6 +264,29 @@ public:
 
 
     }
+
+    void change_sort_order(const std::array<size_t,mOrder> & _sort_order)
+    {
+        if(_sort_order==mSortOrder)
+            return;
+
+        for(auto it: derived().m_indices){
+            *it=this->sub2ind(this->ind2sub(*it,mSortOrder),_sort_order);
+        }
+        mSortOrder=_sort_order;
+        mIsSorted=false;
+    }
+
+    void reset_sort_order(){
+        change_sort_order(mDefaultSortOrder);
+    }
+
+    //!converts a linear index calculated using mSortOrder to a linear index calculated using mDefaultSortOrder
+    index_type convert_to_default_sort(const index_type idx) const
+    {
+        return this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder);
+    }
+
 
 
     //!  Sets MIA index data to uniformly distributed random values.
@@ -276,6 +306,7 @@ public:
 
     }
 
+    //! Removes data with duplicated indices - conflicts are solved by always choosing the first data entry encountered
     void collect_duplicates()
     {
         select_first<data_type> selector;
@@ -286,6 +317,7 @@ public:
         mIsSorted=isSorted;
     }
 
+    //! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
     template<class Collector>
     void collect_duplicates(Collector collector)
     {
@@ -310,7 +342,7 @@ public:
     }
 
     template<class otherDerived>
-    bool operator==(const SparseMIABase<otherDerived>& otherMIA)
+    bool operator==(const SparseMIABase<otherDerived>& otherMIA) const
     {
 
         bool passed=std::equal(this->index_begin(),this->index_end(),otherMIA.index_begin());
@@ -321,10 +353,40 @@ public:
     }
 
     template<class otherDerived>
-    bool operator!=(const SparseMIABase<otherDerived>& otherMIA)
+    bool operator==(const DenseMIABase<otherDerived>& otherMIA) const
     {
 
-        return !(*this==otherMIA);
+
+        auto it=this->storage_begin();
+        if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
+            return false;
+        for(index_type idx=0;idx<index_val(*(it));idx++)
+            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                return false;
+
+
+        for(it=this->storage_begin()+1;it<this->storage_end();++it){
+            if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
+                return false;
+            for(auto idx=index_val(*(it-1))+1;idx<index_val(*(it));idx++)
+                if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                    return false;
+
+        }
+
+        for(index_type idx=*(this->index_end()-1)+1;idx<this->m_dimensionality;idx++)
+            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                return false;
+
+        return true;
+
+    }
+
+    template<class otherDerived>
+    bool operator!=(const MIA<otherDerived>& otherMIA) const
+    {
+
+        return !(*this==otherMIA.derived());
 
     }
 
@@ -460,6 +522,13 @@ public:
 
 protected:
 
+    //!keeps track of the order of dims used to calculate linear indices
+    std::array<size_t,mOrder> mSortOrder;
+    //!keeps track of the order of dims used to calculate linear indices
+    std::array<size_t,mOrder> mDefaultSortOrder;
+    //!keeps track of whether SparseMIA is sorted or not
+    bool mIsSorted;
+
     storage_iterator & find_idx(const index_type idx) const
     {
         return std::lower_bound(storage_begin(),storage_end(),idx,[] (const full_tuple& _tuple,const index_type idx)
@@ -469,16 +538,16 @@ protected:
 
     }
 
-    std::array<size_t,mOrder> mSortOrder;
 
-    bool mIsSorted;
+
 
     void init_sort_order(){
         for(size_t i=0;i<mSortOrder.size();++i)
             mSortOrder[i]=i;
+        mDefaultSortOrder=mSortOrder;
     }
 
-    void init_sort_order(const std::array<size_t,mOrder> & _sort_order){
+    void set_sort_order(const std::array<size_t,mOrder> & _sort_order){
         mSortOrder=_sort_order;
     }
 
@@ -506,6 +575,14 @@ protected:
     {
         return boost::get<0>(a);
 
+    }
+
+    std::array<index_type,mOrder> ind2sub(index_type idx,const std::array<size_t,mOrder>& dim_order) const{
+        return internal::ind2sub(idx, this->dims(),dim_order);
+    }
+
+    index_type sub2ind(const std::array<index_type,mOrder> & indices,const std::array<size_t,mOrder>& dim_order) const{
+        return internal::sub2ind(indices, dim_order,this->dims());
     }
 
 private:
