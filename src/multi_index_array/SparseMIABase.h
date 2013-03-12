@@ -60,6 +60,9 @@ template<class Derived>
 struct index_iterator<SparseMIABase<Derived> >: public index_iterator<Derived> {};
 
 template<class Derived>
+struct const_index_iterator<SparseMIABase<Derived> >: public const_index_iterator<Derived> {};
+
+template<class Derived>
 struct storage_iterator<SparseMIABase<Derived> >: public storage_iterator<Derived> {};
 
 template<class Derived>
@@ -101,6 +104,8 @@ public:
     typedef typename internal::Data<SparseMIABase>::type Data;
     typedef typename internal::data_iterator<SparseMIABase>::type data_iterator;
     typedef typename internal::const_data_iterator<SparseMIABase>::type const_data_iterator;
+    typedef typename internal::index_iterator<SparseMIABase>::type index_iterator;
+    typedef typename internal::const_index_iterator<SparseMIABase>::type const_index_iterator;
     typedef typename internal::storage_iterator<SparseMIABase>::type storage_iterator;
     typedef typename internal::const_storage_iterator<SparseMIABase>::type const_storage_iterator;
     typedef typename internal::full_tuple<SparseMIABase>::type full_tuple;
@@ -198,6 +203,33 @@ public:
         return derived().data_end();
     }
 
+    index_iterator index_begin()
+    {
+
+
+        return derived().index_begin();
+    }
+
+    index_iterator index_end()
+    {
+
+
+        return derived().index_end();
+    }
+
+    const_index_iterator index_begin() const
+    {
+
+
+        return derived().index_begin();
+    }
+
+    const_index_iterator index_end() const
+    {
+
+
+        return derived().index_end();
+    }
 
 
     //!resizes data and index containers. Previous references should be considered invalid
@@ -233,9 +265,10 @@ public:
 
     */
     void rand_indices(){
-        boost::uniform_real<> uni_dist(0,this->m_dimensionality);
+        using namespace boost::numeric;
+        boost::uniform_real<> uni_dist(0,this->m_dimensionality-1);
         boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
-        typedef boost::numeric::converter<index_type,boost::uniform_real<>::result_type> to_mdata_type;
+        typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
         for (auto i=derived().index_begin();i<derived().index_end();++i){
             *i=to_mdata_type::convert(uni());
         }
@@ -274,6 +307,25 @@ public:
         ++result;
         size_t diff=result-storage_begin();
         resize(diff);
+    }
+
+    template<class otherDerived>
+    bool operator==(const SparseMIABase<otherDerived>& otherMIA)
+    {
+
+        bool passed=std::equal(this->index_begin(),this->index_end(),otherMIA.index_begin());
+        if(!passed)
+            return false;
+        return std::equal(this->data_begin(),this->data_end(),otherMIA.data_begin());
+
+    }
+
+    template<class otherDerived>
+    bool operator!=(const SparseMIABase<otherDerived>& otherMIA)
+    {
+
+        return !(*this==otherMIA);
+
     }
 
 

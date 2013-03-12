@@ -423,7 +423,9 @@ public:
     */
     template<class from_data_type>
     data_type convert(const from_data_type from) const{
-        return boost::numeric::converter<data_type,from_data_type>::convert(from);
+        using namespace boost::numeric;
+        typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
+        return to_mdata_type(from);
     }
 
     //! Returns size of raw data. For sparse cases, this is the number of nonzeros
@@ -441,6 +443,8 @@ public:
         m_indices.clear();
 
     }
+
+
 
 protected:
 

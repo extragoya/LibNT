@@ -46,7 +46,7 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     *(test1.index_begin()+1)=1;
     test1.setSorted(false);
     for(auto i=test1.index_begin()+2,data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
-        if (*data_it>1){
+        if (*data_it>=1){
             *data_it=2;
             *i=2;
         }
@@ -61,7 +61,7 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     passed=(*(test1.data_begin())==1 && *(test1.data_begin()+1)==2);
     BOOST_CHECK_MESSAGE(passed,std::string("Collect duplicates test 1 of data content for ")+typeid(MIAType).name());
 
-    //testing collection of duplicates where add duplicated entries
+    //testing collection of duplicates where we add duplicated entries
     test1.resize(test1.dimensionality()/2);
     test1.randu(0,2);
     *(test1.data_begin())=1;
@@ -71,7 +71,7 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     test1.setSorted(false);
     size_t counter1=1,counter2=1;
     for(auto i=test1.index_begin()+2,data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
-        if (*data_it>1){
+        if (*data_it>=1){
             *data_it=1;
             *i=1;
             ++counter1;
@@ -81,12 +81,12 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
             *i=2;
             ++counter2;
         }
+
     typedef typename MIAType::data_type data_type;
     test1.collect_duplicates(std::plus<data_type>());
     BOOST_CHECK_MESSAGE(test1.data_end()-test1.data_begin()==2,std::string("Collect duplicates test 2 of data size for ")+typeid(MIAType).name());
     BOOST_CHECK_MESSAGE(test1.index_end()-test1.index_begin()==2,std::string("Collect duplicates test 2 of indices size for ")+typeid(MIAType).name());
     passed=(*(test1.data_begin())==(data_type)counter1 && *(test1.data_begin()+1)==(data_type)counter2);
-    //std::cout << "Data " << *(test1.data_begin()) << " " << *(test1.data_begin()+1) << " " << counter1 << std::endl;
     BOOST_CHECK_MESSAGE(passed,std::string("Collect duplicates test 2 of data content for ")+typeid(MIAType).name());
 
 }
