@@ -179,22 +179,6 @@ public:
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
 
-    //! Performs destructive add (+=).
-    /*!
-        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(y,z,x).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,typename index_param_type>
-    DenseMIABase & plus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
-
-
-    //! Performs destructive subtract (-=).
-    /*!
-        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(y,z,x).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,typename index_param_type>
-    DenseMIABase & minus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
 
     //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
     template<typename otherDerived, typename Op,typename index_param_type>
@@ -405,27 +389,27 @@ void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op&
 
 }
 
-template<typename Derived>
-template<class otherDerived,typename index_param_type>
-auto DenseMIABase<Derived>::plus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order)->DenseMIABase &
-{
-
-    std::plus<data_type> op;
-    merge(b,op,index_order);
-    return *this;
-
-}
-
-template<typename Derived>
-template<class otherDerived,typename index_param_type>
-auto DenseMIABase<Derived>::minus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order)->DenseMIABase &
-{
-
-    std::minus<data_type> op;
-    merge(b,op,index_order);
-    return *this;
-
-}
+//template<typename Derived>
+//template<class otherDerived,typename index_param_type>
+//auto DenseMIABase<Derived>::plus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order)->DenseMIABase &
+//{
+//
+//    std::plus<data_type> op;
+//    merge(b,op,index_order);
+//    return *this;
+//
+//}
+//
+//template<typename Derived>
+//template<class otherDerived,typename index_param_type>
+//auto DenseMIABase<Derived>::minus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order)->DenseMIABase &
+//{
+//
+//    std::minus<data_type> op;
+//    merge(b,op,index_order);
+//    return *this;
+//
+//}
 
 
 /*! @} */

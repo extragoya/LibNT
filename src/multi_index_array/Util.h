@@ -44,7 +44,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
-
+#include <boost/tuple/tuple.hpp>
 
 
 #include "Index.h"
@@ -204,6 +204,12 @@ struct is_MIA<DenseMIABase<Derived > >: public boost::true_type {};
 template<class T, size_t _order>
 struct is_MIA<DenseMIA<T,_order > >: public boost::true_type {};
 
+template<class T, size_t _order>
+struct is_MIA<SparseMIA<T,_order > >: public boost::true_type {};
+
+template<class Derived>
+struct is_MIA<SparseMIABase<Derived> >: public boost::true_type {};
+
 template<class T>
 struct is_DenseMIA: public boost::false_type {};
 
@@ -215,6 +221,16 @@ struct is_DenseMIA<DenseMIABase<Derived> >:public boost::true_type {};
 
 template<class Derived>
 struct is_DenseMIA<MIA<Derived> >:public is_DenseMIA<Derived> {};
+
+template<class T>
+struct is_SparseMIA: public boost::false_type {};
+
+template<class T, size_t _order>
+struct is_SparseMIA<SparseMIA<T,_order > >: public boost::true_type {};
+
+template<class Derived>
+struct is_SparseMIA<SparseMIABase<Derived> >: public boost::true_type {};
+
 
 template<class T>
 struct is_Lattice: public boost::false_type {};
@@ -240,7 +256,49 @@ template<class T> struct incomplete;
 
 
 
+//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
+template<class AStorageItType, class BStorageItType, class Op>
+AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageItType  a_end,BStorageItType  b_begin,BStorageItType  b_end,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename boost::remove_reference<typename boost::tuples::element<0,typename BStorageItType::value_type>::type>::type b_data_type;
+    typedef typename boost::remove_reference<typename boost::tuples::element<0,typename AStorageItType::value_type>::type>::type a_data_type;
 
+    typedef converter<a_data_type,b_data_type,conversion_traits<a_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type;
+    AStorageItType a_actual_end=a_end;
+    while(a_begin<a_end && b_begin<b_end){
+        if (boost::get<1>(*a_begin)<boost::get<1>(*b_begin)){
+            a_begin++;
+        }
+        else if  (boost::get<1>(*b_begin)<boost::get<1>(*a_begin)){
+            *a_actual_end=*b_begin;
+            a_actual_end++;
+            b_begin++;
+
+        }
+        else{
+            boost::get<0>(*a_begin)=op(boost::get<0>(*a_begin),to_mdata_type::convert(boost::get<0>(*b_begin)));
+            a_begin++;
+            b_begin++;
+        }
+
+    }
+    if (a_begin==a_end){
+        while (b_begin<b_end){
+            *a_actual_end=*b_begin;
+            b_begin++;
+        }
+    }
+
+
+    std::inplace_merge(a_begin,a_end,a_actual_end,[](const typename AStorageItType::value_type& lhs, const typename AStorageItType::value_type& rhs)
+    //std::inplace_merge(a_begin,a_end,a_actual_end,[](const decltype(*a_begin)& lhs, const decltype(*a_begin)& rhs)
+    {
+        return boost::get<1>(lhs)<boost::get<1>(rhs);
+    });
+    return a_actual_end;
+
+}
 
 
 
@@ -420,6 +478,40 @@ void print_array(const array_type & _array, const std::string &header){
     std::cout << std::endl;
 
 }
+
+template<class T1, class T2,size_t _size>
+bool compare_arrays(const std::array<T1,_size> & array1, const std::array<T2,_size> & array2){
+    typedef boost::numeric::converter<T1,T2> to_mdata_type;
+    for(size_t i=0;i<_size;++i)
+        if (array1[i]!=to_mdata_type::convert(array2[i]))
+            return false;
+
+    return true;
+
+
+}
+
+template<class data_type>
+struct array_converter
+{
+
+    template<class other_data_type,size_t _size>
+    static std::array<data_type,_size> convert(const std::array<other_data_type,_size> & _from)
+    {
+        typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
+        std::array<data_type,_size> ret;
+        for(size_t i=0;i<_size;++i)
+            ret[i]=to_mdata_type::convert(_from[i]);
+
+        return ret;
+    }
+
+    template<size_t _size>
+    static std::array<data_type,_size> convert(std::array<data_type,_size> & _from){
+        return _from;
+    }
+};
+
 
 /*! @} */
 /*! @} */

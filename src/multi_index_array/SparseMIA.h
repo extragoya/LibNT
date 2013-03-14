@@ -448,6 +448,11 @@ public:
 
 protected:
 
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void scanMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void sortMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 private:
 
 
@@ -457,6 +462,36 @@ private:
 
 };
 
+template <class T, size_t _order>
+template<typename otherDerived, typename Op,typename index_param_type>
+void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+{
+    auto lhsOrder=internal::reverseOrder(index_order);
+    //print_array(lhsOrder,"lhsOrder");
+    if(lhsOrder!=this->mSortOrder)
+       this->sort(lhsOrder);
+    //std::cout << "******after sort*******" <<std::endl;
+    //this->print();
+    size_t old_size=this->size();
+    this->resize(this->size()+b.size());
+    auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
+    this->resize(new_end-this->storage_begin());
+}
+
+template <class T, size_t _order>
+template<typename otherDerived, typename Op,typename index_param_type>
+void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+{
+    auto lhsOrder=internal::reverseOrder(index_order);
+    if(lhsOrder!=this->mSortOrder)
+       this->change_sort_order(lhsOrder);
+
+    size_t old_size=this->size();
+    this->resize(this->size()+b.size());
+    std::copy(b.storage_begin(),b.storage_end(),this->storage_begin()+old_size);
+    this->collect_duplicates(op);
+
+}
 
 //template<class T, size_t _order>
 //template<typename otherDerived>

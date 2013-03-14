@@ -265,13 +265,23 @@ public:
 
     }
 
-    void change_sort_order(const std::array<size_t,mOrder> & _sort_order)
+    void print() const
     {
+        std::cout << "Index\t Data" << std::endl;
+        for(auto it=this->storage_begin();it<this->storage_end();++it){
+            std::cout << index_val(*it) << "\t " << data_val(*it) << std::endl;
+        }
+    }
+
+    template<class index_param_type>
+    void change_sort_order(const std::array<index_param_type,mOrder> & _sort_order)
+    {
+        static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
         if(_sort_order==mSortOrder)
             return;
-
-        for(auto it: derived().m_indices){
-            *it=this->sub2ind(this->ind2sub(*it,mSortOrder),_sort_order);
+        print_array(mSortOrder,"mSortOrder");
+        for(auto& it: derived().m_indices){
+            it=this->sub2ind(this->ind2sub(it,mSortOrder),_sort_order);
         }
         mSortOrder=_sort_order;
         mIsSorted=false;
@@ -390,130 +400,10 @@ public:
 
     }
 
-
-//    template<class otherDerived>
-//    bool operator==(const SparseMIABase<otherDerived>& otherMIA);
-//
-//    template<class otherDerived>
-//    bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
-//
-//    //! Returns scalar data at given indices
-//    /*!
-//        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-//    */
-//    template<typename... Indices>
-//    const data_type& at(Indices... indices) const {
-//        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-//        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
-//        return (*(derived().data()))(temp);
-//    }
-//
-//    //! Returns scalar data at given indices
-//    /*!
-//        \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
-//    */
-//    template<typename... Indices>
-//    data_type& at(Indices... indices) {
-//        static_assert(internal::check_mia_constructor<SparseMIABase,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-//        std::array<index_type,internal::order<SparseMIABase>::value> temp = {{indices...}};
-//        return (*(derived().data()))(temp);
-//    }
-//
-//    //!Assignment operator. Will call Derived's operator
-//    template<class otherDerived>
-//    SparseMIABase& operator=(const SparseMIABase<otherDerived>& otherMIA){
-//        return derived()=otherMIA;
-//    }
-//
-//
-//    //!Assignment operator. Will call Derived's operator
-//    SparseMIABase& operator=(const SparseMIABase& otherMIA){
-//        return derived()=otherMIA.derived();
-//    }
-//
-//    //!  Assignment based on given order. Will call Derived's operator
-//    /*!
-//
-//        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
-//        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
-//
-//        \param[in] otherMIA the other MIA
-//        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
-//                                Will assert a compile failure is size of index_order is not the same as this->mOrder
-//    */
-//    template<class otherDerived,class index_param_type>
-//    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order){
-//        derived().assign(otherMIA.derived(),index_order);
-//    }
-//
-//    //! Returns scalar data at given indices
-//    const data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices) const{
-//
-//        return (*(derived().data()))(indices);
-//    }
-//
-//    //! Returns scalar data at given indices
-//    data_type& at(std::array<index_type, internal::order<SparseMIABase>::value> indices){
-//
-//        return (*(derived().data()))(indices);
-//    }
-//
-//    //! Returns scalar data at given linear index
-//    const data_type& atIdx(index_type idx) const{
-//
-//        //return lin index
-//        return *(derived().data_begin()+idx);
-//    }
-//
-//    //! Returns scalar data at given linear index
-//    data_type& atIdx(index_type idx) {
-//
-//        //return lin index
-//        return *(derived().data_begin()+idx);
-//    }
-
-//    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
-//    /*!
-//        For DenseMIAs, this function calls toLatticeCopy
-//    */
-//    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-//    DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const
-//    {
-//        return toLatticeCopy(row_indices, column_indices, tab_indices);
-//
-//    }
-//
-//    //! Flattens the MIA to a Lattice by creating a copy of the data.
-//    /*!
-//        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
-//        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
-//        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
-//        \return DenseLattice class that owns a copy of this's raw data
-//    */
-//    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-//    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
-//
-//    //! Performs destructive add (+=).
-//    /*!
-//        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(y,z,x).
-//        Will assert a compile failure is size of index_order is not the same as this->mOrder
-//    */
-//    template<class otherDerived,typename index_param_type>
-//    DenseMIABase & plus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
-//
-//
-//    //! Performs destructive subtract (-=).
-//    /*!
-//        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(y,z,x).
-//        Will assert a compile failure is size of index_order is not the same as this->mOrder
-//    */
-//    template<class otherDerived,typename index_param_type>
-//    DenseMIABase & minus_equal(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,DenseMIABase::order>& index_order);
-//
-//    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
-//    template<typename otherDerived, typename Op,typename index_param_type>
-//    void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order);
-
+    size_t size() const
+    {
+        return derived().size();
+    }
 
 
 
@@ -577,20 +467,52 @@ protected:
 
     }
 
+
+
     std::array<index_type,mOrder> ind2sub(index_type idx,const std::array<size_t,mOrder>& dim_order) const{
+        //print_array(internal::ind2sub(idx, this->dims(),dim_order),"ind2sub");
         return internal::ind2sub(idx, this->dims(),dim_order);
     }
 
     index_type sub2ind(const std::array<index_type,mOrder> & indices,const std::array<size_t,mOrder>& dim_order) const{
-        return internal::sub2ind(indices, dim_order,this->dims());
+
+        return internal::sub2ind_reorder(indices, dim_order,this->dims());
     }
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
 
 private:
 
-
+    friend class MIA<SparseMIABase>;
 
 };
 
+template<typename Derived>
+template<typename otherDerived, typename Op,typename index_param_type>
+void  SparseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
+{
+
+    this->check_merge_dims(b,index_order);
+    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+
+
+
+    if(b.is_sorted()){
+        //std::cout << "Performing Scan merge " <<std::endl;
+        derived().scanMerge(b,op,converted_index_order);
+    }
+    else{
+        derived().sortMerge(b,op,converted_index_order);
+    }
+
+
+
+
+
+
+
+}
 
 
 

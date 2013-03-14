@@ -243,7 +243,7 @@ indexType sub2ind(const std::array<indexType,T> & indices, const std::array<inde
     return idx;
 
 }
-//!order is given in the order we collect dims
+//!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
 template<typename accessType, typename accessType2,typename dimType>
 typename dimType::value_type sub2ind(const accessType & indices, const accessType2 &order, const dimType & dims)
 {
@@ -269,6 +269,46 @@ typename dimType::value_type sub2ind(const accessType & indices, const accessTyp
     return idx;
 
 }
+
+//!order is given in the order we collect dims and indices are also reordered
+template<typename accessType, typename accessType2,typename dimType>
+typename dimType::value_type sub2ind_reorder(const accessType & indices, const accessType2 &order, const dimType & dims)
+{
+
+
+    typename dimType::value_type idx=0;
+    typename dimType::value_type multiplier=1;
+    for(size_t i=0; i<indices.size(); ++i)
+    {
+        idx+=indices[order[i]]*multiplier;
+        multiplier*=dims[order[i]];
+    }
+    return idx;
+
+
+
+
+
+}
+
+template<class index_param_type,size_t _size>
+std::array<index_param_type,_size> reverseOrder(std::array<index_param_type,_size> init_order)
+{
+    std::array<index_param_type,_size> output_order;
+    for(size_t i=0;i<_size;++i)
+    {
+        for(size_t j=0;j<_size;++j)
+        {
+            if (init_order[j]==i){
+                 output_order[i]=j;
+                break;
+            }
+        }
+
+    }
+    return output_order;
+}
+
 
 /*! @} */
 /*! @} */

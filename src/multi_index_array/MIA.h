@@ -209,6 +209,32 @@ public:
         return derived().atIdx(this->sub2ind(indices));
     }
 
+    //! Performs destructive add (+=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    MIA & plus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+        std::plus<data_type> op;
+        derived().merge(b.derived(),op,index_order);
+        return *this;
+    }
+
+
+    //! Performs destructive subtract (-=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    MIA & minus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+        std::minus<data_type> op;
+        derived().merge(b.derived(),op,index_order);
+        return *this;
+    }
+
+
 protected:
 
     index_type compute_dimensionality(){

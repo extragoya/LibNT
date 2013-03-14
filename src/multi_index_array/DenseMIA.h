@@ -331,7 +331,7 @@ public:
     data_type convert(const from_data_type from) const{
         using namespace boost::numeric;
         typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
-        return to_mdata_type(from);
+        return to_mdata_type::convert(from);
     }
 
     //! Returns size of raw data. For dense cases, this is the same as dimensionality
