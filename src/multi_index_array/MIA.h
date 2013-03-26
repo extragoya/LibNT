@@ -216,6 +216,7 @@ public:
     */
     template<class otherDerived,typename index_param_type>
     MIA & plus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+
         std::plus<data_type> op;
         derived().merge(b.derived(),op,index_order);
         return *this;

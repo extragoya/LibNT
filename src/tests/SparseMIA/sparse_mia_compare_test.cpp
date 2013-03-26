@@ -65,6 +65,13 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     denseTest1.atIdx(3)=2;
     BOOST_CHECK_MESSAGE(test1!=denseTest1,std::string("Dense Comparison test 5 for ")+typeid(MIAType).name());
     BOOST_CHECK_MESSAGE(denseTest1!=test1,std::string("Dense Comparison test 6 for ")+typeid(MIAType).name());
+
+    denseTest1.randu(0,50);
+    for(auto it=denseTest1.data_begin();it<denseTest1.data_end();++it)
+        if(*it<40)
+            *it=0;
+    test1=denseTest1;
+    BOOST_CHECK_MESSAGE(test1==denseTest1,std::string("Dense Comparison random test 1 for ")+typeid(MIAType).name());
 }
 
 
@@ -80,3 +87,5 @@ BOOST_AUTO_TEST_CASE( SparseCompareTests )
     do_work<LibMIA::SparseMIA<int32_t,3>,LibMIA::DenseMIA<int32_t,3> >(dim1,dim2,dim3);
     do_work<LibMIA::SparseMIA<int64_t,3>,LibMIA::DenseMIA<int64_t,3> >(dim1,dim2,dim3);
 }
+
+

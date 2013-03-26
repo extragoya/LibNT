@@ -46,7 +46,7 @@
 #include <boost/random/variate_generator.hpp>
 #include <boost/tuple/tuple.hpp>
 
-
+#include "PermuteIterator.h"
 #include "Index.h"
 
 namespace LibMIA
@@ -96,6 +96,7 @@ template <> struct SparseTolerance<double>
     //static const double tolerance=1.11e-16;
 
 };
+
 
 
 template <class Derived>
@@ -255,29 +256,97 @@ struct is_DenseLattice<DenseLatticeBase<Derived > >: public boost::true_type {};
 template<class T> struct incomplete;
 
 
+//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
+template<class ADataIt, class AIndexIt, class BDataIt, class BIndexIt,class Op>
+ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_end,AIndexIt  a_index_begin,AIndexIt  a_index_end,BDataIt  b_data_begin,BDataIt  b_data_end,BIndexIt  b_index_begin,BIndexIt  b_index_end,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename ADataIt::value_type a_data_type;
+    typedef typename BDataIt::value_type b_data_type;
+
+
+    typedef converter<a_data_type,b_data_type,conversion_traits<a_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type;
+    ADataIt a_actual_data_end=a_data_end;
+    AIndexIt a_actual_index_end=a_index_end;
+    ADataIt a_cur_data_it=a_data_begin;
+    AIndexIt a_cur_index_it=a_index_begin;
+    while(a_cur_data_it<a_data_end && b_data_begin<b_data_end){
+        if (*a_cur_index_it<*b_index_begin){
+            a_cur_index_it++;
+            a_cur_data_it++;
+        }
+        else if  (*b_index_begin<*a_cur_index_it){
+            *a_actual_data_end++=*b_data_begin++;
+            *a_actual_index_end++=*b_index_begin++;
+
+
+        }
+        else{
+            *a_cur_data_it=op(*a_cur_data_it,to_mdata_type::convert(*b_data_begin++));
+            a_cur_data_it++;
+            a_cur_index_it++;
+            b_index_begin++;
+        }
+
+    }
+    if (a_cur_data_it==a_data_end){
+        while (b_data_begin<b_data_end){
+            *a_actual_data_end++=*b_data_begin++;
+            *a_actual_index_end++=*b_index_begin++;
+
+        }
+    }
+    std::cout << "Index\t Data in scan merge" << std::endl;
+    for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
+        std::cout << *j << "\t " << *i << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+    std::inplace_merge(make_sort_permute_iter(a_index_begin,a_data_begin),
+                    make_sort_permute_iter(a_index_end,a_data_end),
+              make_sort_permute_iter(a_actual_index_end,a_actual_data_end),
+                    sort_permute_iter_compare<AIndexIt,ADataIt>());
+
+//    std::inplace_merge(a_data_begin,a_data_end,a_actual_data_end,[&](const typename ADataIt::value_type& lhs, const typename ADataIt::value_type& rhs)
+//    {
+//        return *(a_index_begin+(&lhs-&(*a_data_begin))) <*(a_index_begin+(&rhs-&(*a_data_begin)));
+//    });
+//    std::inplace_merge(a_index_begin,a_index_end,a_actual_index_end);
+    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+    std::cout << "Index\t Data in AFTER scan merge" << std::endl;
+    for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
+        std::cout << *j << "\t " << *i << std::endl;
+
+    std::cout << std::endl;
+    return a_actual_data_end;
+
+}
+
 
 //must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
 template<class AStorageItType, class BStorageItType, class Op>
 AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageItType  a_end,BStorageItType  b_begin,BStorageItType  b_end,Op op)
 {
     using namespace boost::numeric;
-    typedef typename boost::remove_reference<typename boost::tuples::element<0,typename BStorageItType::value_type>::type>::type b_data_type;
-    typedef typename boost::remove_reference<typename boost::tuples::element<0,typename AStorageItType::value_type>::type>::type a_data_type;
+    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type b_data_type;
+    typedef typename boost::remove_reference<typename AStorageItType::value_type::first_type>::type a_data_type;
 
     typedef converter<a_data_type,b_data_type,conversion_traits<a_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type;
     AStorageItType a_actual_end=a_end;
+    AStorageItType a_actual_begin=a_begin;
     while(a_begin<a_end && b_begin<b_end){
-        if (boost::get<1>(*a_begin)<boost::get<1>(*b_begin)){
+        if (std::get<1>(*a_begin)<std::get<1>(*b_begin)){
             a_begin++;
         }
-        else if  (boost::get<1>(*b_begin)<boost::get<1>(*a_begin)){
-            *a_actual_end=*b_begin;
-            a_actual_end++;
-            b_begin++;
+        else if  (std::get<1>(*b_begin)<std::get<1>(*a_begin)){
+            std::get<0>(*a_actual_end)=op(a_data_type(0),to_mdata_type::convert(std::get<0>(*b_begin)));
+            std::get<1>(*a_actual_end++)=std::get<1>(*b_begin++);
+
 
         }
         else{
-            boost::get<0>(*a_begin)=op(boost::get<0>(*a_begin),to_mdata_type::convert(boost::get<0>(*b_begin)));
+            std::get<0>(*a_begin)=op(std::get<0>(*a_begin),to_mdata_type::convert(std::get<0>(*b_begin)));
             a_begin++;
             b_begin++;
         }
@@ -285,17 +354,17 @@ AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageI
     }
     if (a_begin==a_end){
         while (b_begin<b_end){
-            *a_actual_end=*b_begin;
-            b_begin++;
+            std::get<0>(*a_actual_end)=op(a_data_type(0),to_mdata_type::convert(std::get<0>(*b_begin)));
+            std::get<1>(*a_actual_end++)=std::get<1>(*b_begin++);
         }
     }
 
-
-    std::inplace_merge(a_begin,a_end,a_actual_end,[](const typename AStorageItType::value_type& lhs, const typename AStorageItType::value_type& rhs)
-    //std::inplace_merge(a_begin,a_end,a_actual_end,[](const decltype(*a_begin)& lhs, const decltype(*a_begin)& rhs)
+    std::inplace_merge(a_actual_begin,a_end,a_actual_end,[](const typename AStorageItType::value_type& lhs, const typename AStorageItType::value_type& rhs)
     {
-        return boost::get<1>(lhs)<boost::get<1>(rhs);
+        return std::get<1>(lhs)<std::get<1>(rhs);
     });
+
+
     return a_actual_end;
 
 }
@@ -459,14 +528,29 @@ struct MIAMergeReturnType<Lhs,Rhs,
     typename
         boost::enable_if<
             boost::mpl::and_<
-                internal::is_MIA<Lhs>,
-                internal::is_MIA<Rhs>
+                internal::is_DenseMIA<Lhs>,
+                internal::is_DenseMIA<Rhs>
             >
         >::type
     >
 {
 
     typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+};
+
+template<typename Lhs, typename Rhs>
+struct MIAMergeReturnType<Lhs,Rhs,
+    typename
+        boost::enable_if<
+            boost::mpl::and_<
+                internal::is_SparseMIA<Lhs>,
+                internal::is_SparseMIA<Rhs>
+            >
+        >::type
+    >
+{
+
+    typedef SparseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
 };
 
 template<class array_type>

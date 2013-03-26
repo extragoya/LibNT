@@ -118,10 +118,10 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
     for(auto it=denseTest.data_begin();it<denseTest.data_end();++it)
         if(*it<0)
             *it=0;
-    MIAType test3(denseTest);
-    bool passed=true;
-    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
-        passed=(passed&&*it==*it2);
+//    MIAType test3(denseTest);
+//    bool passed=true;
+//    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
+//        passed=(passed&&*it==*it2);
 
 
 }

@@ -18,8 +18,10 @@
 
 #include <tuple>
 #include <boost/iterator/zip_iterator.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/tuple/tuple.hpp>
+
 
 #include "tupleit.hh"
 
@@ -97,26 +99,26 @@ struct const_data_iterator<SparseMIA<T,_order> >
 template<typename T,size_t _order>
 struct full_iterator_tuple<SparseMIA<T,_order> >
 {
-    typedef typename boost::tuple<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename std::pair<typename data_iterator<SparseMIA<T,_order> >::type,typename index_iterator<SparseMIA<T,_order> >::type> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_iterator_tuple<SparseMIA<T,_order>>
 {
-    typedef typename boost::tuple<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
+    typedef typename std::pair<typename const_data_iterator<SparseMIA<T,_order> >::type,typename const_index_iterator<SparseMIA<T,_order> >::type> type;
 
 };
 
 template<typename T,size_t _order>
 struct full_tuple<SparseMIA<T,_order> >
 {
-    typedef boost::tuple<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
+    typedef std::pair<T&,typename index_type<SparseMIA<T,_order>>::type &> type;
 };
 
 template<typename T,size_t _order>
 struct const_full_tuple<SparseMIA<T,_order> >
 {
-    typedef boost::tuple< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
+    typedef std::pair< const T&,const typename index_type<SparseMIA<T,_order> >::type &> type;
 };
 
 template<typename T,size_t _order>
@@ -128,7 +130,7 @@ struct storage_iterator<SparseMIA<T,_order> >
 template<typename T,size_t _order>
 struct const_storage_iterator<SparseMIA<T,_order> >
 {
-    typedef typename boost::zip_iterator<typename const_full_iterator_tuple<SparseMIA<T,_order> >::type > type;
+    typedef typename iterators::TupleIt<typename const_full_iterator_tuple<SparseMIA<T,_order> >::type > type;
 };
 
 
@@ -170,6 +172,8 @@ public:
     typedef typename internal::index_iterator<SparseMIA>::type index_iterator;
     typedef typename internal::const_data_iterator<SparseMIA>::type const_data_iterator;
     typedef typename internal::const_index_iterator<SparseMIA>::type const_index_iterator;
+    typedef typename internal::full_tuple<SparseMIA>::type full_tuple;
+    typedef typename internal::const_full_tuple<SparseMIA>::type const_full_tuple;
     //! raw data pointer type
     typedef T* raw_pointer;
     //! order of the MIA
@@ -199,70 +203,23 @@ public:
     template<class otherMIA, typename boost::enable_if< internal::is_DenseMIA<otherMIA>,int >::type = 0>
     SparseMIA(const otherMIA& denseMIA):SparseMIABase<SparseMIA<T,_order>>(denseMIA.dims())
     {
-        //count the number of nnzs
-        size_t nnz=0;
-        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
-            if(*it)
-                ++nnz;
+        this->copy_other_MIA(denseMIA);
 
-        //allocate the required data
-        m_data.resize(nnz);
-        m_indices.resize(nnz);
+    }
 
-        //set m_data and m_indices
-        index_type idx=0;
-        nnz=0;
-        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it){
-            if(*it){
-                m_data[nnz]=*it;
-                m_indices[nnz++]=idx;
-            }
-            ++idx;
-        }
+    //! Copy constructor for SparseMIAs
+    template<class otherMIA, typename boost::enable_if< internal::is_SparseMIA<otherMIA>,int >::type = 0>
+    SparseMIA(const otherMIA& sparseMIA):SparseMIABase<SparseMIA<T,_order>>(sparseMIA.dims())
+    {
+
+        this->copy_other_MIA(sparseMIA);
 
     }
 
 
-//    //!  Copy constructor.
-//    /*!
-//
-//
-//    */
-//    SparseMIA(const SparseMIA& otherMIA):SparseMIABase<SparseMIA<T,_order> >(otherMIA.dims())
-//    {
-//
-//
-//        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
-//        m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-//        std::copy(otherMIA.data_begin(),otherMIA.data_end(),this->data_begin());
-//
-//
-//    }
-//
-//    //!  Copy constructor.
-//    /*!
-//        If otherMIA's datatype is different than this->data_type, then individual entries will be converted.
-//
-//    */
-//    template<class otherDerived>
-//    SparseMIA(const SparseMIABase<otherDerived>& otherMIA):SparseMIABase<SparseMIA<T,_order> >(otherMIA.dims())
-//    {
-//
-//
-//
-//        static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
-//        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
-//        m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-//        size_t idx=0;
-//        std::for_each( otherMIA.data_begin(), otherMIA.data_end(), [this,&idx] (typename otherDerived::data_type val)
-//        {
-//            *(this->data_begin()+idx++)=this->convert<typename otherDerived::data_type>(val);
-//        } );
-//
-//
-//
-//
-//    }
+
+
+
 
 
     //!  Constructs SparseMIA of specified size.
@@ -315,31 +272,35 @@ public:
 
     }
 
-//    //!  Assignment based on given order.
-//    /*!
-//
-//        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
-//        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
-//
-//        \param[in] otherMIA the other MIA
-//        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
-//                                Will assert a compile failure is size of index_order is not the same as this->mOrder
-//    */
-//    template<typename otherDerived,typename index_param_type>
-//    void assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
-//
-//    //!  Assignment operator.
-//    /*!
-//        \param[in] otherMIA
-//        If the data_type of otherMIA is not the same as this, the scalar data will be converted.
-//    */
-//    template<typename otherDerived>
-//    SparseMIA& operator=(const SparseMIABase<otherDerived>& otherMIA);
-//
-//    //!  Straight-out assignment.
-//    SparseMIA& operator=(const SparseMIA& otherMIA){
-//        return *this=static_cast<const SparseMIABase<SparseMIA>&>(otherMIA);
-//    }
+    //!  Assignment based on given order.
+    /*!
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {2,0,1} this->at(x,y,z)==otherMIA.at(y,z,x).
+
+    */
+    template<typename otherDerived,typename index_param_type>
+    void assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
+
+
+    template<typename otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
+    SparseMIA & operator=(const otherMIAType& otherMIA){
+        this->m_dims=otherMIA.dims();
+        this->mSortOrder=otherMIA.sort_order();
+        this->copy_other_MIA(otherMIA);
+        return *this;
+    }
+
+    template<typename otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
+    SparseMIA & operator=(const otherMIAType& otherMIA){
+        this->m_dims=otherMIA.dims();
+        this->copy_other_MIA(otherMIA);
+        return *this;
+    }
+
 
     //! Returns the data container
     const Data & data() const{
@@ -425,7 +386,7 @@ public:
     data_type convert(const from_data_type from) const{
         using namespace boost::numeric;
         typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
-        return to_mdata_type(from);
+        return to_mdata_type::convert(from);
     }
 
     //! Returns size of raw data. For sparse cases, this is the number of nonzeros
@@ -466,30 +427,65 @@ template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
+
+    //get the order of lhs indices in terms of rhs
     auto lhsOrder=internal::reverseOrder(index_order);
+    //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+    lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
     //print_array(lhsOrder,"lhsOrder");
+//    boost::timer::cpu_timer sort_t;
+//    this->change_sort_order(lhsOrder);
+//    std::sort(this->index_begin(),this->index_end());
+//    std::sort(this->data_begin(),this->data_end());
     if(lhsOrder!=this->mSortOrder)
        this->sort(lhsOrder);
-    //std::cout << "******after sort*******" <<std::endl;
+    //std::cout << "Scan sort " << boost::timer::format(sort_t.elapsed()) << std::endl;
     //this->print();
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
+    //boost::timer::cpu_timer merge_t;
     auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
+    //std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
     this->resize(new_end-this->storage_begin());
+
 }
 
 template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
+
+    //get the order of lhs indices in terms of rhs
     auto lhsOrder=internal::reverseOrder(index_order);
+    //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+    lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
     if(lhsOrder!=this->mSortOrder)
        this->change_sort_order(lhsOrder);
-
+    //this->print();
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
-    std::copy(b.storage_begin(),b.storage_end(),this->storage_begin()+old_size);
-    this->collect_duplicates(op);
+    this->mIsSorted=false;
+    if(boost::is_same<std::minus<data_type>,Op>::value){
+        //since stable sort is slower (inherently and also because we have to use tupleit with stable_sort), we just negate b's datatype
+        //during the copy process, and then just perform addition
+        std::function<data_type(typename SparseMIABase<otherDerived>::data_type)> copy_function = [&](const typename SparseMIABase<otherDerived>::data_type & _other_data)
+        {
+            return this->convert(-1*_other_data);
+        };
+        std::copy(boost::make_transform_iterator(b.data_begin(), copy_function),
+                  boost::make_transform_iterator(b.data_end(), copy_function),
+                  this->data_begin()+old_size);
+        std::copy(b.index_begin(),b.index_end(),this->index_begin()+old_size);
+        this->collect_duplicates(std::plus<data_type>());
+
+    }
+    else{
+        std::copy(b.storage_begin(),b.storage_end(),this->storage_begin()+old_size);
+        this->collect_duplicates(op);
+    }
+
+
+
 
 }
 
@@ -563,7 +559,55 @@ void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const 
 //
 //}
 
+template<class T, size_t _order>
+template<typename otherDerived,typename index_param_type>
+void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
+{
 
+    std::cout <<"We got to sparse assign" << std::endl;
+    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
+    internal::reorder_to(otherMIA.sort_order(),index_order,this->mSortOrder);
+    if(otherMIA.sort_order()!=this->mSortOrder)
+        this->mIsSorted=false;
+    else
+        this->mIsSorted=otherMIA.is_sorted();
+
+    this->resize(otherMIA.size());
+
+    auto otherIt=otherMIA.storage_begin();
+    std::for_each(this->storage_begin(),this->storage_end(),[&](full_tuple & cur_tuple){
+        cur_tuple=this->convert(*(otherIt++));
+    });
+
+
+
+
+}
+//
+//template<class T, size_t _order>
+//template<typename otherDerived>
+//SparseMIA<T,_order>& SparseMIA<T,_order>::operator=(const SparseMIABase<otherDerived>& otherMIA)
+//{
+//
+//    std::cout <<"We got to sparse =" << std::endl;
+//    this->m_dims=otherMIA.dims();
+//    this->mSortOrder=otherMIA.sort_order();
+//    this->mIsSorted=otherMIA.is_sorted();
+//    otherMIA.print();
+//    this->resize(otherMIA.size());
+//
+//    auto otherIt=otherMIA.storage_begin();
+//    std::for_each(this->storage_begin(),this->storage_end(),[this,&otherIt](full_tuple cur_tuple){
+//        this->data_val(cur_tuple)=this->convert(boost::get<0>(*otherIt));
+//        this->index_val(cur_tuple)=boost::get<1>(*otherIt++);
+//    });
+//
+//    return *this;
+//
+//
+//
+//}
 
 
 /*! @} */

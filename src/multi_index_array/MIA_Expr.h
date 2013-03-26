@@ -197,9 +197,9 @@ struct product_solve_expr_helper
                 boost::mpl::size<typename right_outer_index_order::no_match_order_sequence>::value+
                 boost::mpl::size<typename left_index_order::inter_match_order_sequence>::value> cMIA_dims;
         size_t curIdx=0;
-        internal::collect_dimensions_from_order(l_MIA,left_outer_product_order(),cMIA_dims,curIdx);
-        internal::collect_dimensions_from_order(r_MIA,right_outer_product_order(),cMIA_dims,curIdx);
-        internal::collect_dimensions_from_order(l_MIA,internal::to_std_array<typename left_index_order::inter_match_order_sequence>::make(),cMIA_dims,curIdx);
+        internal::reorder_from(l_MIA.dims(),left_outer_product_order(),cMIA_dims,curIdx);
+        internal::reorder_from(r_MIA.dims(),right_outer_product_order(),cMIA_dims,curIdx);
+        internal::reorder_from(l_MIA.dims(),internal::to_std_array<typename left_index_order::inter_match_order_sequence>::make(),cMIA_dims,curIdx);
         return cMIA_dims;
 
     }
@@ -331,7 +331,9 @@ public:
     {
 
 
+
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
+
         *(m_mia)=*(Rhs.m_mia);
         return *this;
 
@@ -405,6 +407,7 @@ public:
         cType* cMIA(new cType(*m_mia));
         MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
         C+=Rhs;
+
         return C;
 
 

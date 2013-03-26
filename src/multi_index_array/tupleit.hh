@@ -11,56 +11,50 @@
 #include "boost/utility.hpp"
 #include "boost/type_traits.hpp"
 #include "boost/optional.hpp" // for aligned_storage
+#include <boost/mpl/if.hpp>
+#include <boost/type_traits/is_const.hpp>
 #include <memory>
 
 namespace iterators
 {
     namespace detail
     {
-        inline void preincrementTuple(boost::tuples::null_type)
-        {
-        }
 
         template<typename TupleType>
         void preincrementTuple(TupleType& lhs)
         {
-            preincrementTuple(lhs.get_tail());
-            ++(lhs.template get<0>());
+
+            ++(std::get<0>(lhs));
+            ++(std::get<1>(lhs));
         }
 
-        inline void predecrementTuple(boost::tuples::null_type)
-        {
-        }
 
         template<typename TupleType>
         void predecrementTuple(TupleType& lhs)
         {
-            predecrementTuple(lhs.get_tail());
-            --(lhs.template get<0>());
+
+            --(std::get<0>(lhs));
+            --(std::get<1>(lhs));
         }
 
-        template<typename difference_type>
-        void addToTuple(boost::tuples::null_type,difference_type)
-        {
-        }
+
 
         template<typename difference_type,typename TupleType>
         void addToTuple(TupleType& lhs,difference_type diff)
         {
-            addToTuple(lhs.get_tail(),diff);
-            lhs.template get<0>()+=diff;
+
+            std::get<0>(lhs)+=diff;
+            std::get<1>(lhs)+=diff;
         }
 
-        template<typename difference_type>
-        void subFromTuple(boost::tuples::null_type,difference_type)
-        {
-        }
+
 
         template<typename difference_type,typename TupleType>
         void subFromTuple(TupleType& lhs,difference_type diff)
         {
-            subFromTuple(lhs.get_tail(),diff);
-            lhs.template get<0>()-=diff;
+
+            std::get<0>(lhs)-=diff;
+            std::get<1>(lhs)-=diff;
         }
 
         template<typename difference_type,typename TupleType>
@@ -71,26 +65,11 @@ namespace iterators
         {
             static difference_type doDiff(TupleType const& lhs,TupleType const& rhs)
             {
-                difference_type res1=lhs.template get<0>()-rhs.template get<0>();
-                difference_type res2=diffTuples<difference_type>(lhs.get_tail(),rhs.get_tail());
+                return std::get<0>(lhs)-std::get<0>(rhs);
 
-                if(res1==res2)
-                {
-                    return res1;
-                }
-
-                throw std::logic_error("The iterators in the tuples are mismatched");
             }
         };
 
-        template<typename difference_type,typename ValueType>
-        struct DiffTupleHelper<difference_type,boost::tuples::cons<ValueType,boost::tuples::null_type> >
-        {
-            static difference_type doDiff(boost::tuples::cons<ValueType,boost::tuples::null_type> const& lhs,boost::tuples::cons<ValueType,boost::tuples::null_type>  const& rhs)
-            {
-                return lhs.template get<0>()-rhs.template get<0>();
-            }
-        };
 
         template<typename difference_type,typename TupleType>
         difference_type diffTuples(TupleType const& lhs,TupleType const& rhs)
@@ -100,31 +79,32 @@ namespace iterators
 
 
 
-        template<typename SourceTuple>
+        template<typename SourceTuple,bool const_refs>
         struct MakeTupleTypeWithReferences
         {
-            typedef MakeTupleTypeWithReferences<typename SourceTuple::tail_type> TailTupleTypeBuilder;
-            typedef typename TailTupleTypeBuilder::Type TailTupleType;
-            typedef boost::tuples::cons<typename boost::add_reference<typename SourceTuple::head_type>::type,
-                                        TailTupleType> Type;
+
+            typedef typename boost::mpl::if_c<
+                const_refs,
+                std::pair<
+                     typename boost::add_reference<const typename SourceTuple::first_type>::type,
+                     typename boost::add_reference<const typename SourceTuple::second_type>::type
+                >,
+                std::pair<
+                    typename boost::add_reference<typename SourceTuple::first_type>::type,
+                    typename boost::add_reference<typename SourceTuple::second_type>::type
+                >
+            >::type Type;
+
+
 
             template<typename Tuple>
             static Type makeTuple(Tuple& source)
             {
-                return Type(source.get_head(),TailTupleTypeBuilder::makeTuple(source.get_tail()));
+                return Type(std::get<0>(source),std::get<1>(source));
             }
         };
 
-        template<>
-        struct MakeTupleTypeWithReferences<boost::tuples::null_type>
-        {
-            typedef boost::tuples::null_type Type;
 
-            static Type makeTuple(boost::tuples::null_type)
-            {
-                return Type();
-            }
-        };
 
 	typedef char Tiny;
 	struct Small
@@ -226,26 +206,25 @@ namespace iterators
 	    // no Type, because error
 	};
 
-        inline void derefAndWrite(boost::tuples::null_type,boost::tuples::null_type)
-        {}
+
 
         template<typename IterTuple,typename SourceTuple>
         void derefAndWrite(IterTuple& iters,SourceTuple const& source)
         {
-            *iters.get_head()=source.get_head();
-            derefAndWrite(iters.get_tail(),source.get_tail());
+            *(std::get<0>(iters))=std::get<0>(source);
+            *(std::get<1>(iters))=std::get<1>(source);
         }
 
     }
 
     // An OutputTuple holds a tuple of references to iterators, and writes to them on assignment
-    template<typename IterTuple>
+    template<typename IterTuple,bool const_refs>
     struct OutputTuple:
-        public detail::MakeTupleTypeWithReferences<IterTuple>::Type,
+        public detail::MakeTupleTypeWithReferences<IterTuple,const_refs>::Type,
         boost::noncopyable
     {
     private:
-        typedef detail::MakeTupleTypeWithReferences<IterTuple> BaseTypeBuilder;
+        typedef detail::MakeTupleTypeWithReferences<IterTuple,const_refs> BaseTypeBuilder;
         typedef typename BaseTypeBuilder::Type BaseType;
     public:
 	OutputTuple(IterTuple& iters):
@@ -284,19 +263,19 @@ namespace iterators
         };
     }
 
-    template<typename TupleType>
+    template<typename TupleType,bool const_refs>
     struct OwningRefTuple:
         private detail::OwningBase<TupleType>,
-        public detail::MakeTupleTypeWithReferences<TupleType>::Type
+        public detail::MakeTupleTypeWithReferences<TupleType,const_refs>::Type
     {
     private:
-        typedef detail::MakeTupleTypeWithReferences<TupleType> BaseTypeBuilder;
+        typedef detail::MakeTupleTypeWithReferences<TupleType,const_refs> BaseTypeBuilder;
         typedef typename BaseTypeBuilder::Type BaseType;
         typedef detail::OwningBase<TupleType> OwningBaseType;
     public:
 
-        typedef typename BaseType::head_type head_type;
-        typedef typename BaseType::tail_type tail_type;
+        typedef typename BaseType::first_type first_type;
+        typedef typename BaseType::second_type second_type;
 
     private:
         typedef TupleType OwnedTuple;
@@ -345,60 +324,30 @@ namespace iterators
         template<typename IterTuple>
         struct DerefIterTupleHelperKeepRef
         {
-            typedef boost::tuples::cons<typename boost::add_reference<typename std::iterator_traits<typename IterTuple::head_type>::value_type>::type,
-                                        typename DerefIterTupleHelperKeepRef<typename IterTuple::tail_type>::Type> Type;
+            typedef std::pair<typename std::iterator_traits<typename IterTuple::first_type>::reference,
+                                        typename std::iterator_traits<typename IterTuple::second_type>::reference> Type;
         };
-
-        template<>
-        struct DerefIterTupleHelperKeepRef<boost::tuples::null_type>
-        {
-            typedef boost::tuples::null_type Type;
-        };
-
-        template<>
-        struct DerefIterTupleHelperKeepRef<const boost::tuples::null_type>
-        {
-            typedef boost::tuples::null_type Type;
-        };
-
 
         template<typename IterTuple>
         struct DerefIterTupleHelperNoRef
         {
-            typedef boost::tuples::cons<typename std::iterator_traits<typename IterTuple::head_type>::value_type,
-                                        typename DerefIterTupleHelperNoRef<typename IterTuple::tail_type>::Type> Type;
+            typedef std::pair<typename std::iterator_traits<typename IterTuple::first_type>::value_type,
+                                        typename std::iterator_traits<typename IterTuple::second_type>::value_type> Type;
         };
 
-        template<>
-        struct DerefIterTupleHelperNoRef<boost::tuples::null_type>
-        {
-            typedef boost::tuples::null_type Type;
-        };
 
-        template<>
-        struct DerefIterTupleHelperNoRef<const boost::tuples::null_type>
-        {
-            typedef boost::tuples::null_type Type;
-        };
 
-        inline boost::tuples::null_type derefIterTupleKeepRef(boost::tuples::null_type const& iters)
-        {
-            return iters;
-        }
         template<typename IterTuple>
         const typename DerefIterTupleHelperKeepRef<IterTuple>::Type derefIterTupleKeepRef(IterTuple& iters)
         {
-            return typename DerefIterTupleHelperKeepRef<IterTuple>::Type(*iters.template get<0>(),derefIterTupleKeepRef(iters.get_tail()));
+            return typename DerefIterTupleHelperKeepRef<IterTuple>::Type(*std::get<0>(iters),*std::get<1>(iters));
         }
 
-        inline boost::tuples::null_type derefIterTupleNoRef(boost::tuples::null_type const& iters)
-        {
-            return iters;
-        }
+
         template<typename IterTuple>
         typename DerefIterTupleHelperNoRef<IterTuple>::Type derefIterTupleNoRef(IterTuple& iters)
         {
-            return typename DerefIterTupleHelperNoRef<IterTuple>::Type(*iters.template get<0>(),derefIterTupleNoRef(iters.get_tail()));
+            return typename DerefIterTupleHelperNoRef<IterTuple>::Type(*std::get<0>(iters),*std::get<1>(iters));
         }
 
 	// Define, construct and destroy the appropriate value_type for
@@ -407,15 +356,20 @@ namespace iterators
 	struct ValueForCategory
 	{
         private:
-            typedef typename IterTuple::head_type HeadIterType;
-            typedef typename IterTuple::tail_type TailTupleType;
-	    typedef typename std::iterator_traits<HeadIterType>::value_type HeadValueType;
-	    typedef typename ValueForCategory<Category,TailTupleType>::ValueTuple TailValueTuple;
-
+            typedef typename IterTuple::first_type FirstIterType;
+            typedef typename IterTuple::second_type SecondIterType;
+	    typedef typename std::iterator_traits<FirstIterType>::value_type FirstValueType;
+	    typedef typename std::iterator_traits<SecondIterType>::value_type SecondValueType;
+	    typedef typename std::iterator_traits<FirstIterType>::reference FirstReferenceType;
+        static constexpr bool is_const=boost::is_const<
+                                typename boost::remove_reference<
+                                    FirstReferenceType
+                                >::type
+                            >::value;
         public:
-            typedef boost::tuples::cons<HeadValueType,TailValueTuple> ValueTuple;
+            typedef std::pair<FirstValueType,SecondValueType> ValueTuple;
 
-	    typedef OwningRefTuple<ValueTuple> value_type;
+	    typedef OwningRefTuple<ValueTuple,is_const> value_type;
 	    typedef value_type Type;
 
 	    static void construct(Type* p,IterTuple const& iters)
@@ -426,31 +380,29 @@ namespace iterators
 
 	    static void destruct(Type* p)
 	    {
-		p->~OwningRefTuple<ValueTuple>();
+		p->~OwningRefTuple<ValueTuple,is_const>();
 	    }
 	};
 
-	template<typename Category>
-	struct ValueForCategory<Category,boost::tuples::null_type>
-	{
-        private:
-        public:
-            typedef boost::tuples::null_type ValueTuple;
-	};
 
 	template<typename IterTuple>
 	struct ValueForCategory<std::input_iterator_tag,IterTuple>
 	{
         private:
-            typedef typename IterTuple::head_type HeadIterType;
-            typedef typename IterTuple::tail_type TailTupleType;
-	    typedef typename std::iterator_traits<HeadIterType>::value_type HeadValueType;
-	    typedef typename ValueForCategory<std::input_iterator_tag,TailTupleType>::ValueTuple TailValueTuple;
-
+            typedef typename IterTuple::first_type FirstIterType;
+            typedef typename IterTuple::second_type SecondIterType;
+	    typedef typename std::iterator_traits<FirstIterType>::value_type FirstValueType;
+	    typedef typename std::iterator_traits<SecondIterType>::value_type SecondValueType;
+	    typedef typename std::iterator_traits<FirstIterType>::reference FirstReferenceType;
+        static constexpr bool is_const=boost::is_const<
+                                typename boost::remove_reference<
+                                    FirstReferenceType
+                                >::type
+                            >::value;
         public:
-            typedef boost::tuples::cons<HeadValueType,TailValueTuple> ValueTuple;
+            typedef std::pair<FirstValueType,SecondValueType> ValueTuple;
 
-	    typedef OwningRefTuple<ValueTuple> value_type;
+	    typedef OwningRefTuple<ValueTuple,is_const> value_type;
 	    typedef value_type Type;
 
 	    static void construct(Type* p,IterTuple const& iters)
@@ -461,23 +413,22 @@ namespace iterators
 
 	    static void destruct(Type* p)
 	    {
-		p->~OwningRefTuple<ValueTuple>();
+		p->~OwningRefTuple<ValueTuple,is_const>();
 	    }
-	};
-
-	template<>
-	struct ValueForCategory<std::input_iterator_tag,boost::tuples::null_type>
-	{
-        private:
-        public:
-            typedef boost::tuples::null_type ValueTuple;
 	};
 
 	template<typename IterTuple>
 	struct ValueForCategory<std::output_iterator_tag,IterTuple>
 	{
         public:
-	    typedef OutputTuple<IterTuple> value_type;
+	    typedef typename IterTuple::first_type FirstIterType;
+	    typedef typename std::iterator_traits<FirstIterType>::reference FirstReferenceType;
+	    static constexpr bool is_const=boost::is_const<
+                                typename boost::remove_reference<
+                                    FirstReferenceType
+                                >::type
+                            >::value;
+	    typedef OutputTuple<IterTuple,is_const> value_type;
 	    typedef value_type Type;
 
 	    static void construct(Type* p,IterTuple& iters)
@@ -488,16 +439,11 @@ namespace iterators
 
 	    static void destruct(Type* p)
 	    {
-		p->~OutputTuple<IterTuple>();
+		p->~OutputTuple<IterTuple,is_const>();
 	    }
 	};
 
-	template<>
-	struct ValueForCategory<std::output_iterator_tag,boost::tuples::null_type>
-	{
-        private:
-        public:
-	};
+
 
 
 	template<typename Category,typename IterTuple>
@@ -510,11 +456,11 @@ namespace iterators
 	template<typename IterTuple>
 	struct TupleItHelper
 	{
-            typedef typename IterTuple::head_type HeadIterType;
-            typedef typename IterTuple::tail_type TailTupleType;
+            typedef typename IterTuple::first_type FirstIterType;
+            typedef typename IterTuple::second_type SecondIterType;
 
-	    typedef typename std::iterator_traits<HeadIterType>::iterator_category Cat1;
-	    typedef typename TupleItHelper<TailTupleType>::iterator_category Cat2;
+	    typedef typename std::iterator_traits<FirstIterType>::iterator_category Cat1;
+	    typedef typename std::iterator_traits<SecondIterType>::iterator_category Cat2;
 
 	    typedef typename CommonCategory<Cat1,Cat2>::Type iterator_category;
 	    typedef typename VFCSelector<iterator_category,IterTuple>::Type ValueTypeDef;
@@ -539,11 +485,7 @@ namespace iterators
 	    }
 	};
 
-	template<>
-	struct TupleItHelper<boost::tuples::null_type>
-	{
-	    typedef std::random_access_iterator_tag iterator_category;
-	};
+
     }
 
     // the actual Tuple Iterator itself
@@ -760,22 +702,22 @@ namespace iterators
 //     }
 
     template<typename Iter1,typename Iter2>
-    TupleIt<typename boost::tuples::tuple<Iter1,Iter2> > makeTupleIterator(Iter1 i1,Iter2 i2)
+    TupleIt<typename std::pair<Iter1,Iter2> > makeTupleIterator(Iter1 i1,Iter2 i2)
     {
-	return TupleIt<typename boost::tuples::tuple<Iter1,Iter2> >(boost::make_tuple(i1,i2));
+	return TupleIt<typename std::pair<Iter1,Iter2> >(std::make_pair(i1,i2));
     }
 
-    template<typename Iter1,typename Iter2,typename Iter3>
-    TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3> > makeTupleIterator(Iter1 i1,Iter2 i2,Iter3 i3)
-    {
-	return TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3> >(boost::make_tuple(i1,i2,i3));
-    }
-
-    template<typename Iter1,typename Iter2,typename Iter3,typename Iter4>
-    TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3,Iter4> > makeTupleIterator(Iter1 i1,Iter2 i2,Iter3 i3,Iter4 i4)
-    {
-	return TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3,Iter4> >(boost::make_tuple(i1,i2,i3,i4));
-    }
+//    template<typename Iter1,typename Iter2,typename Iter3>
+//    TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3> > makeTupleIterator(Iter1 i1,Iter2 i2,Iter3 i3)
+//    {
+//	return TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3> >(boost::make_tuple(i1,i2,i3));
+//    }
+//
+//    template<typename Iter1,typename Iter2,typename Iter3,typename Iter4>
+//    TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3,Iter4> > makeTupleIterator(Iter1 i1,Iter2 i2,Iter3 i3,Iter4 i4)
+//    {
+//	return TupleIt<typename boost::tuples::tuple<Iter1,Iter2,Iter3,Iter4> >(boost::make_tuple(i1,i2,i3,i4));
+//    }
 
 }
 

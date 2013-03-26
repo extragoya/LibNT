@@ -14,6 +14,7 @@ set(LibMIA_headers
      MIA.h
      MIA_Expr.h	 
      Packer.h
+	 PermuteIterator.h
      SparseLattice.h
      SparseLatticeBase.h
 	 SparseMIA.h

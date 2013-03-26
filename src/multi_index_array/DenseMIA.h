@@ -273,8 +273,8 @@ public:
         a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
 
         \param[in] otherMIA the other MIA
-        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
-                                Will assert a compile failure is size of index_order is not the same as this->mOrder
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {2,0,1} this->at(x,y,z)==otherMIA.at(y,z,x).
+
     */
     template<typename otherDerived,typename index_param_type>
     void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
@@ -406,7 +406,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
         if(hasOwnership){
-            internal::collect_dimensions_from_order(otherMIA,index_order,this->m_dims);
+            internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
             this->m_dimensionality=otherMIA.dimensionality();
             smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
             m_smart_raw_ptr.swap(temp_ptr);
@@ -417,7 +417,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
     else
-        internal::collect_dimensions_from_order(otherMIA,index_order,this->m_dims);
+        internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
 
 
     index_type curIdx=0;

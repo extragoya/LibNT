@@ -377,15 +377,14 @@ void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op&
 
 
 
-    index_type curIdx=0;
 
 
-    auto other_it=b.data_begin();
-    for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
+    for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
     {
-        *this_it=op(*this_it,derived().convert(*(other_it+internal::sub2ind(this->ind2sub(curIdx++),index_order,b.dims()))));
+        this->atIdx(curIdx)=op(this->atIdx(curIdx),derived().convert(b.atIdx(internal::sub2ind(this->ind2sub(curIdx),index_order,b.dims()))));
 
     }
+
 
 }
 
