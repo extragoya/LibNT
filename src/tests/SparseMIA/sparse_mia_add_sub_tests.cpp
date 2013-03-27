@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( SparseMIAAddSubtractTests )
 
 
 
-    //do_work<double>(2,2);
+    //do_work<double>(10,80);
     do_work<double>(10,15);
     do_work<float>(10,15);
     do_work<int>(10,15);

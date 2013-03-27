@@ -25,7 +25,7 @@
 #include "Util.h"
 #include "IndexUtil.h"
 #include "MIA.h"
-
+#include "LibMIAAlgorithm.h"
 
 
 //\defgroup
@@ -267,9 +267,11 @@ public:
                 } );
             }
             else{
-                std::sort(make_sort_permute_iter(this->index_begin(), this->data_begin()),
-                          make_sort_permute_iter(this->index_end(), this->data_end()),
-                            sort_permute_iter_compare<index_iterator,data_iterator>());
+                internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),
+                                    internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+//                std::sort(make_sort_permute_iter(this->index_begin(), this->data_begin()),
+//                          make_sort_permute_iter(this->index_end(), this->data_end()),
+//                            sort_permute_iter_compare<index_iterator,data_iterator>());
 //                std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
 //                {
 //                    return std::get<1>(left)<std::get<1>(right);

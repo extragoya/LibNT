@@ -433,8 +433,8 @@ void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const 
     //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
     lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
     //print_array(lhsOrder,"lhsOrder");
-//    boost::timer::cpu_timer sort_t;
-//    this->change_sort_order(lhsOrder);
+    //boost::timer::cpu_timer sort_t;
+    //this->change_sort_order(lhsOrder);
 //    std::sort(this->index_begin(),this->index_end());
 //    std::sort(this->data_begin(),this->data_end());
     if(lhsOrder!=this->mSortOrder)
