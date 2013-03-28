@@ -87,12 +87,12 @@ namespace internal
 template<typename MainIterator, typename FollowerIterator>
 struct DualSwapper
 {
-    MainIterator _mainBegin;
-    FollowerIterator _followBegin;
+    const MainIterator _mainBegin;
+    const FollowerIterator _followBegin;
     DualSwapper(MainIterator _mainIt,FollowerIterator _followIt): _mainBegin(_mainIt),_followBegin(_followIt)
     {
     }
-    void operator()(MainIterator it1, MainIterator it2)
+    void operator()(MainIterator it1, MainIterator it2) const
     {
         std::iter_swap(_followBegin+(it1-_mainBegin),_followBegin+(it2-_mainBegin));
         std::iter_swap(it1,it2);
@@ -144,7 +144,7 @@ namespace introsort_detail {
    */
   template <typename RandomIterator, typename Comparator, typename Swapper>
   RandomIterator Partition(RandomIterator begin, RandomIterator end,
-                           Comparator comp,Swapper swapper) {
+                           const Comparator & comp,const Swapper & swapper) {
     /* The following algorithm for doing an in-place partition is
      * one of the most efficient partitioning algorithms.  It works
      * by maintaining two pointers, one on the left-hand side of
@@ -202,7 +202,7 @@ namespace introsort_detail {
    * Sifts element at current
    */
     template <typename RandomIterator, typename Comparator,typename Swapper>
-    void SiftDown( RandomIterator begin, RandomIterator end,RandomIterator current,Comparator comp,Swapper swapper)
+    void SiftDown( RandomIterator begin, RandomIterator end,RandomIterator current,const Comparator & comp,const Swapper &swapper)
     {
         RandomIterator root = current;
 
@@ -252,7 +252,7 @@ namespace introsort_detail {
    */
   template <typename RandomIterator, typename Comparator>
   RandomIterator MedianOfThree(RandomIterator one, RandomIterator two,
-                               RandomIterator three, Comparator comp) {
+                               RandomIterator three, const Comparator& comp) {
     /* Do all three comparisons to determine which is in the middle. */
     const bool comp12 = comp(*one, *two);
     const bool comp13 = comp(*one, *three);
@@ -276,13 +276,13 @@ namespace introsort_detail {
    */
   template <typename RandomIterator, typename Comparator,typename Swapper>
   void IntrosortRec(RandomIterator begin, RandomIterator end,
-                    size_t depth, Comparator comp,Swapper swapper) {
+                    size_t depth, const Comparator & comp,const Swapper & swapper) {
     /* Constant controlling the minimum size of a range to sort.  Increasing
      * this value reduces the amount of recursion performed, but may increase
      * the final runtime by increasing the time it takes insertion sort to
      * fix up the sequence.
      */
-    const size_t kBlockSize = 24;
+    const size_t kBlockSize = 15;
 
     /* Cache how many elements there are. */
     const size_t numElems = size_t(end - begin);

@@ -8,11 +8,12 @@
 
 #ifdef MIA_USE_HEADER_ONLY_TESTS
 #include <boost/test/included/unit_test.hpp>
+#include <boost/timer/timer.hpp>
 #else
 #include <boost/test/unit_test.hpp>
 #endif
 
-#include <boost/timer/timer.hpp>
+
 
 #include "DenseMIA.h"
 #include "SparseMIA.h"
@@ -48,7 +49,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_a(j,l,i,k);
     //std::cout << "Dense Scan add " << boost::timer::format(dense_t.elapsed()) << std::endl;
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1 for ")+typeid(_data_type).name());
-
+    return;
 
     //test when a is not sorted (uses a different merge algorithm)
     std::array<size_t,4> new_sort_order{{2,0,3,1}};
@@ -174,11 +175,11 @@ BOOST_AUTO_TEST_CASE( SparseMIAAddSubtractTests )
 
 
 
-    //do_work<double>(10,80);
-    do_work<double>(10,15);
-    do_work<float>(10,15);
-    do_work<int>(10,15);
-    do_work<long long int>(10,15);
+    do_work<double>(10,80);
+//    do_work<double>(10,15);
+//    do_work<float>(10,15);
+//    do_work<int>(10,15);
+//    do_work<long long int>(10,15);
 
 //    do_work<double>(10,8);
 //    do_work<float>(10,8);

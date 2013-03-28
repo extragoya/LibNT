@@ -21,7 +21,7 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/tuple/tuple.hpp>
-
+//#include <boost/timer/timer.hpp>
 
 #include "tupleit.hh"
 
@@ -434,18 +434,20 @@ void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const 
     lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
     //print_array(lhsOrder,"lhsOrder");
     //boost::timer::cpu_timer sort_t;
+
     //this->change_sort_order(lhsOrder);
-//    std::sort(this->index_begin(),this->index_end());
-//    std::sort(this->data_begin(),this->data_end());
+
+    //std::sort(this->index_begin(),this->index_end());
+    //std::sort(this->data_begin(),this->data_end());
     if(lhsOrder!=this->mSortOrder)
        this->sort(lhsOrder);
     //std::cout << "Scan sort " << boost::timer::format(sort_t.elapsed()) << std::endl;
     //this->print();
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
-    //boost::timer::cpu_timer merge_t;
+    boost::timer::cpu_timer merge_t;
     auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
-    //std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
+    std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
     this->resize(new_end-this->storage_begin());
 
 }
@@ -489,75 +491,7 @@ void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const 
 
 }
 
-//template<class T, size_t _order>
-//template<typename otherDerived>
-//SparseMIA<T,_order>& SparseMIA<T,_order>::operator=(const SparseMIABase<otherDerived>& otherMIA)
-//{
-//    static_assert(_order==internal::order<otherDerived>::value,"Orders of MIAs must be the same to be assigned");
-//
-//
-//    if(this->m_dimensionality!=otherMIA.dimensionality()){
-//        if(hasOwnership){
-//            this->m_dimensionality=otherMIA.dimensionality();
-//            this->m_dims=otherMIA.dims();
-//            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-//            m_smart_raw_ptr.swap(temp_ptr);
-//            temp_ptr.release();
-//            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-//        }
-//        else
-//            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
-//    }
-//    else if(this->m_dims!=otherMIA.dims())
-//        this->m_dims=otherMIA.dims();
-//
-//    typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
-//    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-//        *it1=to_mdata_type::convert(*it2);
-//
-//    return *this;
-//
-//}
-//
-//
-//
-//
-//
-//
-//template<class T, size_t _order>
-//template<typename otherDerived,typename index_param_type>
-//void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
-//{
-//    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
-//
-//
-//    if(this->m_dimensionality!=otherMIA.dimensionality()){
-//        if(hasOwnership){
-//            internal::collect_dimensions_from_order(otherMIA,index_order,this->m_dims);
-//            this->m_dimensionality=otherMIA.dimensionality();
-//            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
-//            m_smart_raw_ptr.swap(temp_ptr);
-//            temp_ptr.release();
-//            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-//        }
-//        else
-//            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
-//    }
-//    else
-//        internal::collect_dimensions_from_order(otherMIA,index_order,this->m_dims);
-//
-//
-//    index_type curIdx=0;
-//
-//    auto other_it=otherMIA.data_begin();
-//    for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
-//    {
-//        *this_it=this->convert(*(other_it+sub2ind(ind2sub(curIdx++, this->dims()),index_order,otherMIA.dims())));
-//
-//    }
-//
-//
-//}
+
 
 template<class T, size_t _order>
 template<typename otherDerived,typename index_param_type>
