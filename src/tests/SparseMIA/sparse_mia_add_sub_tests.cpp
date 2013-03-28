@@ -8,9 +8,10 @@
 
 #ifdef MIA_USE_HEADER_ONLY_TESTS
 #include <boost/test/included/unit_test.hpp>
-#include <boost/timer/timer.hpp>
+
 #else
 #include <boost/test/unit_test.hpp>
+#include <boost/timer/timer.hpp>
 #endif
 
 
