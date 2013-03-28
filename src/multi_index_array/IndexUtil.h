@@ -93,7 +93,7 @@ void reorder_from(const array_type1& from_array, const array_type2& from_sequenc
 {
 
     size_t curIdx=0;
-    collect_dimensions_from_order(from_array,from_sequence_order,to_array,curIdx);
+    reorder_from(from_array,from_sequence_order,to_array,curIdx);
 }
 
 //should be undefined
