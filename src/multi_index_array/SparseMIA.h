@@ -445,9 +445,9 @@ void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const 
     //this->print();
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
-    boost::timer::cpu_timer merge_t;
+    //boost::timer::cpu_timer merge_t;
     auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
-    std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
+    //std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
     this->resize(new_end-this->storage_begin());
 
 }
