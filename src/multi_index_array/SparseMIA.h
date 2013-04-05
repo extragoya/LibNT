@@ -236,6 +236,21 @@ public:
 
     }
 
+    //!  Constructs SparseMIA of specified size.
+    /*!
+        Scalar data will be set to zero
+
+        \param[in] dims array parameter to specify size. Will assert a compile failure is number of parameters is different than _order
+
+    */
+    template<class array_index_type>
+    SparseMIA(const std::array<array_index_type,_order> &_dims):SparseMIABase<SparseMIA<T,_order> > (_dims), m_data(),m_indices()
+    {
+
+
+    }
+
+
     //!  Constructs SparseMIA of specified size with a given scalar data and index containers.
     /*!
         Will swap the contents of the container parameters, meaning passed in containers will now be empty, invalidating all previous references, etc.
@@ -410,10 +425,10 @@ public:
 protected:
 
     template<typename otherDerived, typename Op,typename index_param_type>
-    void scanMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+    void scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 
     template<typename otherDerived, typename Op,typename index_param_type>
-    void sortMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+    void sortMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 private:
 
 
@@ -425,13 +440,37 @@ private:
 
 template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
-void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
 
-    //get the order of lhs indices in terms of rhs
-    auto lhsOrder=internal::reverseOrder(index_order);
-    //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-    lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+    if (b.is_sorted() && !this->is_sorted()){
+        //get the order of lhs indices in terms of rhs
+        auto lhsOrder=internal::reverseOrder(index_order);
+        //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+        this->sort(lhsOrder);
+    }
+    else if(this->is_sorted()&&!b.is_sorted()){
+       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+
+    }
+    else if(this->is_sorted()&& b.is_sorted()){
+        if (b.size()<this->size()){
+            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
+        }
+        else{
+            //get the order of lhs indices in terms of rhs
+            auto lhsOrder=internal::reverseOrder(index_order);
+            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+            this->sort(lhsOrder);
+        }
+    }
+    else
+        throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
+
+
+
     //print_array(lhsOrder,"lhsOrder");
     //boost::timer::cpu_timer sort_t;
 
@@ -439,8 +478,7 @@ void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const 
 
     //std::sort(this->index_begin(),this->index_end());
     //std::sort(this->data_begin(),this->data_end());
-    if(lhsOrder!=this->mSortOrder)
-       this->sort(lhsOrder);
+
     //std::cout << "Scan sort " << boost::timer::format(sort_t.elapsed()) << std::endl;
     //this->print();
     size_t old_size=this->size();
@@ -452,24 +490,27 @@ void  SparseMIA<T,_order>::scanMerge(const SparseMIABase<otherDerived> &b,const 
 
 }
 
+//both operands are assumed to be unsorted already
 template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
-void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
 
-    //get the order of lhs indices in terms of rhs
-    auto lhsOrder=internal::reverseOrder(index_order);
-    //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-    lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
-    if(lhsOrder!=this->mSortOrder)
-       this->change_sort_order(lhsOrder);
-    //this->print();
+    //b has less non-zeros than *this
+    if(this->size()>b.size())
+        b.change_sort_order(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+    else{
+        //get the order of lhs indices in terms of rhs
+        auto lhsOrder=internal::reverseOrder(index_order);
+        this->change_sort_order(internal::reOrderArray(b.sort_order(), lhsOrder));
+    }
+
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
     this->mIsSorted=false;
     if(boost::is_same<std::minus<data_type>,Op>::value){
         //since stable sort is slower (inherently and also because we have to use tupleit with stable_sort), we just negate b's datatype
-        //during the copy process, and then just perform addition
+        //during the copy process, and then just perform addition, which doesn't need stability
         std::function<data_type(typename SparseMIABase<otherDerived>::data_type)> copy_function = [&](const typename SparseMIABase<otherDerived>::data_type & _other_data)
         {
             return this->convert(-1*_other_data);
@@ -482,7 +523,9 @@ void  SparseMIA<T,_order>::sortMerge(const SparseMIABase<otherDerived> &b,const 
 
     }
     else{
-        std::copy(b.storage_begin(),b.storage_end(),this->storage_begin()+old_size);
+        //don't use storage iterators, as they're likely slower than just performing two separate copy runs
+        std::copy(b.data_begin(),b.data_end(),this->data_begin()+old_size);
+        std::copy(b.index_begin(),b.index_end(),this->index_begin()+old_size);
         this->collect_duplicates(op);
     }
 

@@ -1,3 +1,13 @@
+/*
+Taken from Anthony Williams contribution on Boost's Yahoo groups
+http://groups.yahoo.com/group/boost/files/tupleit.zip and w
+Modified to use std::pair instead of boost::tuple, which sped things up.
+APH-
+Even so, it was faster to use an implementation of IntroSort and modify it
+to swap one array based on the first array
+*/
+
+
 #ifndef ITERATORS_TUPLEIT_HH
 #define ITERATORS_TUPLEIT_HH
 

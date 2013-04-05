@@ -403,11 +403,24 @@ public:
     {
 
 
-        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        cType* cMIA(new cType(*m_mia));
-        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
-        C+=Rhs;
 
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+
+        cType* cMIA=new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
+
+        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
         return C;
 
 
@@ -451,10 +464,21 @@ public:
     {
 
 
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<m_Seq,internal::binary_rule>::run();
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<r_Seq,internal::binary_rule>::run();
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        cType* cMIA(new cType(*m_mia));
+        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+        cType* cMIA=new cType(m_mia->minus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
         MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
-        C-=Rhs;
         return C;
 
 

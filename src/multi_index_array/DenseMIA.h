@@ -196,6 +196,22 @@ public:
 
     }
 
+    //!  Move constructor.
+    /*!
+
+
+    */
+    DenseMIA(DenseMIA&& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),m_smart_raw_ptr(nullptr),m_Data(nullptr),hasOwnership(otherMIA.ownsData())
+    {
+
+
+        m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
+        m_Data.swap(otherMIA.m_Data);
+
+
+    }
+
+
     //!  Copy constructor.
     /*!
         If otherMIA's datatype is different than this->data_type, then individual entries will be converted.
@@ -297,6 +313,9 @@ public:
         return m_Data;
     }
 
+    bool ownsData(){
+        return hasOwnership;
+    }
 
     //! Returns a raw pointer to the scalar data
     T* raw_data_ptr() const{

@@ -269,13 +269,6 @@ public:
             else{
                 internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),
                                     internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
-//                std::sort(make_sort_permute_iter(this->index_begin(), this->data_begin()),
-//                          make_sort_permute_iter(this->index_end(), this->data_end()),
-//                            sort_permute_iter_compare<index_iterator,data_iterator>());
-//                std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
-//                {
-//                    return std::get<1>(left)<std::get<1>(right);
-//                } );
             }
         }
         mIsSorted=true;
@@ -290,6 +283,7 @@ public:
             std::cout << index_val(*it) << "\t " << data_val(*it) << std::endl;
         }
         std::cout << std::endl;
+
     }
 
     template<class index_param_type>
@@ -457,7 +451,47 @@ public:
     }
 
 
+    //! Performs destructive add (+=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    SparseMIABase & plus_equal(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
 
+        std::plus<data_type> op;
+        merge(b.derived(),op,index_order);
+        return *this;
+    }
+
+
+    //! Performs destructive subtract (-=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    SparseMIABase & minus_equal(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+        std::minus<data_type> op;
+        derived().merge(b.derived(),op,index_order);
+        return *this;
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type plus_(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+
+        std::plus<data_type> op;
+        return outside_merge(b.derived(),op,index_order);
+
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type minus_(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+
+        std::minus<data_type> op;
+        return outside_merge(b.derived(),op,index_order);
+
+    }
 
 
 
@@ -531,7 +565,13 @@ protected:
     }
 
     template<typename otherDerived, typename Op,typename index_param_type>
-    void merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+    void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
 
     template<class otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
     void copy_other_MIA(const otherMIAType & otherMIA)
@@ -589,7 +629,7 @@ private:
 
 template<typename Derived>
 template<typename otherDerived, typename Op,typename index_param_type>
-void  SparseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
+void  SparseMIABase<Derived>::merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
 {
 
     this->check_merge_dims(b,index_order);
@@ -597,7 +637,7 @@ void  SparseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const O
 
 
 
-    if(b.is_sorted()){
+    if(b.is_sorted() || this->is_sorted()){
         //std::cout << "Performing Scan merge " <<std::endl;
         derived().scanMerge(b,op,converted_index_order);
     }
@@ -617,6 +657,71 @@ void  SparseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const O
 
 }
 
+template<typename Derived>
+template<typename otherDerived, typename Op,typename index_param_type>
+typename MIAMergeReturnType<Derived,otherDerived>::type
+SparseMIABase<Derived>::outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
+{
+    this->check_merge_dims(b,index_order);
+    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+    typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
+
+
+    if(b.is_sorted() || this->is_sorted()){
+        //std::cout << "Performing Scan merge " <<std::endl;
+
+        return outside_scanMerge(b,op,converted_index_order);
+    }
+    else{
+
+        //std::cout << "Performing Sort merge " <<std::endl;
+        CType C(*this);
+        C.sortMerge(b,op,converted_index_order);
+        return C;
+    }
+
+}
+
+template<typename Derived>
+template<typename otherDerived, typename Op,typename index_param_type>
+typename MIAMergeReturnType<Derived,otherDerived>::type
+SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
+{
+    typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
+    if (b.is_sorted() && !this->is_sorted()){
+        //get the order of lhs indices in terms of rhs
+        auto lhsOrder=internal::reverseOrder(index_order);
+        //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+        this->sort(lhsOrder);
+    }
+    else if(this->is_sorted()&&!b.is_sorted()){
+       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+
+    }
+    else if(this->is_sorted()&& b.is_sorted()){
+        if (b.size()<this->size()){
+            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
+        }
+        else{
+            //get the order of lhs indices in terms of rhs
+            auto lhsOrder=internal::reverseOrder(index_order);
+            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+            this->sort(lhsOrder);
+        }
+    }
+    else
+        throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
+
+    CType C(this->m_dims);
+    C.change_sort_order(this->mSortOrder);
+    C.resize(this->size()+b.size());
+    auto new_end=internal::outside_merge_sparse_storage_containers(C.storage_begin(),this->storage_begin(),this->storage_end(),b.storage_begin(),b.storage_end(),op);
+    C.resize(new_end-C.storage_begin());
+
+    return C;
+}
 
 
 /*! @} */

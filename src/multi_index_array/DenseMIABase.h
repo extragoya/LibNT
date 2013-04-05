@@ -87,7 +87,7 @@ public:
     typedef typename internal::const_data_iterator<Derived>::type const_data_iterator;
     typedef typename internal::storage_iterator<Derived>::type storage_iterator;
     typedef typename internal::const_storage_iterator<Derived>::type const_storage_iterator;
-    constexpr static size_t order=internal::order<DenseMIABase>::value;
+    constexpr static size_t mOrder=internal::order<Derived>::value;
     Derived& derived()
     {
         return *static_cast<Derived*>(this);
@@ -182,7 +182,7 @@ public:
 
     //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
     template<typename otherDerived, typename Op,typename index_param_type>
-    void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order);
+    void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
 
     data_iterator data_begin()
     {
@@ -251,6 +251,50 @@ public:
     bool operator!=(const MIA<otherDerived>& otherMIA) const
     {
         return !(*this==otherMIA.derived());
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
+
+        typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
+        CType c(*this);
+        c.plus_equal(b,index_order);
+        return c;
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type  minus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
+
+        typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
+        CType c(*this);
+        c.minus_equal(b,index_order);
+        return c;
+    }
+
+    //! Performs destructive add (+=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    DenseMIABase & plus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+
+        std::plus<data_type> op;
+        merge(b.derived(),op,index_order);
+        return *this;
+    }
+
+
+    //! Performs destructive subtract (-=).
+    /*!
+        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(z,x,y).
+        Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,typename index_param_type>
+    DenseMIABase & minus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+        std::minus<data_type> op;
+        merge(b.derived(),op,index_order);
+        return *this;
     }
 
 protected:
@@ -369,7 +413,7 @@ bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & othe
 
 template<typename Derived>
 template<typename otherDerived, typename Op,typename index_param_type>
-void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::order>& index_order)
+void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order)
 {
 
     this->check_merge_dims(b,index_order);

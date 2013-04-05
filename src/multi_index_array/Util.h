@@ -369,6 +369,54 @@ AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageI
 
 }
 
+//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
+template<class AStorageItType, class BStorageItType, class CStorageItType,class Op>
+AStorageItType outside_merge_sparse_storage_containers(CStorageItType  c_begin,AStorageItType  a_begin,AStorageItType  a_end,BStorageItType  b_begin,BStorageItType  b_end,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type c_data_type;
+    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type b_data_type;
+    typedef typename boost::remove_reference<typename AStorageItType::value_type::first_type>::type a_data_type;
+
+    typedef converter<c_data_type,a_data_type,conversion_traits<c_data_type,a_data_type>,def_overflow_handler,RoundEven<a_data_type>> to_mdata_type_a;
+    typedef converter<c_data_type,b_data_type,conversion_traits<c_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type_b;
+    CStorageItType c_actual_end=c_begin;
+
+    while(a_begin<a_end && b_begin<b_end){
+        if (std::get<1>(*a_begin)<std::get<1>(*b_begin)){
+            std::get<0>(*c_actual_end)=to_mdata_type_a::convert(std::get<0>(*a_begin));
+            std::get<1>(*c_actual_end++)=std::get<1>(*a_begin++);
+        }
+        else if  (std::get<1>(*b_begin)<std::get<1>(*a_begin)){
+            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(a_data_type(0)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
+            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin++);
+        }
+        else{
+            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(std::get<0>(*a_begin)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
+            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin);
+            a_begin++;
+            b_begin++;
+        }
+
+    }
+    if (a_begin==a_end){
+        while (b_begin<b_end){
+            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(a_data_type(0)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
+            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin++);
+        }
+    }
+    else{
+        while (a_begin<a_end){
+            std::get<0>(*c_actual_end)=to_mdata_type_a::convert(std::get<0>(*a_begin));
+            std::get<1>(*c_actual_end++)=std::get<1>(*a_begin++);
+        }
+    }
+
+
+    return c_actual_end;
+
+}
+
 
 
 }
