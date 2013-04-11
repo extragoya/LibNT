@@ -167,17 +167,19 @@ public:
     template<class array_index_type>
     DenseMIA(const std::array<array_index_type,_order> &_dims,T* scalar_data,bool _ownership=true):DenseMIABase<DenseMIA<T,_order> >(_dims),hasOwnership(_ownership)
     {
-        if(hasOwnership){
-            m_smart_raw_ptr.reset(scalar_data);
-            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-        }
-        else{
-            m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
-            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-            std::copy(scalar_data,scalar_data+this->m_dimensionality,this->data_begin());
 
-        }
+        m_smart_raw_ptr.reset(scalar_data);
+        m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
 
+
+    }
+
+
+
+
+    template<class array_index_type>//, class otherDerived>
+    DenseMIA(const std::array<array_index_type,_order> &_dims,DenseLattice<data_type>&& _lat,bool _ownership=true):DenseMIA(_dims,_lat.release_memptr(),_ownership)
+    {
     }
 
     //!  Copy constructor.

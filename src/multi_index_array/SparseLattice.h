@@ -98,26 +98,26 @@ struct const_data_iterator<SparseLattice<T> >
 template<typename T>
 struct full_iterator_tuple<SparseLattice<T> >
 {
-    typedef typename boost::tuple<typename data_iterator<SparseLattice<T> >::type,typename index_iterator<SparseLattice<T> >::type> type;
+    typedef typename std::pair<typename data_iterator<SparseLattice<T> >::type,typename index_iterator<SparseLattice<T> >::type> type;
 };
 
 template<typename T>
 struct const_full_iterator_tuple<SparseLattice<T> >
 {
-    typedef typename boost::tuple<typename const_data_iterator<SparseLattice<T> >::type,typename const_index_iterator<SparseLattice<T> >::type> type;
+    typedef typename std::pair<typename const_data_iterator<SparseLattice<T> >::type,typename const_index_iterator<SparseLattice<T> >::type> type;
 
 };
 
 template<typename T>
 struct full_tuple<SparseLattice<T> >
 {
-    typedef boost::tuple<T&,typename index_type<SparseLattice<T> >::type &> type;
+    typedef std::pair<T&,typename index_type<SparseLattice<T> >::type &> type;
 };
 
 template<typename T>
 struct const_full_tuple<SparseLattice<T> >
 {
-    typedef boost::tuple< const T&,const typename index_type<SparseLattice<T> >::type &> type;
+    typedef std::pair< const T&,const typename index_type<SparseLattice<T> >::type &> type;
 };
 
 template<typename T>
@@ -129,7 +129,7 @@ struct storage_iterator<SparseLattice<T> >
 template<typename T>
 struct const_storage_iterator<SparseLattice<T> >
 {
-    typedef typename boost::zip_iterator<typename const_full_iterator_tuple<SparseLattice<T> >::type > type;
+    typedef typename iterators::TupleIt<typename const_full_iterator_tuple<SparseLattice<T> >::type > type;
 };
 
 
@@ -248,6 +248,27 @@ public:
             throw LatticeParameterException("Data and Indices vectors must be the same size.");
         this->init(_height,_width,_depth);
         this->sparse_init(false,ColumnMajor);
+
+    }
+
+    //!  Constructs a sparse lattice from two prexisting std::vectors.
+    /*!
+    Moves the contents of _data and _indices to the lattice's internal vectors.
+    Will throw a LatticeParameterException upon invalid parameters.
+    \param[in] _data std::vector<T> of data values.
+    \param[in] _indices std::vector<long long> of indice values. Must be linear index of column/row major ordering
+    */
+    SparseLattice( Data&& _data, Indices&& _indices,index_type _height,index_type _width,index_type _depth):m_data(), m_indices()
+    {
+
+        //std::cout << "MOVED sparse lattice" << std::endl;
+        m_data.swap(_data);
+        m_indices.swap(_indices);
+        if (_data.size()!=_indices.size())
+            throw LatticeParameterException("Data and Indices vectors must be the same size.");
+        this->init(_height,_width,_depth);
+        this->sparse_init(false,ColumnMajor);
+        //this->print();
 
     }
 
@@ -371,9 +392,19 @@ public:
     const Data& data() const{
         return m_data;
     }
+
     const Indices& indices() const{
         return m_indices;
     }
+
+    Data& data() {
+        return m_data;
+    }
+
+    Indices& indices() {
+        return m_indices;
+    }
+
     index_iterator index_begin() ;
     index_iterator index_end() ;
     data_iterator data_begin();

@@ -267,14 +267,17 @@ public:
         typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
         auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
-        auto cLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order())*
-            Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        auto aLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
+
+        auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        auto cLat=aLat*bLat;
+        //cLat.print();
 
 
 
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
+        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
 
 
         //create an MIA from cLat
@@ -304,7 +307,7 @@ public:
 
         typedef typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         constexpr size_t inter_product_number=MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,cLat.release_memptr()));
+        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
 
 
         //create an MIA from cLat

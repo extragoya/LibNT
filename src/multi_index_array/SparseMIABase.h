@@ -25,6 +25,7 @@
 #include "Util.h"
 #include "IndexUtil.h"
 #include "MIA.h"
+#include "MappedSparseLattice.h"
 #include "LibMIAAlgorithm.h"
 
 
@@ -408,32 +409,43 @@ public:
     {
 
 
-        auto it=this->storage_begin();
-        if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
-            return false;
-
-        for(index_type idx=0;idx<index_val(*(it));idx++)
-            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
-                return false;
-
-
-        for(it=this->storage_begin()+1;it<this->storage_end();++it){
-            if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it)){
-                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
-
-                return false;
+            if (!this->size())
+            {
+                for(auto it=otherMIA.data_begin();it<otherMIA.data_end();++it)
+                    if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+                        return false;
+                return true;
             }
-            for(auto idx=index_val(*(it-1))+1;idx<index_val(*(it));idx++)
-                if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+            else{
+                auto it=this->storage_begin();
+                if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
                     return false;
 
-        }
+                for(index_type idx=0; idx<index_val(*(it)); idx++)
+                    if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                        return false;
 
-        for(index_type idx=*(this->index_end()-1)+1;idx<this->m_dimensionality;idx++)
-            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
-                return false;
 
-        return true;
+                for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
+                {
+                    if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
+                    {
+                        //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+
+                        return false;
+                    }
+                    for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
+                        if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                            return false;
+
+                }
+
+                for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
+                    if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                        return false;
+
+                return true;
+            }
 
     }
 
@@ -492,6 +504,29 @@ public:
         return outside_merge(b.derived(),op,index_order);
 
     }
+
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
+    /*!
+        For SparseMIAs, this function calls toLatticeSort, which will modify the ordering and indexing of data (but not it's actual data content)
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    MappedSparseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder=true)
+    {
+        return toLatticeSort(row_indices, column_indices, tab_indices,columnSortOrder);
+
+    }
+
+    //! Flattens the MIA to a Lattice by creating a copy of the data.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return MappedSparseLattice class that is a wrapper over the data and indices
+
+        Will likely modify the data ordering of the SparseMIA
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder);
 
 
 
@@ -721,6 +756,66 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
     C.resize(new_end-C.storage_begin());
 
     return C;
+}
+
+template<typename Derived>
+template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnMajor) ->MappedSparseLattice<data_type>
+{
+
+    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
+    std::array<size_t,mOrder> _sort_order;
+
+    if(columnMajor){
+        _sort_order=internal::concat_index_arrays(row_indices,column_indices,tab_indices);
+        sort(_sort_order);
+    }
+    else{
+        _sort_order=internal::concat_index_arrays(column_indices,row_indices,tab_indices);
+        sort(_sort_order);
+        //for now lattices don't actually change index values when doing column vs. row major - they just change the sort criteria, so we change it back to column major
+        //but sorted row major
+        change_sort_order(internal::concat_index_arrays(row_indices,column_indices,tab_indices));
+    }
+
+
+
+    //statically check number of indices match up
+    index_type row_size=1, column_size=1, tab_size=1;
+
+
+    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
+    for(auto _row: row_indices)
+    {
+
+        row_size*=this->m_dims[_row];
+    }
+
+
+
+    for(auto _column: column_indices)
+    {
+
+        column_size*=this->m_dims[_column];
+
+    }
+
+
+    for(auto _tab: tab_indices)
+    {
+
+        tab_size*=this->m_dims[_tab];
+
+    }
+
+    //MappedSparseLattice<data_type> test=MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
+    return MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
+
+
 }
 
 

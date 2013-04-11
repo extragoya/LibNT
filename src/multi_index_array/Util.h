@@ -256,6 +256,8 @@ struct is_DenseLattice<DenseLatticeBase<Derived > >: public boost::true_type {};
 template<class T> struct incomplete;
 
 
+
+
 //must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
 template<class ADataIt, class AIndexIt, class BDataIt, class BIndexIt,class Op>
 ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_end,AIndexIt  a_index_begin,AIndexIt  a_index_end,BDataIt  b_data_begin,BDataIt  b_data_end,BIndexIt  b_index_begin,BIndexIt  b_index_end,Op op)
@@ -419,6 +421,8 @@ AStorageItType outside_merge_sparse_storage_containers(CStorageItType  c_begin,A
 
 
 
+
+
 }
 
 //determines the super datatype in Lhs and Rhs
@@ -458,7 +462,7 @@ struct SparseProductReturnType
     typename internal::data_type<Rhs>::type
     >
     >
-    ,  Lhs
+    ,  SparseLattice<typename internal::data_type<Lhs>::type>
     >::type type;
 
 
@@ -532,19 +536,34 @@ struct MIAProductReturnType
 };
 
 
-//only enable when Derived and otherDerived are MIAs - needs to be extended to detect for dense vs sparse mias
+
 template<class L_MIA,class R_MIA, size_t order
 >
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
-            internal::is_MIA<L_MIA>,
-            internal::is_MIA<R_MIA>
+            internal::is_DenseMIA<L_MIA>,
+            internal::is_DenseMIA<R_MIA>
         >
     >::type
 >
 {
     typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+
+};
+
+template<class L_MIA,class R_MIA, size_t order
+>
+struct MIAProductReturnType<L_MIA,R_MIA,order,
+    typename boost::enable_if<
+        boost::mpl::and_<
+            internal::is_SparseMIA<L_MIA>,
+            internal::is_SparseMIA<R_MIA>
+        >
+    >::type
+>
+{
+    typedef SparseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 

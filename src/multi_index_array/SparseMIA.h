@@ -262,12 +262,27 @@ public:
 
     */
     template<typename... Dims>
-    SparseMIA(Data & scalar_data,Indices & indice_data,Dims... dims):SparseMIABase<SparseMIA<T,_order> > {dims...},m_data(),m_indices()
+    SparseMIA(Data && scalar_data,Indices && indice_data,Dims... dims):SparseMIABase<SparseMIA<T,_order> > {dims...},m_data(),m_indices()
     {
 
         m_data.swap(scalar_data);
         m_indices.swap(indice_data);
 
+    }
+
+    template<typename array_index_type>
+    SparseMIA(const std::array<array_index_type,_order> &_dims,Data && scalar_data,Indices && indice_data):SparseMIABase<SparseMIA<T,_order> >(_dims),m_data(),m_indices()
+    {
+
+        m_data.swap(scalar_data);
+        m_indices.swap(indice_data);
+
+    }
+
+
+    template<class array_index_type>//, class otherDerived>
+    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(_dims,std::move(_lat.data()),std::move(_lat.indices()))
+    {
     }
 
     //!  Constructs SparseMIA of specified size with a given raw scalar data and index data.
@@ -282,10 +297,13 @@ public:
 
     */
     template<typename... Dims>
-    SparseMIA(const data_type * scalar_data,const index_type * & indice_data,size_t _nnz,Dims... dims):SparseMIABase<SparseMIA<T,_order> > {dims...},m_data(scalar_data,scalar_data+_nnz),m_indices(indice_data,indice_data+_nnz)
+    SparseMIA(const data_type * scalar_data,const index_type * indice_data,size_t _nnz,Dims... dims):SparseMIABase<SparseMIA<T,_order> > {dims...},m_data(scalar_data,scalar_data+_nnz),m_indices(indice_data,indice_data+_nnz)
     {
 
     }
+
+
+
 
     //!  Assignment based on given order.
     /*!
@@ -333,6 +351,16 @@ public:
         //! Returns a raw pointer to the scalar data
     const T* raw_data_ptr() const{
         return &m_data[0];
+    }
+
+    //! Returns a raw pointer to the scalar data
+    index_type* raw_index_ptr(){
+        return &m_indices[0];
+    }
+
+        //! Returns a raw pointer to the scalar data
+    const index_type* raw_index_ptr() const{
+        return &m_indices[0];
     }
 
     //! Iterator to the beginning of the raw data
@@ -541,8 +569,9 @@ template<typename otherDerived,typename index_param_type>
 void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
 
-    std::cout <<"We got to sparse assign" << std::endl;
-    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+    //std::cout <<"We got to sparse assign" << std::endl;
+    //otherMIA.print();
+
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
     internal::reorder_to(otherMIA.sort_order(),index_order,this->mSortOrder);
     if(otherMIA.sort_order()!=this->mSortOrder)
@@ -552,10 +581,12 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
     this->resize(otherMIA.size());
 
-    auto otherIt=otherMIA.storage_begin();
-    std::for_each(this->storage_begin(),this->storage_end(),[&](full_tuple & cur_tuple){
-        cur_tuple=this->convert(*(otherIt++));
+    auto otherDataIt=otherMIA.data_begin();
+    std::for_each(this->data_begin(),this->data_end(),[&](data_type & cur_data){
+        cur_data=this->convert(*(otherDataIt++));
     });
+    std::copy(otherMIA.index_begin(),otherMIA.index_end(),this->index_begin());
+
 
 
 

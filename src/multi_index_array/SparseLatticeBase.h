@@ -183,9 +183,9 @@ public:
         {
 
             full_tuple temp=*i;
-            //T temp2=boost::get<0>(temp);
+            //T temp2=std::get<0>(temp);
 
-            std::cout << boost::get<0>(temp) <<"\t" ;
+            std::cout << std::get<0>(temp) <<"\t" ;
             std::cout << row(index(temp)) << "\t"<< column(index(temp)) << "\t" << tab(index(temp)) <<"\n";
         }
     }
@@ -295,13 +295,13 @@ public:
 
     index_type& index(full_tuple a)
     {
-        return boost::get<1>(a);
+        return std::get<1>(a);
 
     }
 
     const index_type& index(const_full_tuple a) const
     {
-        return boost::get<1>(a);
+        return std::get<1>(a);
 
     }
 
@@ -309,12 +309,12 @@ public:
 
     data_type& data_val(full_tuple a)
     {
-        return boost::get<0>(a);
+        return std::get<0>(a);
 
     }
     const data_type& data_val(const_full_tuple a) const
     {
-        return boost::get<0>(a);
+        return std::get<0>(a);
 
     }
 
@@ -399,13 +399,13 @@ public:
     \param[in] t_begin t_end Storage iterator to the nonzeros of the current tab
     \param[out] mat Resulting CSC matrix. The CSC matrix should already have allocated vectors for data and indices.
     */
-    template<class super_data_type>
-    void to_matrix(std::vector<index_type> &row_map,std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const;
+
+    void to_matrix(const std::vector<index_type> &row_map,const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const;
 
 
     //!  Utility function for mapping tabs to row-major matrices to use in lattice mulitplication. See to_matrix for more information.
-    template<class super_data_type>
-    void to_matrix_rowmajor(std::vector<index_type> &inner_indices,std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
+
+    void to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
 
 protected:
 
@@ -505,7 +505,11 @@ template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> &b)
 {
 
-    check_mult_dims(b);
+//    std::cout << "A Lattice in mult " <<std::endl;
+//    this->print();
+//    std::cout << "B Lattice in mult " <<std::endl;
+//    b.print();
+    this->check_mult_dims(b);
 
 
     typedef typename ScalarPromoteType<Derived,otherDerived>::type super_data_type;
@@ -608,18 +612,32 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
 
             //create temporary sparse matrices for current tab and calculate matrix product
-            a_columns.resize(inner_indices.size());
+            a_columns.resize(inner_indices.size()+1);
             std::vector<index_type> rows_place_holder;
             rows_place_holder.resize(a_temp_end-a_temp_begin);
-            MappedSparseMatrix_cm A(a_rows.size(),inner_indices.size(),a_temp_end-a_temp_begin,&a_columns[0],&rows_place_holder[0],&(*(a_data_begin()+(a_temp_begin-a_index_begin))));
-            to_matrix(a_rows,inner_indices,a_begin+(a_temp_begin-a_index_begin),a_begin+(a_temp_end-a_index_begin),A);
+            //std::cout << "Inner size " << inner_indices.size() << " Rows size " << a_rows.size() << " data size " << a_temp_end-a_temp_begin << std::endl;
+            MappedSparseMatrix_cm A(a_rows.size(),inner_indices.size(),a_temp_end-a_temp_begin,&a_columns[0],&rows_place_holder[0],&(*(a_data_begin+(a_temp_begin-a_index_begin))));
 
-            b_rows.resize(inner_indices.size());
+            to_matrix(a_rows,inner_indices,a_begin+(a_temp_begin-a_index_begin),a_begin+(a_temp_end-a_index_begin),A);
+            //std::cout << "A Matrix in mult " <<std::endl;
+            //std::cout << A <<std::endl;
+            //std::cout << "Finished to _matrix" << std::endl;
+            b_rows.resize(inner_indices.size()+1);
             std::vector<b_index_type> columns_place_holder;
             columns_place_holder.resize(b_temp_end-b_temp_begin);
-            MappedSparseMatrix_rm B(inner_indices.size(),b_columns.size(),b_temp_end-b_temp_begin,&b_rows[0],&columns_place_holder[0],&(*(b_data_begin()+(b_temp_begin-b_index_begin))));
+            MappedSparseMatrix_rm B(inner_indices.size(),b_columns.size(),b_temp_end-b_temp_begin,&b_rows[0],&columns_place_holder[0],&(*(b_data_begin+(b_temp_begin-b_index_begin))));
             b.to_matrix_rowmajor(inner_indices,b_columns,b_begin+(b_temp_begin-b_index_begin),b_begin+(b_temp_end-b_index_begin),B);
+            //std::cout << "Finished to _matrix rowmajor" << std::endl;
+
+            //std::cout << "B Matrix in mult " <<std::endl;
+            //std::cout << B <<std::endl;
+
             SparseMatrix_cm C=A*B;
+
+            //std::cout << "C Matrix in mult " <<std::endl;
+            //std::cout << C << std::endl;
+
+            //std::cout << "About to make C tab " <<std::endl;
             //store result in two vectors - prune while doing so
             for (int j=0; j<C.outerSize(); ++j)
             {
@@ -634,6 +652,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
                 }
             }
+            //std::cout << "Finished to make C tab " <<std::endl;
 
 
         }
@@ -641,82 +660,113 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         b_temp_begin=b_temp_end;
 
     }
-
+    //std::cout << "About to sort " <<std::endl;
     //resort B in the proper precedence
     b_d.sort(old_sort_order);
+    //std::cout << "Finished Mult " <<std::endl;
     //return sparse lattice using the data and indices vectors
-    return RType(c_data,c_indices,this->height(),b.width(),this->depth());
+    return RType(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth());
 }
 
 template <class Derived>
-template <class super_data_type>
-inline void SparseLatticeBase<Derived>::to_matrix(std::vector<index_type> &row_map, std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const
+inline void SparseLatticeBase<Derived>::to_matrix(const std::vector<index_type> &row_map, const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const
 {
 
-    typedef boost::numeric::converter<super_data_type,data_type> toSuper;
-    bool (SparseLatticeBase::*column_compare) (index_type, index_type) const = &SparseLatticeBase::column_compare;
-    const index_type& (SparseLatticeBase::*index_bind)(const_full_tuple) const = &SparseLatticeBase::index;
+
+
 
 
     index_type outer_val=0;
-    auto mat_rows=mat._innerIndexPtr();
-    auto mat_columns=mat._outerIndexPtr();
+    auto mat_rows=mat.innerIndexPtr();
+    auto mat_columns=mat.outerIndexPtr();
     typename std::vector<index_type>::const_iterator cur_row;
     for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
     {
 
-        *mat_columns++=outer_val;
+        //std::cout << "Cur inner index " << *cur_it << "column of lattice " << column(index(*t_begin)) << std::endl;
+        *mat_columns=outer_val;
+        //std::cout << "column set to " << *mat_columns << std::endl;
+        mat_columns++;
         cur_row=row_map.begin();
-        while (column(index(*t_begin++))<*cur_it);
+        while (t_end-t_begin>0 && column(index(*t_begin))<*cur_it){
 
+            t_begin++;
+        }
 
-        while (column(index(*t_begin++))==*cur_it)
+        //less than greater than operators don't seem to work with tupleit (id3eally this function should just use index/data iterators instead.
+        while (t_end-t_begin>0 && column(index(*t_begin))==*cur_it)
         {
             cur_row=std::lower_bound(cur_row,row_map.end(),row(index(*t_begin)));
-            *mat_rows++=cur_row-row_map.begin();
+            *mat_rows=cur_row-row_map.begin();
+            //std::cout << "seting row to " << *mat_rows << std::endl;
+            mat_rows++;
             outer_val++;
+            t_begin++;
 
+
+        }
+        if(t_end-t_begin<1){
+
+            break;
         }
 
 
 
     }
-    *mat_columns=outer_val;
+
+    while(mat_columns<=mat.outerIndexPtr()+mat.outerSize()){
+        //std::cout << "final column " << mat_columns-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
+        *mat_columns=mat.nonZeros();
+        mat_columns++;
+    }
 
 
 }
 
 
 template <class Derived>
-template <class super_data_type>
-inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(std::vector<index_type> &inner_indices,std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const
+inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const
 {
 
-    typedef boost::numeric::converter<super_data_type,data_type> toSuper;
-    bool (SparseLatticeBase::*row_compare) (index_type, index_type) const = &SparseLatticeBase::row_compare;
-    const index_type& (SparseLatticeBase::*index_bind)(const_full_tuple) const = &SparseLatticeBase::index;
+
+
 
     index_type outer_val=0;
-    auto mat_columns=mat._innerIndexPtr();
-    auto mat_rows=mat._outerIndexPtr();
+    auto mat_columns=mat.innerIndexPtr();
+    auto mat_rows=mat.outerIndexPtr();
     typename std::vector<index_type>::const_iterator cur_column;
     for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
     {
 
-        *mat_rows++=outer_val;
+        //std::cout << "Cur inner index " << *cur_it << "row of lattice " << row(index(*t_begin)) << std::endl;
+        *mat_rows=outer_val;
+        //std::cout << "row set to " << *mat_rows << std::endl;
+        mat_rows++;
         cur_column=column_map.begin();
-        while (row(index(*t_begin++))<*cur_it);
 
-        while (row(index(*t_begin++))==*cur_it)
+
+        while (t_end-t_begin>0 && row(index(*t_begin))<*cur_it)
+            t_begin++;
+
+        while (t_end-t_begin>0 && row(index(*t_begin))==*cur_it)
         {
             cur_column=std::lower_bound(cur_column,column_map.end(),column(index(*t_begin)));
-            *mat_columns++=cur_column-column_map.begin();
+            *mat_columns=cur_column-column_map.begin();
+            //std::cout << "seting column to " << *mat_columns << std::endl;
             outer_val++;
+            mat_columns++;
+            t_begin++;
         }
+        if(t_end-t_begin<1)
+            break;
 
 
     }
-    *mat_rows=outer_val;
+    while(mat_rows<=mat.outerIndexPtr()+mat.outerSize()){
+        //std::cout << "final row " << mat_rows-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
+        *mat_rows=mat.nonZeros();
+        mat_rows++;
+    }
 
 
 }

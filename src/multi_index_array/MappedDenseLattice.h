@@ -110,7 +110,7 @@ public:
     \param[in] rawdata Pointer of already allocated memory. Internal pointer of class is set to rawdata.
 
     */
-    MappedDenseLattice(T*rawdata,int _height, int _width, int _depth):  m_data(rawdata,boost::extents[_height][_width][_depth],boost::fortran_storage_order())
+    MappedDenseLattice(T*rawdata,int _height, int _width, int _depth):  m_raw_data(rawdata),m_data(rawdata,boost::extents[_height][_width][_depth],boost::fortran_storage_order())
     {
 
 
@@ -180,6 +180,20 @@ public:
 
     }
 
+    //!  Releases the internal scalar data memory pointer.
+    /*!
+    Since this class doesn't own data, no other action is performed
+
+    */
+    raw_pointer release_memptr() const
+    {
+
+
+        return m_raw_data;
+
+
+    }
+
 
 
 
@@ -189,7 +203,7 @@ protected:
 private:
 
     //raw_pointer m_raw_data;
-
+    raw_pointer m_raw_data;
     Data m_data;
 
 

@@ -56,6 +56,33 @@ namespace internal
 {
 
 //! same as collect_dimensions_to_order but we start at i=curIdx instead of 0
+template<class array_type1,class array_type2, class array_type3,size_t size1, size_t size2, size_t size3>
+std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3)
+{
+
+    std::array<size_t,size1+size2+size3> to_array;
+    size_t idx=0;
+    for(auto _elem: _array1)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    for(auto _elem: _array2)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    for(auto _elem: _array3)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    return to_array;
+
+}
+
+
+//! same as reorder_to but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>
 void reorder_to(const array_type1& from_array, const array_type2& to_sequence_order,array_type3& to_array,size_t& curIdx)
 {
@@ -73,7 +100,7 @@ void reorder_to(const array_type1& from_array, const array_type2& to_sequence_or
 {
 
     size_t curIdx=0;
-    collect_dimensions_to_order(from_array,to_sequence_order,to_array,curIdx);
+    reorder_to(from_array,to_sequence_order,to_array,curIdx);
 }
 //! same as collect_dimensions_from_order but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>

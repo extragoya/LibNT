@@ -25,7 +25,7 @@
 
 #include "Util.h"
 #include "SparseLatticeBase.h"
-
+#include "SparseLattice.h"
 
 
 
@@ -99,26 +99,26 @@ struct const_data_iterator<MappedSparseLattice<T> >
 template<typename T>
 struct full_iterator_tuple<MappedSparseLattice<T> >
 {
-    typedef typename boost::tuple<typename data_iterator<MappedSparseLattice<T> >::type,typename index_iterator<MappedSparseLattice<T> >::type> type;
+    typedef typename std::pair<typename data_iterator<MappedSparseLattice<T> >::type,typename index_iterator<MappedSparseLattice<T> >::type> type;
 };
 
 template<typename T>
 struct const_full_iterator_tuple<MappedSparseLattice<T> >
 {
-    typedef typename boost::tuple<typename const_data_iterator<MappedSparseLattice<T> >::type,typename const_index_iterator<MappedSparseLattice<T> >::type> type;
+    typedef typename std::pair<typename const_data_iterator<MappedSparseLattice<T> >::type,typename const_index_iterator<MappedSparseLattice<T> >::type> type;
 
 };
 
 template<typename T>
 struct full_tuple<MappedSparseLattice<T> >
 {
-    typedef boost::tuple<T&,typename index_type<MappedSparseLattice<T> >::type &> type;
+    typedef std::pair<T&,typename index_type<MappedSparseLattice<T> >::type &> type;
 };
 
 template<typename T>
 struct const_full_tuple<MappedSparseLattice<T> >
 {
-    typedef boost::tuple< const T&,const typename index_type<MappedSparseLattice<T> >::type &> type;
+    typedef std::pair< const T&,const typename index_type<MappedSparseLattice<T> >::type &> type;
 };
 
 template<typename T>
@@ -130,8 +130,10 @@ struct storage_iterator<MappedSparseLattice<T> >
 template<typename T>
 struct const_storage_iterator<MappedSparseLattice<T> >
 {
-    typedef typename boost::zip_iterator<typename const_full_iterator_tuple<MappedSparseLattice<T> >::type > type;
+    typedef typename iterators::TupleIt<typename const_full_iterator_tuple<MappedSparseLattice<T> >::type > type;
 };
+
+
 
 
 
