@@ -46,6 +46,7 @@
 #endif
 
 #include "Lattice.h"
+#include "LibMIAAlgorithm.h"
 #include "Util.h"
 #include "tupleit.hh"
 
@@ -218,17 +219,22 @@ public:
 
 
 
-        const index_type& (SparseLatticeBase::*index)(const_full_tuple) const = &SparseLatticeBase::index;
+
         storage_iterator temp=begin();
 
         if (m_sort_order!=sort_order || !is_sorted())
         {
 
             if (sort_order==ColumnMajor)
-                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less, this,boost::bind(index,this,boost::lambda::_1),boost::bind(index,this,boost::lambda::_2)));
+                internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
-            else
-                std::sort(begin(),end(),boost::bind(&SparseLatticeBase::idx_less_rowmajor, this,boost::bind(index,this,boost::lambda::_1),boost::bind(index,this,boost::lambda::_2)));
+            else{
+                std::function<bool(const index_type&,const index_type&)> comparator=[this](const index_type & lhs, const index_type & rhs){
+                    return this->idx_less_rowmajor(lhs,rhs);
+                };
+                internal::Introsort(this->index_begin(),this->index_end(),comparator,internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+
+            }
 
             m_is_sorted=true;
             m_sort_order=sort_order;
