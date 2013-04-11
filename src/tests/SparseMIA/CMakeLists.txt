@@ -17,6 +17,6 @@ endif()
 ADD_TEST(SparseMIACompareTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIACompareTests)
 ADD_TEST(SparseMIAFunctionTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAFunctionTests)
 ADD_TEST(SparseMIAAddSubtractTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAAddSubtractTests)
-ADD_TEST(SparseMIAAddSubtractTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAMultTests)
+ADD_TEST(SparseMIAMultTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAMultTests)
 
 
