@@ -69,6 +69,9 @@ struct storage_iterator<DenseLatticeBase<Derived> >: public storage_iterator<Der
 template<class Derived>
 struct const_storage_iterator<DenseLatticeBase<Derived> >: public const_storage_iterator<Derived> {};
 
+template<class Derived>
+struct Data<DenseLatticeBase<Derived> >: public Data<Derived> {};
+
 }
 
 /** \addtogroup lattice Lattice Classes
@@ -90,11 +93,12 @@ class DenseLatticeBase: public Lattice<DenseLatticeBase<Derived > >//, boost::mu
 public:
 
 
-    typedef typename internal::data_type<Derived>::type data_type;
-    typedef typename internal::Data<Derived>::type Data;
-    typedef typename internal::data_iterator<Derived>::type data_iterator;
-    typedef typename internal::storage_iterator<Derived>::type storage_iterator;
-    typedef typename internal::const_storage_iterator<Derived>::type const_storage_iterator;
+    typedef typename internal::data_type<DenseLatticeBase>::type data_type;
+    typedef typename internal::index_type<DenseLatticeBase>::type index_type;
+    typedef typename internal::Data<DenseLatticeBase>::type Data;
+    typedef typename internal::data_iterator<DenseLatticeBase>::type data_iterator;
+    typedef typename internal::storage_iterator<DenseLatticeBase>::type storage_iterator;
+    typedef typename internal::const_storage_iterator<DenseLatticeBase>::type const_storage_iterator;
     typedef typename Eigen::Map<Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > matrix_type;
     typedef const typename Eigen::Map<const Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > const_matrix_type;
     typedef typename Eigen::Map<Eigen::Matrix<data_type, Eigen::Dynamic, 1> > vector_type;
@@ -148,6 +152,11 @@ public:
 
     template<class otherDerived>
     bool operator==(const DenseLatticeBase<otherDerived> &b) const;
+
+    template<class otherDerived>
+    bool operator==(SparseLatticeBase<otherDerived> &b){
+        return b==*this;
+    }
 
     //!  Sets each tab to an identity matrix.
     /*!
@@ -280,6 +289,20 @@ public:
     const_vector_type column_vector(int _column,int _tab) const{
         return const_vector_type(&(derived()(0,_column,_tab)),this->height());
 
+    }
+
+    //! Returns scalar data at given linear index
+    const data_type& atIdx(index_type idx) const{
+
+        //return lin index
+        return *(derived().data_begin()+idx);
+    }
+
+    //! Returns scalar data at given linear index
+    data_type& atIdx(index_type idx) {
+
+        //return lin index
+        return *(derived().data_begin()+idx);
     }
 
 protected:

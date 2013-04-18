@@ -322,6 +322,7 @@ public:
     template<typename otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
         this->m_dims=otherMIA.dims();
+        this->m_dimensionality=otherMIA.dimensionality();
         this->mSortOrder=otherMIA.sort_order();
         this->copy_other_MIA(otherMIA);
         return *this;

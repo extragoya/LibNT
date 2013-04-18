@@ -159,7 +159,7 @@ protected:
 
     }
 
-private:
+protected:
 
 
     index_type m_height;

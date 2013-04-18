@@ -1,11 +1,22 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8)
 
-project(SparseLattice_example)
-set (SOURCES slattice_1.cpp slattice_test.h)
-
-add_executable(SparseLattice_example ${SOURCES})
-
-INCLUDE_DIRECTORIES(${SuperLU_INCLUDE})
-TARGET_LINK_LIBRARIES(SparseLattice_example ${SuperLU_LIB} ${blas_LIB})
+#set (COMPARE_SOURCES sparse_mia_compare_test.cpp)
+#add_executable(SparseMIACompareTests ${COMPARE_SOURCES})
+#set (FUNCTION_SOURCES sparse_mia_functions.cpp)
+#add_executable(SparseMIAFunctionTests ${FUNCTION_SOURCES})
+#set (ADD_SUB_SOURCES sparse_mia_add_sub_tests.cpp)
+#add_executable(SparseMIAAddSubtractTests ${ADD_SUB_SOURCES})
+set (MULT_SOURCES sparse_lattice_mult_test.cpp)
+add_executable(SparseLatticeMultTests ${MULT_SOURCES})
+if(NOT MIA_USE_HEADER_ONLY_TESTS)
+	 #target_link_libraries(SparseMIACompareTests ${Boost_LIBRARIES})
+	 #target_link_libraries(SparseMIAFunctionTests ${Boost_LIBRARIES})
+	 #target_link_libraries(SparseMIAAddSubtractTests ${Boost_LIBRARIES})
+	 target_link_libraries(SparseLatticeMultTests ${Boost_LIBRARIES})
+endif()
+#ADD_TEST(SparseMIACompareTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIACompareTests)
+#ADD_TEST(SparseMIAFunctionTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAFunctionTests)
+#ADD_TEST(SparseMIAAddSubtractTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAAddSubtractTests)
+ADD_TEST(SparseLatticeMultTests ${CMAKE_CURRENT_BINARY_DIR}/SparseLatticeMultTests)
 
 

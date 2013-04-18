@@ -277,6 +277,18 @@ public:
 
     }
 
+    //don't use - just here for benchmark purposes - will probably disappear in later versions
+    void old_sort()
+    {
+        if(!mIsSorted)
+        {
+            std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
+                {
+                    return std::get<1>(left)<std::get<1>(right);
+                } );
+        }
+    }
+
     void print() const
     {
         std::cout << "Index\t Data" << std::endl;
@@ -340,6 +352,7 @@ public:
     */
     void rand_indices(){
         using namespace boost::numeric;
+
         boost::uniform_real<> uni_dist(0,this->m_dimensionality-1);
         boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
         typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
