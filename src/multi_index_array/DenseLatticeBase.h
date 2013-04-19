@@ -158,6 +158,11 @@ public:
         return b==*this;
     }
 
+    template<class otherDerived>
+    bool operator!=(SparseLatticeBase<otherDerived> &b){
+        return !(b==*this);
+    }
+
     //!  Sets each tab to an identity matrix.
     /*!
         If non-square, it follows <a href="http://eigen.tuxfamily.org/dox/classEigen_1_1MatrixBase.html#a0650b65c6ae6c3d19a138b72a6d68568">this</a> format.

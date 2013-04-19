@@ -42,6 +42,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::SparseMIA<_data_type,1> d(dim2);
     LibMIA::SparseMIA<_data_type,2> d2(dim2,dim2);
 
+
     dense_a.randu(0,20);
     dense_b.randu(0,20);
     dense_b2.randu(0,20);
@@ -69,8 +70,7 @@ void mult_work(size_t dim1, size_t dim2){
     b2=dense_b2;
     d=dense_d;
     d2=dense_d2;
-    //a.print();
-    //b.print();
+
     dense_c(i,k,m,n)=dense_a(i,j,k,l)*dense_b(j,l,m,n);
     c(i,k,m,n)=a(i,j,k,l)*b(j,l,m,n);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
@@ -112,6 +112,9 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*dense_b2(!j,!!l))*dense_d(!l);
     c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
+
+
+
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
 
 
@@ -138,6 +141,8 @@ BOOST_AUTO_TEST_CASE( SparseMIAMultTests )
 //    mult_work<long>(3,3);
 //
 //
+
+
     mult_work<double>(8,5);
     mult_work<float>(8,5);
     mult_work<int>(8,5);

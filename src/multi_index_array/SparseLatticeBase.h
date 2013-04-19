@@ -415,6 +415,12 @@ public:
     template<class otherDerived>
     bool operator==(const DenseLatticeBase<otherDerived>& otherLat);
 
+    //non constant b/c a sort may be involved
+    template<class otherDerived>
+    bool operator!=(const DenseLatticeBase<otherDerived>& otherLat){
+        return !(*this==otherLat);
+    }
+
     //!  Utility function for mapping tabs to column-major matrices to use in lattice mulitplication
     /*!
     \param[in] row_map A sorted vector mapping compressed indices to full row indices of the current tab
@@ -580,7 +586,7 @@ auto SparseLatticeBase<Derived>::find_tab_start_idx(index_type _tab,index_iterat
                 return this->tab(lhs)<rhs;
             });
     else{
-        while(start_it<end_it && this->tab(*start_it)!=_tab)
+        while(start_it<end_it && this->tab(*start_it)<_tab)
             start_it++;
     }
     return start_it;
@@ -649,8 +655,13 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         }
         else if (this->tab(*a_temp_begin)<b.tab(*b_temp_begin)){ //if a's tab is less than b's tab - we need to try to find b's tab in a
             cur_tab=b.tab(*b_temp_begin);
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout << "A-- Tab " << this->tab(*a_temp_begin) << " is less than b tab: " << b.tab(*b_temp_begin) <<std::endl;
+#endif
             a_temp_begin=this->find_tab_start_idx(cur_tab,a_temp_begin,a_index_end,a_search_flag);
-
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout   << " so searched for it and got index " << a_temp_begin-this->index_begin() << std::endl;
+#endif
             if(a_temp_begin==a_index_end) //no tab in A is greater than or equal to B's current tab - so we're finished the entire multiplication routine
                 break;
             //couldn't find a tab in A equal to B's current tab, but we found one greater than it - so now we need to try to find a matching tab in b
@@ -659,8 +670,13 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         }
         else{
             cur_tab=this->tab(*a_temp_begin);
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout << "B-- Tab " << b.tab(*b_temp_begin) << " is less than A tab: " << this->tab(*a_temp_begin) <<std::endl;
+#endif
             b_temp_begin=b.find_tab_start_idx(cur_tab,b_temp_begin,b_index_end,b_search_flag);
-
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout   << " so searched for it and got index " << b_temp_begin-b.index_begin() << std::endl;
+#endif
             if(b_temp_begin==b_index_end) //no tab in B is greater than or equal to A's current tab - so we're finished the entire multiplication routine
                 break;
             //couldn't find a tab in B equal to A's current tab, but we found one greater than it - so now we need to try to find a matching tab in B
@@ -670,9 +686,13 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
         //find the end of the current tab
         a_temp_end=this->find_tab_end_idx(cur_tab,a_temp_begin,a_index_end,a_search_flag);
-        //std::cout << "A-- Tab " << cur_tab << " begin: " << a_temp_begin-this->index_begin() << " end: " << a_temp_end-this->index_begin() << std::endl;
+#ifdef LM_SPARSE_LATTICE_DEBUG
+        std::cout << "A-- Tab " << cur_tab << " begin: " << a_temp_begin-this->index_begin() << " end: " << a_temp_end-this->index_begin() << std::endl;
+#endif
         b_temp_end=b.find_tab_end_idx(cur_tab,b_temp_begin,b_index_end,b_search_flag);
-        //std::cout << "B-- Tab " << cur_tab << " begin: " << b_temp_begin-b.index_begin() << " end: " << b_temp_end-b.index_begin() << std::endl;
+#ifdef LM_SPARSE_LATTICE_DEBUG
+        std::cout << "B-- Tab " << cur_tab << " begin: " << b_temp_begin-b.index_begin() << " end: " << b_temp_end-b.index_begin() << std::endl;
+#endif
 
         std::sort(a_temp_begin,a_temp_end,[this](index_type lhs,index_type rhs)
         {
@@ -685,7 +705,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
             if (this->row(*it)!=this->row(*(it-1)))
                 unique_counter++;
         }
-        //std::cout << cur_tab << " unique_counter " << unique_counter << std::endl;
+#ifdef LM_SPARSE_LATTICE_DEBUG
+        std::cout << cur_tab << " unique_counter " << unique_counter << std::endl;
+#endif
         size_t new_m=unique_counter;
         //resize our row map
         a_row_map.resize(new_m);
@@ -746,7 +768,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
             index_iterator a_cur_it=a_temp_begin;
             auto a_cur_column_idx=a_column_idx.begin();
             size_t old_c_size=c_indices.size();
-            //std::cout << "Tab " << cur_tab << " Column " << cur_column << ": old_c_size " << old_c_size << std::endl;
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout << "Tab " << cur_tab << " Column " << cur_column << ": old_c_size " << old_c_size << std::endl;
+#endif
             while(cur_b<b_temp_end && b.column(*cur_b)==cur_column)
             {
                 //should be the
@@ -760,7 +784,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
             }
             //if we've added to c's indices in the current column of B, then clean it up and add to c's data
             //note mult_scatter just pushes the rows of c to c_indices
-            //std::cout << "Tab " << cur_tab << " Column " << cur_column << ": new_c_size " << c_indices.size() << std::endl;
+#ifdef LM_SPARSE_LATTICE_DEBUG
+            std::cout << "Tab " << cur_tab << " Column " << cur_column << ": new_c_size " << c_indices.size() << std::endl;
+#endif
             if(c_indices.size()-old_c_size)
             {
                 std::sort(c_indices.begin()+old_c_size,c_indices.end()); //scatter doesn't put the rows in sorted order
@@ -854,7 +880,7 @@ auto SparseLatticeBase<Derived>::mult_scatter(std::vector<size_t>::iterator & a_
 //
 //template <class Derived>
 //template <class otherDerived>
-//typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::old_times(SparseLatticeBase<otherDerived> &b)
+//typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> &b)
 //{
 //
 ////    std::cout << "A Lattice in mult " <<std::endl;
@@ -876,11 +902,11 @@ auto SparseLatticeBase<Derived>::mult_scatter(std::vector<size_t>::iterator & a_
 //    b.sort(RowMajor); //tab/row major for B
 //
 //    //iterators for indices and data
-//    storage_iterator a_begin=begin();
+//    storage_iterator a_begin=storage_begin();
 //    index_iterator a_index_begin=a_d.index_begin();
 //    data_iterator a_data_begin=data_begin();
 //
-//    auto b_begin=b.begin();
+//    auto b_begin=b.storage_begin();
 //    auto b_index_begin=b.index_begin();
 //    auto b_data_begin=b.data_begin();
 //
@@ -1040,15 +1066,15 @@ inline void SparseLatticeBase<Derived>::to_matrix(const std::vector<index_type> 
         //std::cout << "column set to " << *mat_columns << std::endl;
         mat_columns++;
         cur_row=row_map.begin();
-        while (t_end-t_begin>0 && column(index(*t_begin))<*cur_it){
+        while (t_end-t_begin>0 && column(index_val(*t_begin))<*cur_it){
 
             t_begin++;
         }
 
         //less than greater than operators don't seem to work with tupleit (id3eally this function should just use index/data iterators instead.
-        while (t_end-t_begin>0 && column(index(*t_begin))==*cur_it)
+        while (t_end-t_begin>0 && column(index_val(*t_begin))==*cur_it)
         {
-            cur_row=std::lower_bound(cur_row,row_map.end(),row(index(*t_begin)));
+            cur_row=std::lower_bound(cur_row,row_map.end(),row(index_val(*t_begin)));
             *mat_rows=cur_row-row_map.begin();
             //std::cout << "seting row to " << *mat_rows << std::endl;
             mat_rows++;
@@ -1097,12 +1123,12 @@ inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<ind
         cur_column=column_map.begin();
 
 
-        while (t_end-t_begin>0 && row(index(*t_begin))<*cur_it)
+        while (t_end-t_begin>0 && row(index_val(*t_begin))<*cur_it)
             t_begin++;
 
-        while (t_end-t_begin>0 && row(index(*t_begin))==*cur_it)
+        while (t_end-t_begin>0 && row(index_val(*t_begin))==*cur_it)
         {
-            cur_column=std::lower_bound(cur_column,column_map.end(),column(index(*t_begin)));
+            cur_column=std::lower_bound(cur_column,column_map.end(),column(index_val(*t_begin)));
             *mat_columns=cur_column-column_map.begin();
             //std::cout << "seting column to " << *mat_columns << std::endl;
             outer_val++;

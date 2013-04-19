@@ -63,6 +63,8 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat1=denseType(1,n1,p);
     DenseLat2=denseType(n1,1,p);
+    DenseLat1.randu(0,10);
+    DenseLat2.randu(0,10);
     for(auto it=DenseLat1.data_begin();it<DenseLat1.data_end();++it)
         if(*it<7)
             *it=0;
@@ -75,10 +77,15 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat3=DenseLat1*DenseLat2;
     SparseLat3=SparseLat1*SparseLat2;
+
+
+
     BOOST_CHECK_MESSAGE(DenseLat3==SparseLat3,std::string("Repeated Inner Product Mult Test for ")+typeid(data_type).name());
 
     DenseLat1=denseType(m1,1,p);
     DenseLat2=denseType(1,n2,p);
+    DenseLat1.randu(0,10);
+    DenseLat2.randu(0,10);
     for(auto it=DenseLat1.data_begin();it<DenseLat1.data_end();++it)
         if(*it<7)
             *it=0;
@@ -95,6 +102,8 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat1=denseType(m1,n1,1);
     DenseLat2=denseType(n1,n2,1);
+    DenseLat1.randu(0,10);
+    DenseLat2.randu(0,10);
     for(auto it=DenseLat1.data_begin();it<DenseLat1.data_end();++it)
         if(*it<7)
             *it=0;
@@ -110,14 +119,41 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     BOOST_CHECK_MESSAGE(DenseLat3==SparseLat3,std::string("No Depth Mult Test for ")+typeid(data_type).name());
 
 
+
+    DenseLat1=denseType(m1,1,p);
+    DenseLat2=denseType(1,1,p);
+    DenseLat1.randu(0,10);
+    DenseLat2.randu(0,10);
+
+    for(auto it=DenseLat1.data_begin();it<DenseLat1.data_end();++it)
+        if(*it<7)
+            *it=0;
+    for(auto it=DenseLat2.data_begin();it<DenseLat2.data_end();++it)
+        if(*it<7)
+            *it=0;
+
+    SparseLat1=DenseLat1;
+    SparseLat2=DenseLat2;
+
+    DenseLat3=DenseLat1*DenseLat2;
+    SparseLat3=SparseLat1*SparseLat2;
+
+    BOOST_CHECK_MESSAGE(DenseLat3==SparseLat3,std::string("Outer product, one operand, test for ")+typeid(data_type).name());
+
+
+
+
 }
 
 BOOST_AUTO_TEST_CASE( DenseLatticeMultTests )
 {
 
 
+    //multwork<double>(3,3,3,3);
     multwork<double>(20,20,20,20);
-
+    multwork<float>(20,20,20,20);
+    multwork<int>(20,20,20,20);
+    multwork<long>(20,20,20,20);
 
 
 
