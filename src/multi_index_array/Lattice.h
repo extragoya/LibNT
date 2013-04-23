@@ -33,6 +33,19 @@
 namespace LibMIA
 {
 
+namespace internal{
+
+template<class Derived>
+struct index_type<Lattice<Derived> >: public index_type<Derived> {};
+
+template<class Derived>
+struct data_type<Lattice<Derived> >: public data_type<Derived> {};
+
+template<class Derived>
+struct data_iterator<Lattice<Derived> >: public data_iterator<Derived> {};
+
+}
+
 /** \addtogroup lattice Lattice Classes
 *  @{
 */
@@ -58,9 +71,9 @@ public:
 
 
 
-    typedef typename internal::data_type<Derived>::type data_type;
-    typedef typename internal::index_type<Derived>::type index_type;
-    typedef typename internal::data_iterator<Derived>::type data_iterator;
+    typedef typename internal::data_type<Lattice>::type data_type;
+    typedef typename internal::index_type<Lattice>::type index_type;
+    typedef typename internal::data_iterator<Lattice>::type data_iterator;
 
 
     Lattice() {}
@@ -73,20 +86,33 @@ public:
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
 
-    int depth() const
+    index_type depth() const
     {
         return m_depth;
     }
-    int width() const
+    index_type width() const
     {
         return m_width;
     }
-    int height() const
+    index_type height() const
     {
         return m_height;
     }
 
+    index_type dimensionality() const
+    {
+        return m_height*m_width*m_depth;
+    }
 
+    //! Converts a scalar value to data_type
+    /*!
+        \tparam from_data_type the data_type you are converting from
+    */
+    template<class from_data_type>
+    static data_type convert(const from_data_type from){
+
+        return internal::convert<data_type,from_data_type>(from);
+    }
 
 
     /** Sets all lattice data to one.*/

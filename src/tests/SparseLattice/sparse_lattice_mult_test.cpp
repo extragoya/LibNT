@@ -25,18 +25,7 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     sparseType SparseLat2(n1,n2,p);
     sparseType SparseLat3;
 
-//    DenseLat1.zeros();
-//    DenseLat2.zeros();
-//    DenseLat1(0,1,0)=3;
-//    DenseLat1(0,0,0)=2;
-//    DenseLat2(1,0,0)=2;
-//    DenseLat2(1,1,0)=3;
-//    DenseLat2(0,0,0)=2;
-//    DenseLat1(0,1,1)=3;
-//    DenseLat1(0,0,1)=2;
-//    DenseLat2(1,0,1)=2;
-//    DenseLat2(1,1,1)=3;
-//    DenseLat2(0,0,1)=2;
+
     DenseLat1.randu(0,10);
     DenseLat2.randu(0,10);
     for(auto it=DenseLat1.data_begin();it<DenseLat1.data_end();++it)
@@ -149,7 +138,7 @@ BOOST_AUTO_TEST_CASE( DenseLatticeMultTests )
 {
 
 
-    //multwork<double>(3,3,3,3);
+
     multwork<double>(20,20,20,20);
     multwork<float>(20,20,20,20);
     multwork<int>(20,20,20,20);

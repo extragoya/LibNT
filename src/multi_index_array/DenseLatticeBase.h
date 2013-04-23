@@ -159,6 +159,11 @@ public:
     }
 
     template<class otherDerived>
+    bool fuzzy_equals(SparseLatticeBase<otherDerived> &b,double precision){
+        return b.fuzzy_equals(*this,precision);
+    }
+
+    template<class otherDerived>
     bool operator!=(SparseLatticeBase<otherDerived> &b){
         return !(b==*this);
     }

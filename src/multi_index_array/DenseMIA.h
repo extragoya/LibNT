@@ -231,7 +231,7 @@ public:
         size_t idx=0;
         std::for_each( otherMIA.data_begin(), otherMIA.data_end(), [this,&idx] (typename otherDerived::data_type val)
         {
-            *(this->data_begin()+idx++)=this->convert<typename otherDerived::data_type>(val);
+            *(this->data_begin()+idx++)=this->convert(val);
         } );
 
 
@@ -344,16 +344,7 @@ public:
 
     }
 
-    //! Converts a scalar value to data_type
-    /*!
-        \tparam from_data_type the data_type you are converting from
-    */
-    template<class from_data_type>
-    data_type convert(const from_data_type from) const{
-        using namespace boost::numeric;
-        typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
-        return to_mdata_type::convert(from);
-    }
+
 
     //! Returns size of raw data. For dense cases, this is the same as dimensionality
     std::size_t size() const

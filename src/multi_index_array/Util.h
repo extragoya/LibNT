@@ -77,6 +77,8 @@ struct select_first
     }
 };
 
+
+
 const bool ColumnMajor=true;
 const bool RowMajor=false;
 
@@ -255,7 +257,16 @@ struct is_DenseLattice<DenseLatticeBase<Derived > >: public boost::true_type {};
 
 template<class T> struct incomplete;
 
-
+//! Converts a scalar value to data_type
+/*!
+    \tparam from_data_type the data_type you are converting from
+*/
+template<class data_type,class from_data_type,typename boost::enable_if< boost::is_pod< from_data_type >, int >::type = 0>
+data_type convert(const from_data_type from){
+    using namespace boost::numeric;
+    typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
+    return to_mdata_type::convert(from);
+}
 
 
 //must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size

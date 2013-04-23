@@ -157,6 +157,16 @@ public:
 
     }
 
+    //! Converts a scalar value to data_type
+    /*!
+        \tparam from_data_type the data_type you are converting from
+    */
+    template<class from_data_type>
+    static data_type convert(const from_data_type from){
+
+        return internal::convert<data_type,from_data_type>(from);
+    }
+
     const std::array<index_type,internal::order<MIA>::value>& dims() const{
         return m_dims;
     }

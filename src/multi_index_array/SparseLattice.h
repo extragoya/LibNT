@@ -325,6 +325,11 @@ public:
 
     }
 
+    void resize(size_t _size){
+        this->m_data.resize(_size);
+        this->m_indices.resize(_size);
+    }
+
 
     //!  Performs *this-=b.
     /*!
@@ -358,6 +363,39 @@ public:
 
     }
 
+    //! Removes data with duplicated indices - conflicts are solved by always choosing the first data entry encountered
+    void collect_duplicates()
+    {
+        select_first<data_type> selector;
+        collect_duplicates(selector);
+    }
+
+    //! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
+    template<class Collector>
+    void collect_duplicates(Collector collector)
+    {
+
+
+
+        this->sort(this->sort_order());
+
+
+        auto result = this->storage_begin();
+        auto first=result;
+        while (++first != this->storage_end())
+        {
+            if (!(this->index_val(*result) == this->index_val(*first))){
+                *(++result)=*first;
+            }
+            else{
+
+                this->data_val(*result)=collector(this->data_val(*result),this->data_val(*first));
+            }
+        }
+        ++result;
+        size_t diff=result-this->storage_begin();
+        this->resize(diff);
+    }
 
 
     //SparseLattice<T,true> operator*(SparseLattice &b) ;
@@ -534,6 +572,8 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
 
 
 /*! @} */
+
+
 
 }// LibMIA
 
