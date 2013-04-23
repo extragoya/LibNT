@@ -13,22 +13,22 @@
 // *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
 
 /***************************************************************************
+   The code for introsort is a modified version of Keith Schwarz's version.
+   Original code can be found online at:
+     http://www.keithschwarz.com/interesting/code/?dir=introsort
+
    This is an implementation of introsort, that accepts a user-defined swapper.
    This is necessary for sorting index and data arrays (based on only the index
    arrays), which is a necessary operation in sparse MIAs and lattices. Unlike
-   the STL version, this code will only use the swap (and not create temp
-   buffers), meaning we can safely assume the addresses of our array entries
-   remain within the contiguous address range of our data container (if we're
-   sorting an array or vector). This allows use to swap data array entries
-   based off of the addresses of the two index array entries.
+   the STL version, this code will only use iter_swap (and not create temp
+   buffers), meaning we can safely use distances between iterators to swap entries
+   in the data container when we swap indices.
 
-   The code for introsort uses a modified version of Keith Schwarz's version,
-   and his file header is included below. His code was modified to use a
-   non-standard swapper. As well, reliance on STL algorithms was removed, as
+   As well, reliance on STL algorithms was removed, as
    these may or may not use temporary buffers, etc. This required using a non-STL
    implementation of heapsort
-     http://www.keithschwarz.com/interesting/code/?dir=introsort
 
+   Keith Schwarz's original file header follows
 
 ***************************************************************************
  *

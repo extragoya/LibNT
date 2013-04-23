@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE( SparseLatticeSolveTests )
 
     //multwork<double>(3,3,3,3);
     solvework<double>(20,20,20,20);
-    //solvework<float>(20,20,20,20);
+    solvework<float>(20,20,20,20);
 
 
 
