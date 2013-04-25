@@ -182,7 +182,9 @@ public:
 
 private:
     friend class SparseMIABase<SparseMIA>;
+    //!container for data entries - expected to allow Random Access Iterators
     Data m_data;
+    //!container for index entries - expected to allow Random Access Iterators
     Indices m_indices;
 
 
@@ -199,7 +201,6 @@ public:
 
 
     //! Copy constructor for DenseMIAs
-    //
     template<class otherMIA, typename boost::enable_if< internal::is_DenseMIA<otherMIA>,int >::type = 0>
     SparseMIA(const otherMIA& denseMIA):SparseMIABase<SparseMIA<T,_order>>(denseMIA.dims())
     {
@@ -240,7 +241,8 @@ public:
     /*!
         Scalar data will be set to zero
 
-        \param[in] dims array parameter to specify size. Will assert a compile failure is number of parameters is different than _order
+        \param[in] dims array parameter to specify size. Will assert a compile failure if array_index_type of variables making
+                            up _dims are not convertible to index_type
 
     */
     template<class array_index_type>
@@ -254,6 +256,7 @@ public:
     //!  Constructs SparseMIA of specified size with a given scalar data and index containers.
     /*!
         Will swap the contents of the container parameters, meaning passed in containers will now be empty, invalidating all previous references, etc.
+        If size of data and index containers doesn't equal the dimensionality of the passed-in dimensions, will throw an MIAParameterException.
 
         \param[in] scalar_data scalar data values
         \param[in] indice_data linear index values - must be same length as scalar_data
@@ -265,29 +268,56 @@ public:
     SparseMIA(Data && scalar_data,Indices && indice_data,Dims... dims):SparseMIABase<SparseMIA<T,_order> > {dims...},m_data(),m_indices()
     {
 
+        if(scalar_data.size()!=indice_data.size()){
+            throw MIAParameterException("SparseMIA Constructor: Data and index container parameters must have equal size.");
+        }
+
         m_data.swap(scalar_data);
         m_indices.swap(indice_data);
 
     }
 
+    //!  Constructs SparseMIA of specified size with a given scalar data and index containers.
+    /*!
+        Will swap the contents of the container parameters, meaning passed in containers will now be empty, invalidating all previous references, etc.
+        If size of data and index containers doesn't equal the dimensionality of the passed-in dimensions, will throw an MIAParameterException.
+
+        \param[in] scalar_data scalar data values
+        \param[in] indice_data linear index values - must be same length as scalar_data
+        \param[in] _dims array parameter to specify size. Will assert a compile failure if array_index_type of variables making
+                            up _dims are not convertible to index_type
+
+    */
     template<typename array_index_type>
-    SparseMIA(const std::array<array_index_type,_order> &_dims,Data && scalar_data,Indices && indice_data):SparseMIABase<SparseMIA<T,_order> >(_dims),m_data(),m_indices()
+    SparseMIA(Data && scalar_data,Indices && indice_data,const std::array<array_index_type,_order> &_dims):SparseMIABase<SparseMIA<T,_order> >(_dims),m_data(),m_indices()
     {
 
+        if(scalar_data.size()!=indice_data.size()){
+            throw MIAParameterException("SparseMIA Constructor: Data and index container parameters must have equal size.");
+        }
         m_data.swap(scalar_data);
         m_indices.swap(indice_data);
 
     }
 
 
-    template<class array_index_type>//, class otherDerived>
-    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(_dims,std::move(_lat.data()),std::move(_lat.indices()))
+    //!  Constructs SparseMIA of specified size with a given SparseLattice
+    /*!
+        Will swap the contents of the SparseLattice, meaning passed in containers will now be empty, invalidating all previous references, etc.
+
+        \param[in] _dims array parameter to specify size. Will assert a compile failure if array_index_type of variables making
+                            up _dims are not convertible to index_type
+        \param[in] _lat an rvalue reference to a SparseLattice. Do not use the SparseLattice reference after calling this constructor
+
+    */
+    template<class array_index_type>
+    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(std::move(_lat.data()),std::move(_lat.indices()),_dims)
     {
     }
 
     //!  Constructs SparseMIA of specified size with a given raw scalar data and index data.
     /*!
-        Will copy the contents of the raw scalar and index data
+        Will copy the contents of the raw scalar and index data.
 
         \param[in] scalar_data pointer to scalar data values
         \param[in] indice_data pointer to linear index values - must be same length as scalar_data
@@ -309,16 +339,17 @@ public:
     /*!
 
         If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
-        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up. Even otherMIA is
+        sorted, *this may not be if index_order designates a shuffle.
 
         \param[in] otherMIA the other MIA
-        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {2,0,1} this->at(x,y,z)==otherMIA.at(y,z,x).
+        \param[in] index_order An index reshuffle denoting how otherMIA is indexed based on *this. E.g., if order is {2,0,1} this->at(0,1,2)==otherMIA.at(1,2,0).
 
     */
     template<typename otherDerived,typename index_param_type>
     void assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
-
+    //!  Sparse assignment
     template<typename otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
         this->m_dims=otherMIA.dims();
@@ -327,7 +358,7 @@ public:
         this->copy_other_MIA(otherMIA);
         return *this;
     }
-
+    //!  Dense assignment
     template<typename otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
         this->m_dims=otherMIA.dims();
@@ -340,6 +371,7 @@ public:
     const Data & data() const{
         return m_data;
     }
+    //! Returns the index container
     const Indices& indices() const{
         return m_indices;
     }
@@ -349,7 +381,7 @@ public:
         return &m_data[0];
     }
 
-        //! Returns a raw pointer to the scalar data
+    //! Returns a raw pointer to the scalar data
     const T* raw_data_ptr() const{
         return &m_data[0];
     }
@@ -359,7 +391,7 @@ public:
         return &m_indices[0];
     }
 
-        //! Returns a raw pointer to the scalar data
+    //! Returns a raw pointer to the scalar data
     const index_type* raw_index_ptr() const{
         return &m_indices[0];
     }
@@ -429,11 +461,11 @@ public:
     template<class from_data_type>
     data_type convert(const from_data_type from) const{
         using namespace boost::numeric;
-        typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
+        typedef converter<data_type,from_data_type> to_mdata_type;
         return to_mdata_type::convert(from);
     }
 
-    //! Returns size of raw data. For sparse cases, this is the number of nonzeros
+    //! Returns size of raw data or the number of nonzeros
     std::size_t size() const
     {
 
@@ -441,6 +473,7 @@ public:
 
     }
 
+    //! Clears data and index containers
     void clear()
     {
 
@@ -453,9 +486,11 @@ public:
 
 protected:
 
+    //! Method to perform scanning type merge operations, eg add.
     template<typename otherDerived, typename Op,typename index_param_type>
     void scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 
+    //! Method to perform sorting type merge operations, eg add.
     template<typename otherDerived, typename Op,typename index_param_type>
     void sortMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 private:
@@ -471,18 +506,18 @@ template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
-
+    //if b is sorted, but *this is not, then we scan based on b
     if (b.is_sorted() && !this->is_sorted()){
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+        //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
         lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
         this->sort(lhsOrder);
     }
     else if(this->is_sorted()&&!b.is_sorted()){
        b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
 
-    }
+    } //if both *this and b are sorted, then we resort whichever mia has a smaller number of nonzeros
     else if(this->is_sorted()&& b.is_sorted()){
         if (b.size()<this->size()){
             b.sort(internal::reOrderArray(this->mSortOrder,index_order));
@@ -513,8 +548,9 @@ void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
     //boost::timer::cpu_timer merge_t;
+
+    //merge the two sorted containers to *this's containers
     auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
-    //std::cout << "Scan merge " << boost::timer::format(merge_t.elapsed()) << std::endl;
     this->resize(new_end-this->storage_begin());
 
 }
@@ -593,30 +629,7 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
 
 }
-//
-//template<class T, size_t _order>
-//template<typename otherDerived>
-//SparseMIA<T,_order>& SparseMIA<T,_order>::operator=(const SparseMIABase<otherDerived>& otherMIA)
-//{
-//
-//    std::cout <<"We got to sparse =" << std::endl;
-//    this->m_dims=otherMIA.dims();
-//    this->mSortOrder=otherMIA.sort_order();
-//    this->mIsSorted=otherMIA.is_sorted();
-//    otherMIA.print();
-//    this->resize(otherMIA.size());
-//
-//    auto otherIt=otherMIA.storage_begin();
-//    std::for_each(this->storage_begin(),this->storage_end(),[this,&otherIt](full_tuple cur_tuple){
-//        this->data_val(cur_tuple)=this->convert(boost::get<0>(*otherIt));
-//        this->index_val(cur_tuple)=boost::get<1>(*otherIt++);
-//    });
-//
-//    return *this;
-//
-//
-//
-//}
+
 
 
 /*! @} */

@@ -431,7 +431,7 @@ public:
     }
 
     template<class otherDerived>
-    bool operator==(const SparseMIABase<otherDerived>& otherMIA) const
+    bool operator==(SparseMIABase<otherDerived>& otherMIA)
     {
 
         bool passed=std::equal(this->index_begin(),this->index_end(),otherMIA.index_begin());
@@ -449,7 +449,15 @@ public:
     bool fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA, double precision);
 
     template<class otherDerived>
-    bool operator!=(const MIA<otherDerived>& otherMIA) const
+    bool operator!=(const DenseMIABase<otherDerived>& otherMIA)
+    {
+
+        return !(*this==otherMIA.derived());
+
+    }
+
+    template<class otherDerived>
+    bool operator!=(SparseMIABase<otherDerived>& otherMIA)
     {
 
         return !(*this==otherMIA.derived());
