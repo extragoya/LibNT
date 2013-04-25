@@ -26,7 +26,7 @@
 
    As well, reliance on STL algorithms was removed, as
    these may or may not use temporary buffers, etc. This required using a non-STL
-   implementation of heapsort
+   implementation of heapsort, as Schawrz's code used the STL version.
 
    Keith Schwarz's original file header follows
 

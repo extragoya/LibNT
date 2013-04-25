@@ -85,14 +85,14 @@ struct const_full_tuple<SparseMIABase<Derived> >: public const_full_tuple<Derive
 
 
 
-//!  Base class for sparse multi-index array classes.
+//!  Base class for sparse MIA classes.
 /*!
   This class acts as the base class for the parametric subclass pattern,
   which is more commonly known as the CTRP. It is the base class for all
   sparse multi-index array types. Provides operations and functions common to all sparse
   multi-index arrays.
 
-  \tparam Derived   should only be a sparse multi-index array class.
+  \tparam Derived   should only be a sparse multi-index array class, eg, SparseMIA
 */
 template <class Derived>
 class SparseMIABase: public MIA<SparseMIABase<Derived > >
@@ -122,12 +122,14 @@ public:
         return *static_cast<const Derived*>(this);
     }
 
+    //!Creates empty MIA of provided dimensionality
     template<typename... Dims>
     SparseMIABase(Dims... dims): MIA<SparseMIABase<Derived > >(dims...),mIsSorted(true) {
         init_sort_order();
     }
 
 
+    //!Creates empty MIA of zero dimensionality
     SparseMIABase(): MIA<SparseMIABase<Derived > >(),mIsSorted(true) {
         init_sort_order();
     }
@@ -135,50 +137,51 @@ public:
 
 
 
-
+    //!Creates empty MIA of provided dimensionality
     SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims),mIsSorted(true) {
         init_sort_order();
     }
 
-    //! Returns scalar data at given linear index or first element if not found
-    const data_type& atIdx(index_type idx) const{
+    //! Returns iterator to data and indices at given linear index. Should check if it equals storage_end() before dereferencing
+    const_storage_iterator atIdx(index_type idx) const{
 
 
-        storage_iterator it=find_idx(idx);
-        return it==derived().data_end()?*derived().data_begin():*it;
+        return find_idx(idx);
+
     }
 
-    //! Returns scalar data at given linear index or first element if not found
-    data_type& atIdx(index_type idx) {
+    //! Returns iterator to data and indices at given linear index. Should check if it equals storage_end() before dereferencing
+    storage_iterator atIdx(index_type idx) {
 
-        storage_iterator it=find_idx(idx);
-        return it==derived().data_end()?*derived().data_begin():*it;
+        return find_idx(idx);
     }
 
+    //! Iterator to the start of non-zeros entries. Deferencing iterator will provide a std::pair of references to data and index entries
     const_storage_iterator storage_begin() const
     {
         return iterators::makeTupleIterator(derived().data_begin(),derived().index_begin());
 
     }
 
-
+    //! Iterator to the end of non-zeros entries.
     const_storage_iterator storage_end() const
     {
         return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
     }
-
+    //! Iterator to the start of non-zeros entries. Deferencing iterator will provide a std::pair of references to data and index entries
     storage_iterator storage_begin()
     {
         return iterators::makeTupleIterator(derived().data_begin(),derived().index_begin());
 
     }
 
-
+    //! Iterator to the end of non-zeros entries.
     storage_iterator storage_end()
     {
         return iterators::makeTupleIterator(derived().data_end(),derived().index_end());
     }
 
+    //! Iterator to the start of non-zero data container
     data_iterator data_begin()
     {
 
@@ -186,6 +189,7 @@ public:
         return derived().data_begin();
     }
 
+    //! Iterator to the end of non-zero data container
     data_iterator data_end()
     {
 
@@ -193,6 +197,7 @@ public:
         return derived().data_end();
     }
 
+    //! Iterator to the start of non-zero data container
     const_data_iterator data_begin() const
     {
 
@@ -200,6 +205,7 @@ public:
         return derived().data_begin();
     }
 
+    //! Iterator to the end of non-zero data container
     const_data_iterator data_end() const
     {
 
@@ -207,6 +213,7 @@ public:
         return derived().data_end();
     }
 
+    //! Iterator to the start of non-zero index container
     index_iterator index_begin()
     {
 
@@ -214,6 +221,7 @@ public:
         return derived().index_begin();
     }
 
+    //! Iterator to the end of non-zero index container
     index_iterator index_end()
     {
 
@@ -221,6 +229,7 @@ public:
         return derived().index_end();
     }
 
+    //! Iterator to the start of non-zero index container
     const_index_iterator index_begin() const
     {
 
@@ -228,6 +237,7 @@ public:
         return derived().index_begin();
     }
 
+    //! Iterator to the end of non-zero index container
     const_index_iterator index_end() const
     {
 
@@ -247,12 +257,26 @@ public:
         return mIsSorted;
     }
 
+    //! Sort non-zero containers based on the given order
+    /*!
+        Will update the current sort order.
+
+        \param[in]  _sort_order the lexographical precedence to use in the sort - for instance {3,1,2} would sort based on the 3rd,1st, then 2nd index
+        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+
+    */
     void sort(const std::array<size_t,mOrder> & _sort_order,bool _stable=false)
     {
         change_sort_order(_sort_order);
         sort(_stable);
     }
 
+    //! Sort non-zero containers based on the current sort order
+    /*!
+
+        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+
+    */
     void sort(bool _stable=false)
     {
 
@@ -417,50 +441,12 @@ public:
 
     }
 
+
     template<class otherDerived>
-    bool operator==(const DenseMIABase<otherDerived>& otherMIA) const
-    {
+    bool operator==(const DenseMIABase<otherDerived>& otherMIA);
 
-
-            if (!this->size())
-            {
-                for(auto it=otherMIA.data_begin();it<otherMIA.data_end();++it)
-                    if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
-                        return false;
-                return true;
-            }
-            else{
-                auto it=this->storage_begin();
-                if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
-                    return false;
-
-                for(index_type idx=0; idx<index_val(*(it)); idx++)
-                    if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
-                        return false;
-
-
-                for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
-                {
-                    if (otherMIA.atIdx(convert_to_default_sort(index_val(*it)))!=data_val(*it))
-                    {
-                        //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
-
-                        return false;
-                    }
-                    for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
-                        if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
-                            return false;
-
-                }
-
-                for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
-                    if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
-                        return false;
-
-                return true;
-            }
-
-    }
+    template<class otherDerived>
+    bool fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA, double precision);
 
     template<class otherDerived>
     bool operator!=(const MIA<otherDerived>& otherMIA) const
@@ -552,16 +538,26 @@ protected:
     //!keeps track of whether SparseMIA is sorted or not
     bool mIsSorted;
 
-    storage_iterator & find_idx(const index_type idx) const
+    storage_iterator find_idx(const index_type idx)
     {
         return std::lower_bound(storage_begin(),storage_end(),idx,[] (const full_tuple& _tuple,const index_type idx)
         {
-            return boost::get<1>(_tuple)<idx;
+            return std::get<1>(_tuple)<idx;
         } );
 
     }
 
+    const_storage_iterator find_idx(const index_type idx)  const
+    {
+        return std::lower_bound(storage_begin(),storage_end(),idx,[] (const const_full_tuple& _tuple,const index_type idx)
+        {
+            return std::get<1>(_tuple)<idx;
+        } );
 
+    }
+
+    template<class otherDerived, class Predicate>
+    bool compare_with_dense(const DenseMIABase<otherDerived>& otherMIA,Predicate predicate);
 
 
     void init_sort_order(){
@@ -828,6 +824,76 @@ auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_i
     //MappedSparseLattice<data_type> test=MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
     return MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
 
+
+}
+
+template<class Derived>
+template<class otherDerived>
+bool SparseMIABase<Derived>::operator==(const DenseMIABase<otherDerived>& otherMIA)
+{
+    typedef typename DenseMIABase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[](data_type a,other_data_type b){
+        return a==b;
+    };
+    return compare_with_dense(otherMIA,pred);
+}
+
+template<class Derived>
+template<class otherDerived>
+bool SparseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA,double precision)
+{
+    typedef typename DenseMIABase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[precision](data_type a,other_data_type b){
+        return std::abs(a-b)<precision;
+    };
+    return compare_with_dense(otherMIA,pred);
+}
+
+template<class Derived>
+template<class otherDerived, class Predicate>
+bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>& otherMIA,Predicate predicate)
+{
+
+
+    this->sort();
+    if (!this->size())
+    {
+        for(auto it=otherMIA.data_begin(); it<otherMIA.data_end(); ++it)
+            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+                return false;
+        return true;
+    }
+    else
+    {
+        auto it=this->storage_begin();
+        if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
+            return false;
+
+        for(index_type idx=0; idx<index_val(*(it)); idx++)
+            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                return false;
+
+
+        for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
+        {
+            if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
+            {
+                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+
+                return false;
+            }
+            for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
+                if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                    return false;
+
+        }
+
+        for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
+            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                return false;
+
+        return true;
+    }
 
 }
 

@@ -20,3 +20,13 @@ ADD_TEST(SparseMIAAddSubtractTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAAddSubtr
 ADD_TEST(SparseMIAMultTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIAMultTests)
 
 
+if(LIBMIA_USE_SPARSE_SOLVE)
+	set (SOLVE_SOURCES sparse_mia_solve_test.cpp)
+	add_executable(SparseMIASolveTests ${SOLVE_SOURCES})
+	ADD_TEST(SparseMIASolveTests ${CMAKE_CURRENT_BINARY_DIR}/SparseMIASolveTests)
+	if(NOT MIA_USE_HEADER_ONLY_TESTS)
+		target_link_libraries(SparseMIASolveTests ${SuperLU_LIB} ${blas_LIB} ${Boost_LIBRARIES})
+	else()
+		target_link_libraries(SparseMIASolveTests ${SuperLU_LIB} ${blas_LIB})
+	endif()
+endif(LIBMIA_USE_SPARSE_SOLVE)

@@ -79,6 +79,13 @@ struct select_first
 
 
 
+enum SolveInfo{
+    FullyRanked,
+    LeastSquares,
+    NoInfo,
+    RankDeficient
+};
+
 const bool ColumnMajor=true;
 const bool RowMajor=false;
 

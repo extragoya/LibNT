@@ -99,13 +99,13 @@ public:
     }
 
     template<typename... Dims>
-    DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...) {}
+    DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...),mSolveInfo(NoInfo) {}
 
 
-    DenseMIABase(): MIA<DenseMIABase<Derived > >() {}
+    DenseMIABase(): MIA<DenseMIABase<Derived > >(),mSolveInfo(NoInfo) {}
 
 
-    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims) {}
+    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): mSolveInfo(NoInfo),MIA<DenseMIABase<Derived > >(_dims) {}
 
     template<class otherDerived>
     bool operator==(const DenseMIABase<otherDerived>& otherMIA);
@@ -156,6 +156,14 @@ public:
 
         //return lin index
         return *(derived().data_begin()+idx);
+    }
+
+    SolveInfo solveInfo() const{
+        return mSolveInfo;
+    }
+
+    void setSolveInfo(SolveInfo _solveInfo){
+        mSolveInfo=_solveInfo;
     }
 
     //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
@@ -299,7 +307,7 @@ public:
 
 protected:
 
-
+    SolveInfo mSolveInfo;
 
 
 private:

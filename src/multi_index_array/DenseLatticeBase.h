@@ -114,6 +114,7 @@ public:
         return *static_cast<const Derived*>(this);
     }
 
+    DenseLatticeBase():mSolveInfo(NoInfo){}
 
     //!  Performs lattice product.
     /*!
@@ -166,6 +167,13 @@ public:
     template<class otherDerived>
     bool operator!=(SparseLatticeBase<otherDerived> &b){
         return !(b==*this);
+    }
+
+    SolveInfo solveInfo() const{
+        return mSolveInfo;
+    }
+    void setSolveInfo(SolveInfo _solveInfo){
+        mSolveInfo=_solveInfo;
     }
 
     //!  Sets each tab to an identity matrix.
@@ -318,7 +326,7 @@ public:
 protected:
 
 
-
+    SolveInfo mSolveInfo;
 
     template <class otherDerived,class Op>
     void merge(const DenseLatticeBase<otherDerived> &b,Op op)
@@ -416,11 +424,14 @@ inline void DenseLatticeBase<Derived>::inverse_solve(const DenseLatticeBase<othe
     typedef typename RType::matrix_type return_matrix_type;
     typedef typename otherDerived::const_matrix_type b_matrix_type;
 
-
+    c.setSolveInfo(FullyRanked);
     for (int i=0; i<this->depth(); i++)
     {
 
-        c.derived().tab_matrix(i)=tab_matrix(i).colPivHouseholderQr().solve(b.derived().tab_matrix(i));
+        auto _QR=tab_matrix(i).colPivHouseholderQr();
+        if(!_QR.isInvertible())
+            c.setSolveInfo(RankDeficient);
+        c.derived().tab_matrix(i)=_QR.solve(b.derived().tab_matrix(i));
 
     }
 
@@ -435,10 +446,14 @@ inline void DenseLatticeBase<Derived>::lsqr_solve(const DenseLatticeBase<otherDe
     typedef typename RType::matrix_type return_matrix_type;
     typedef typename otherDerived::const_matrix_type b_matrix_type;
     using namespace Eigen;
+    c.setSolveInfo(LeastSquares);
     for (int i=0; i<this->depth(); i++)
     {
 
-        c.derived().tab_matrix(i)=tab_matrix(i).jacobiSvd(ComputeThinU | ComputeThinV).solve(b.derived().tab_matrix(i));
+        auto _SVD=tab_matrix(i).jacobiSvd(ComputeThinU | ComputeThinV);
+        if(!_SVD.nonzeroSingularValues()!=this->width())
+            c.setSolveInfo(RankDeficient);
+        c.derived().tab_matrix(i)=_SVD.solve(b.derived().tab_matrix(i));
     }
 
 

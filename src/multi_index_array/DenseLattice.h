@@ -118,7 +118,7 @@ public:
     };
 
     //!  Constructs DenseLattice of specified size, initialized to all zeros.
-    DenseLattice(int _height, int _width, int _depth) : m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
+    DenseLattice(int _height, int _width, int _depth) : DenseLatticeBase<DenseLattice<T> >(),m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
     {
 
         this->zeros();
@@ -126,7 +126,7 @@ public:
     }
 
     //!  Constructs empty DenseLattice.
-    DenseLattice():  m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order())) {
+    DenseLattice(): DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order())) {
         this->init( 0,  0,  0);
 
     }
@@ -137,7 +137,7 @@ public:
     \param[in] rawdata Pointer of memory.
 
     */
-    DenseLattice(T*rawdata,int _height, int _width, int _depth):  m_smart_raw_ptr(new T[_height*_width*_depth]),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
+    DenseLattice(T*rawdata,int _height, int _width, int _depth): DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[_height*_width*_depth]),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
     {
 
 
@@ -147,20 +147,20 @@ public:
     }
 
     //!  Copy constructor.
-    DenseLattice(const DenseLattice & other): m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
+    DenseLattice(const DenseLattice & other):DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
     {
 
-
+        this->mSolveInfo=other.solveInfo();
         *m_Data=*(other.m_Data);
         this->init( other.height(), other.width(), other.depth());
 
     }
 
     //!  Move constructor.
-    DenseLattice(DenseLattice && other) :m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order()))
+    DenseLattice(DenseLattice && other) :DenseLatticeBase<DenseLattice<T> >(),m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order()))
     {
 
-
+        this->mSolveInfo=other.solveInfo();
         m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
         m_Data.swap(other.m_Data);
         this->init( other.height(), other.width(), other.depth());
@@ -173,10 +173,11 @@ public:
 
     //!  Copy constructor.
     template<class otherDerived>
-    DenseLattice(const DenseLatticeBase<otherDerived> & other): m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
+    DenseLattice(const DenseLatticeBase<otherDerived> & other):DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
     {
 
 
+        this->mSolveInfo=other.solveInfo();
         typedef  typename internal::data_type<otherDerived>::type other_data_type;
         typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
         this->init( other.height(), other.width(), other.depth());
@@ -316,6 +317,7 @@ inline DenseLattice<T>& DenseLattice<T>::operator=(const DenseLatticeBase<otherD
 
     if (this != &other)
     {
+        this->mSolveInfo=other.solveInfo();
         smart_raw_pointer temp_ptr(new T[other.height()*other.width()*other.depth()]);
         m_smart_raw_ptr.swap(temp_ptr);
         m_Data.reset(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()));

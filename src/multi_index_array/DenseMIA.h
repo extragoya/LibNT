@@ -180,6 +180,7 @@ public:
     template<class array_index_type>//, class otherDerived>
     DenseMIA(const std::array<array_index_type,_order> &_dims,DenseLattice<data_type>&& _lat,bool _ownership=true):DenseMIA(_dims,_lat.release_memptr(),_ownership)
     {
+        this->mSolveInfo=_lat.solveInfo();
     }
 
     //!  Copy constructor.
@@ -190,7 +191,7 @@ public:
     DenseMIA(const DenseMIA& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims())
     {
 
-
+        this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
         m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
         std::copy(otherMIA.data_begin(),otherMIA.data_end(),this->data_begin());
@@ -207,6 +208,7 @@ public:
     {
 
 
+        this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
         m_Data.swap(otherMIA.m_Data);
 
@@ -224,7 +226,7 @@ public:
     {
 
 
-
+        this->mSolveInfo=otherMIA.solveInfo();
         static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
         m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
         m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
@@ -396,6 +398,8 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerive
     else if(this->m_dims!=otherMIA.dims())
         this->m_dims=otherMIA.dims();
 
+    this->mSolveInfo=otherMIA.solveInfo();
+
     typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
         *it1=to_mdata_type::convert(*it2);
@@ -431,7 +435,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
     else
         internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
 
-
+    this->mSolveInfo=otherMIA.solveInfo();
     index_type curIdx=0;
 
     auto other_it=otherMIA.data_begin();
