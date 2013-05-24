@@ -43,8 +43,8 @@ void solve_work(size_t dim1, size_t dim2){
     LibMIA::MIAINDEX l;
     LibMIA::MIAINDEX m;
     LibMIA::MIAINDEX n;
-    LibMIA::MIAINDEX o;
-    LibMIA::MIAINDEX p;
+    //LibMIA::MIAINDEX o;
+    //LibMIA::MIAINDEX p;
 
     LibMIA::DenseMIA<_data_type,4> dense_a(dim1,dim1,dim1,dim1);
     LibMIA::DenseMIA<_data_type,4> dense_a2(dim2,dim2,dim1,dim1);

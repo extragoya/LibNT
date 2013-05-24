@@ -251,11 +251,13 @@ public:
     {
         derived().m_data.resize(_size);
         derived().m_indices.resize(_size);
+        mIsSorted=false;
     }
 
     bool is_sorted() const{
         return mIsSorted;
     }
+
 
     //! Sort non-zero containers based on the given order
     /*!
@@ -331,7 +333,7 @@ public:
             return;
 
         for(auto& it: derived().m_indices){
-            it=this->sub2ind(this->ind2sub(it,mSortOrder),_sort_order);
+            it=this->sub2ind_reorder(this->ind2sub_reorder(it,mSortOrder),_sort_order);
         }
         mSortOrder=_sort_order;
         mIsSorted=false;
@@ -349,7 +351,16 @@ public:
 
         //print_array(this->ind2sub(idx,mSortOrder),"ind2sub");
         //std::cout << "sub2ind " << this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder) << std::endl;
-        return this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder);
+        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mSortOrder),mDefaultSortOrder);
+    }
+
+    //!converts a linear index calculated using mDefaultSortOrder to a linear index calculated using mSortOrder
+    index_type convert_from_default_sort(const index_type idx) const
+    {
+
+        //print_array(this->ind2sub(idx,mSortOrder),"ind2sub");
+        //std::cout << "sub2ind " << this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder) << std::endl;
+        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mDefaultSortOrder),mSortOrder);
     }
 
     template<class otherDerived,class index_param_type>
@@ -446,7 +457,7 @@ public:
     bool operator==(const DenseMIABase<otherDerived>& otherMIA);
 
     template<class otherDerived>
-    bool fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA, double precision);
+    bool fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA, data_type precision);
 
     template<class otherDerived>
     bool operator!=(const DenseMIABase<otherDerived>& otherMIA)
@@ -473,13 +484,14 @@ public:
     //! Performs destructive add (+=).
     /*!
         \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(z,x,y).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
+        Will assert a compile failure is size of index_order is not the same as this->mOrder. Should also assert a compile failure of the Derived sparse MIA does not
+        allow resizing, eg MappedSparseMIA.
     */
     template<class otherDerived,typename index_param_type>
     SparseMIABase & plus_equal(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
 
         std::plus<data_type> op;
-        merge(b.derived(),op,index_order);
+        derived().merge(b.derived(),op,index_order);
         return *this;
     }
 
@@ -487,7 +499,8 @@ public:
     //! Performs destructive subtract (-=).
     /*!
         \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(z,x,y).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
+        Will assert a compile failure is size of index_order is not the same as this->mOrder. Should also assert a compile failure of the Derived sparse MIA does not
+        allow resizing, eg MappedSparseMIA.
     */
     template<class otherDerived,typename index_param_type>
     SparseMIABase & minus_equal(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
@@ -497,7 +510,7 @@ public:
     }
 
     template<class otherDerived,typename index_param_type>
-    typename MIAMergeReturnType<Derived,otherDerived>::type plus_(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+    typename MIAMergeReturnType<Derived,otherDerived>::type plus_(SparseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
 
         std::plus<data_type> op;
         return outside_merge(b.derived(),op,index_order);
@@ -505,10 +518,35 @@ public:
     }
 
     template<class otherDerived,typename index_param_type>
-    typename MIAMergeReturnType<Derived,otherDerived>::type minus_(MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+    typename MIAMergeReturnType<Derived,otherDerived>::type minus_(SparseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
 
         std::minus<data_type> op;
         return outside_merge(b.derived(),op,index_order);
+
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type plus_(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order)const{
+
+
+        typename MIAMergeReturnType<Derived,otherDerived>::type c;
+        c.assign(b,index_order);
+        return c.plus_equal(*this,internal::createAscendingIndex<mOrder>());
+
+
+    }
+
+    template<class otherDerived,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type minus_(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order)const{
+
+        typename MIAMergeReturnType<Derived,otherDerived>::type c;
+        c.assign(b,index_order);
+        c.minus_equal(*this,internal::createAscendingIndex<mOrder>());
+        auto negator=std::negate<typename std::remove_reference<decltype(*(c.data_begin()))>::type>();
+        for(auto it=c.data_begin();it<c.data_end();++it)
+            *it=negator(*it);
+
+        return c;
 
     }
 
@@ -535,7 +573,29 @@ public:
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder);
 
+    index_type& index_val(const full_tuple & a)
+    {
+        return std::get<1>(a);
 
+    }
+
+    const index_type& index_val(const const_full_tuple & a) const
+    {
+        return std::get<1>(a);
+
+    }
+
+
+    data_type& data_val(const full_tuple & a)
+    {
+        return std::get<0>(a);
+
+    }
+    const data_type& data_val(const const_full_tuple & a) const
+    {
+        return std::get<0>(a);
+
+    }
 
 protected:
 
@@ -580,44 +640,21 @@ protected:
 
 
 
-    index_type& index_val(const full_tuple & a)
-    {
-        return std::get<1>(a);
-
-    }
-
-    const index_type& index_val(const const_full_tuple & a) const
-    {
-        return std::get<1>(a);
-
-    }
-
-
-    data_type& data_val(const full_tuple & a)
-    {
-        return std::get<0>(a);
-
-    }
-    const data_type& data_val(const const_full_tuple & a) const
-    {
-        return std::get<0>(a);
-
-    }
 
 
 
-    std::array<index_type,mOrder> ind2sub(index_type idx,const std::array<size_t,mOrder>& dim_order) const{
+
+    std::array<index_type,mOrder> ind2sub_reorder(index_type idx,const std::array<size_t,mOrder>& dim_order) const{
         //print_array(internal::ind2sub(idx, this->dims(),dim_order),"ind2sub");
         return internal::ind2sub_reorder(idx, this->dims(),dim_order);
     }
 
-    index_type sub2ind(const std::array<index_type,mOrder> & indices,const std::array<size_t,mOrder>& dim_order) const{
+    index_type sub2ind_reorder(const std::array<index_type,mOrder> & indices,const std::array<size_t,mOrder>& dim_order) const{
 
         return internal::sub2ind_reorder(indices, dim_order,this->dims());
     }
 
-    template<typename otherDerived, typename Op,typename index_param_type>
-    void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+
 
     template<typename otherDerived, typename Op,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
@@ -679,35 +716,11 @@ private:
 
 };
 
-template<typename Derived>
-template<typename otherDerived, typename Op,typename index_param_type>
-void  SparseMIABase<Derived>::merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order)
-{
-
-    this->check_merge_dims(b,index_order);
-    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
-
-
-
-    if(b.is_sorted() || this->is_sorted()){
-        //std::cout << "Performing Scan merge " <<std::endl;
-        derived().scanMerge(b,op,converted_index_order);
-    }
-    else{
-        //std::cout << "Performing Sort merge " <<std::endl;
-        derived().sortMerge(b,op,converted_index_order);
-    }
-    //std::cout << "After merge " << std::endl;
-    //this->print();
 
 
 
 
 
-
-
-
-}
 
 template<typename Derived>
 template<typename otherDerived, typename Op,typename index_param_type>
@@ -848,11 +861,12 @@ bool SparseMIABase<Derived>::operator==(const DenseMIABase<otherDerived>& otherM
 
 template<class Derived>
 template<class otherDerived>
-bool SparseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA,double precision)
+bool SparseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived>& otherMIA,data_type precision)
 {
+
     typedef typename DenseMIABase<otherDerived>::data_type other_data_type;
     std::function<bool(data_type,other_data_type)> pred=[precision](data_type a,other_data_type b){
-        return std::abs(a-b)<precision;
+        return isEqualFuzzy(a,b,precision);
     };
     return compare_with_dense(otherMIA,pred);
 }
@@ -867,38 +881,48 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     if (!this->size())
     {
         for(auto it=otherMIA.data_begin(); it<otherMIA.data_end(); ++it)
-            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+             if(!predicate(*it,0)){
+                //std::cout << "Trigered not-zero no size " << it-otherMIA.data_begin() << " " << *it << std::endl;
                 return false;
+             }
         return true;
     }
     else
     {
         auto it=this->storage_begin();
-        if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
+        if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it))){
+            //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
             return false;
+        }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
-            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+            if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
+                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                 return false;
+            }
 
 
         for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
         {
             if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
             {
-                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
-                if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+                if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
+                    //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                     return false;
+                }
 
         }
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
-            if (std::abs(otherMIA.atIdx(convert_to_default_sort(idx)))>SparseTolerance<data_type>::tolerance)
+            if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
+                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                 return false;
+            }
 
         return true;
     }

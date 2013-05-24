@@ -192,6 +192,10 @@ public:
     template<typename otherDerived, typename Op,typename index_param_type>
     void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
 
+    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void  merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
+
     data_iterator data_begin()
     {
 
@@ -418,8 +422,10 @@ bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & othe
         return false;
 
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        if(abs(*it1-*it2)>precision)
+        if(!isEqualFuzzy(*it1,*it2,precision)){
+            std::cout << "Triggered " << *it1 << " " << *it2 << std::endl;
             return false;
+        }
 
     return true;
 
@@ -443,6 +449,25 @@ void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op&
 
     }
 
+
+}
+
+template<typename Derived>
+template<typename otherDerived, typename Op,typename index_param_type>
+void  DenseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order)
+{
+
+    this->check_merge_dims(b,index_order);
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
+
+    for(auto it=b.storage_begin();it<b.storage_end();++it){
+        //the index values of b may correspond to a shuffled version of the default linear index
+        auto default_order_idx=b.convert_to_default_sort(b.index_val(*it));
+        //calculate the lhs_index based on how the MIA indices matched up
+        auto lhs_index=internal::sub2ind_reorder(b.ind2sub(default_order_idx),index_order,b.dims());
+        this->atIdx(lhs_index)=op(this->atIdx(lhs_index),derived().convert(b.data_val(*it)));
+
+    }
 
 }
 

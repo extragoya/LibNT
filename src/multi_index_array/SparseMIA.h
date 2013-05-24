@@ -452,6 +452,12 @@ public:
 
     }
 
+    void push_back(data_type _data, index_type _index)
+    {
+        m_indices.push_back(_data);
+        m_data.push_back(_index);
+    }
+
 
 
     //! Converts a scalar value to data_type
@@ -485,6 +491,12 @@ public:
 
 
 protected:
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void merge(DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 
     //! Method to perform scanning type merge operations, eg add.
     template<typename otherDerived, typename Op,typename index_param_type>
@@ -630,6 +642,80 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
 }
 
+template<class T, size_t _order>
+template<typename otherDerived, typename Op,typename index_param_type>
+void SparseMIA<T,_order>::merge(DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+{
+
+
+
+    this->check_merge_dims(b,index_order);
+
+    //std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+    size_t nnz=0;
+    for(auto it=b.data_begin();it<b.data_end();++it)
+            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+                ++nnz;
+    bool negate=boost::is_same<std::minus<data_type>,Op>::value;
+    auto old_size=this->size();
+    this->resize(nnz+old_size);
+    auto old_idx=this->index_begin()+old_size;
+    auto old_data=this->data_begin()+old_size;
+    for(size_t idx=0;idx<b.dimensionality();++idx){
+
+        if(std::abs(b.atIdx(idx))>SparseTolerance<data_type>::tolerance){
+
+            auto lhs_index=internal::sub2ind_reorder(b.ind2sub(idx),index_order,b.dims());
+
+            if(negate)
+                *old_data++=-1*b.atIdx(idx);
+            else
+                *old_data++=b.atIdx(idx);
+            //may need to reshuffle index again, if current sort order isn't the default sort order
+            *old_idx++=this->convert_from_default_sort(lhs_index);
+
+
+        }
+    }
+    this->setSorted(false);
+    if(negate)
+        this->collect_duplicates(std::plus<data_type>());
+    else
+        this->collect_duplicates(op);
+
+
+
+}
+
+template<class T, size_t _order>
+template<typename otherDerived, typename Op,typename index_param_type>
+void  SparseMIA<T,_order>::merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
+{
+
+    this->check_merge_dims(b,index_order);
+    std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);
+
+
+
+    if(b.is_sorted() || this->is_sorted()){
+        //std::cout << "Performing Scan merge " <<std::endl;
+        scanMerge(b,op,converted_index_order);
+    }
+    else{
+        //std::cout << "Performing Sort merge " <<std::endl;
+        sortMerge(b,op,converted_index_order);
+    }
+    //std::cout << "After merge " << std::endl;
+    //this->print();
+
+
+
+
+
+
+
+
+}
 
 
 /*! @} */

@@ -437,7 +437,7 @@ public:
 
     //non constant b/c a sort may be involved
     template<class otherDerived>
-    bool fuzzy_equals(const DenseLatticeBase<otherDerived>& otherLat,double precision);
+    bool fuzzy_equals(const DenseLatticeBase<otherDerived>& otherLat,data_type precision);
 
     //non constant b/c a sort may be involved
     template<class otherDerived>
@@ -569,11 +569,11 @@ bool SparseLatticeBase<Derived>::operator==(const DenseLatticeBase<otherDerived>
 
 template<class Derived>
 template<class otherDerived>
-bool SparseLatticeBase<Derived>::fuzzy_equals(const DenseLatticeBase<otherDerived>& otherLat,double precision)
+bool SparseLatticeBase<Derived>::fuzzy_equals(const DenseLatticeBase<otherDerived>& otherLat,data_type precision)
 {
     typedef typename DenseLatticeBase<otherDerived>::data_type other_data_type;
     std::function<bool(data_type,other_data_type)> pred=[precision](data_type a,other_data_type b){
-        return std::abs(a-b)<precision;
+        return isEqualFuzzy(a,b,precision);
     };
     return compare_with_dense(otherLat,pred);
 }
@@ -582,45 +582,56 @@ template<class Derived>
 template<class otherDerived, class BinaryPredicate>
 bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<otherDerived>& otherLat,BinaryPredicate predicate)
 {
+
     if(this->height()!=otherLat.height() || this->width()!=otherLat.width() || this->depth()!=otherLat.depth())
         return false;
-
+    typedef typename DenseLatticeBase<otherDerived>::data_type other_data_type;
 
     if (!this->size())
     {
         for(auto it=otherLat.data_begin(); it<otherLat.data_end(); ++it)
-            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+            if(!predicate(*it,0))
                 return false;
+
         return true;
     }
     else{
+
         this->sort(ColumnMajor);
         auto it=this->storage_begin();
-        if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it)))
+        if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it))){
+            //std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
             return false;
+        }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
-            if (std::abs(otherLat.atIdx(idx))>SparseTolerance<data_type>::tolerance)
+             if(!predicate(otherLat.atIdx(idx),0)){
+                //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                 return false;
+             }
 
 
         for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
         {
             if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it)))
             {
-                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+                //std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
-                if (std::abs(otherLat.atIdx(idx))>SparseTolerance<data_type>::tolerance)
+                if(!predicate(otherLat.atIdx(idx),0)){
+                    //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                     return false;
+                }
 
         }
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->height()*this->width()*this->depth(); idx++)
-            if (std::abs(otherLat.atIdx(idx))>SparseTolerance<data_type>::tolerance)
+             if(!predicate(otherLat.atIdx(idx),0)){
+                //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                 return false;
+            }
 
         return true;
     }
@@ -1249,7 +1260,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
     typedef Eigen::SuperLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
-    std::vector<typename MappedSparseMatrix_cm::Index> a_rows; //we make it size_t, incase index_type differs from size_t
+    std::vector<typename MappedSparseMatrix_cm::Index> a_rows; //we make it MappedSparseMatrix_cm::Index, incase index_type differs from MappedSparseMatrix_cm::Index
 
 
 

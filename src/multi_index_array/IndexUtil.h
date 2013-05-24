@@ -236,7 +236,7 @@ std::array<indexType,T> ind2sub(indexType idx, const std::array<indexType,T> & d
     return indices;
 }
 
-//!order is given in the order of dims used to calculate linear index idx
+//!order is given in the order of dims used to calculate linear index idx and also the order that we assign the entries in the index array
 template<typename idxType, typename orderType,typename dimType>
 dimType ind2sub_reorder(idxType idx, const dimType & dims,const orderType & _order)
 {
@@ -355,7 +355,7 @@ std::array<index_param_type,_size> reverseOrder(std::array<index_param_type,_siz
     {
         for(size_t j=0;j<_size;++j)
         {
-            if (init_order[j]==i){
+            if (init_order[j]==(index_param_type)i){
                  output_order[i]=j;
                 break;
             }
@@ -363,6 +363,18 @@ std::array<index_param_type,_size> reverseOrder(std::array<index_param_type,_siz
 
     }
     return output_order;
+}
+
+template<size_t _size>
+std::array<size_t,_size> createAscendingIndex(){
+    std::array<size_t,_size> ret;
+    size_t idx=0;
+    for (size_t &x : ret) {
+        x=idx++;
+    }
+    return ret;
+
+
 }
 
 

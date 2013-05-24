@@ -400,9 +400,9 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerive
 
     this->mSolveInfo=otherMIA.solveInfo();
 
-    typedef boost::numeric::converter<data_type,typename internal::data_type<otherDerived>::type> to_mdata_type;
+
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        *it1=to_mdata_type::convert(*it2);
+        *it1=this->convert(*it2);
 
     return *this;
 

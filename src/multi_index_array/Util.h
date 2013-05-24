@@ -89,6 +89,26 @@ enum SolveInfo{
 const bool ColumnMajor=true;
 const bool RowMajor=false;
 
+
+//comparison tolerances for non zeros after operations like solving
+template <class T> struct Tolerance
+{
+    constexpr static int tolerance=0;
+};
+template <> struct Tolerance<float>
+{
+    constexpr static float tolerance=1e-3f;
+    //static const float tolerance=5.96e-08;
+
+};
+template <> struct Tolerance<double>
+{
+    constexpr static double tolerance=1e-6;
+    //static const double tolerance=1.11e-16;
+
+};
+
+//tolerances for how close to zero a nonzero can get to be included in a sparse data structure
 template <class T> struct SparseTolerance
 {
     constexpr static int tolerance=0;
@@ -105,8 +125,6 @@ template <> struct SparseTolerance<double>
     //static const double tolerance=1.11e-16;
 
 };
-
-
 
 template <class Derived>
 class Lattice;
@@ -271,7 +289,7 @@ template<class T> struct incomplete;
 template<class data_type,class from_data_type,typename boost::enable_if< boost::is_pod< from_data_type >, int >::type = 0>
 data_type convert(const from_data_type from){
     using namespace boost::numeric;
-    typedef converter<data_type,from_data_type,conversion_traits<data_type,from_data_type>,def_overflow_handler,RoundEven<from_data_type>> to_mdata_type;
+    typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
     return to_mdata_type::convert(from);
 }
 
@@ -612,7 +630,7 @@ template<typename Lhs, typename Rhs>
 struct MIAMergeReturnType<Lhs,Rhs,
     typename
         boost::enable_if<
-            boost::mpl::and_<
+            boost::mpl::or_<
                 internal::is_DenseMIA<Lhs>,
                 internal::is_DenseMIA<Rhs>
             >
@@ -680,6 +698,17 @@ struct array_converter
         return _from;
     }
 };
+
+//!prec must be positive
+template<typename T>
+inline bool isEqualFuzzy(T a, T b, T prec = Tolerance<T>::tolerance)
+{
+  if(std::abs(a) < 1 || std::abs(b) < 1)
+    return std::abs(a-b)<=prec;
+  else{
+    return std::abs(a - b) <= std::min(std::abs(a), std::abs(b)) * prec;
+  }
+}
 
 
 /*! @} */

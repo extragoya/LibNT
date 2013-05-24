@@ -328,8 +328,10 @@ public:
     MIA_Atom& operator=(const MIA_Atom & Rhs)
     {
 
-
-        *m_mia=*(Rhs.m_mia);
+        if(mHasOwnership)
+            *m_mia=std::move(*(Rhs.m_mia));
+        else
+            *m_mia=*(Rhs.m_mia);
         return *this;
     }
 
@@ -341,7 +343,10 @@ public:
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
 
-        *(m_mia)=*(Rhs.m_mia);
+        if(mHasOwnership)
+            *m_mia=std::move(*(Rhs.m_mia));
+        else
+            *m_mia=*(Rhs.m_mia);
         return *this;
 
 
@@ -366,7 +371,11 @@ public:
         typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
-        m_mia->assign(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
+        if(mHasOwnership)
+            m_mia->assign(std::move(*(Rhs.m_mia)),internal::to_std_array<typename pulling_index_order::match_order>::make());
+        else
+            m_mia->assign(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
+
 
         return *this;
 
@@ -423,7 +432,7 @@ public:
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
         typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
 
-        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+
 
         cType* cMIA=new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
 

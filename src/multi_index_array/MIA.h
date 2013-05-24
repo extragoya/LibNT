@@ -150,7 +150,7 @@ public:
         }
         boost::uniform_real<> uni_dist(low,high);
         boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
-        typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
+        typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
         for (auto i=derived().data_begin();i<derived().data_end();++i){
             *i=to_mdata_type::convert(uni());
         }
@@ -175,11 +175,11 @@ public:
     }
 
 
-    index_type sub2ind(const std::array<index_type,mOrder> & indices){
+    index_type sub2ind(const std::array<index_type,mOrder> & indices) const{
         return internal::sub2ind(indices,this->dims());
     }
 
-    std::array<index_type,mOrder> ind2sub(index_type idx){
+    std::array<index_type,mOrder> ind2sub(index_type idx) const{
         return internal::ind2sub(idx, this->dims());
     }
 

@@ -60,7 +60,7 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
     denseType DenseLat2(n1,n2,p);
 
     denseType DenseLat3;
-
+    denseType DenseLat4;
     sparseType SparseLat1(m1,n1,p);
     sparseType SparseLat2(n1,n2,p);
     sparseType SparseLat3;
@@ -70,13 +70,16 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
     SparseLat1=DenseLat1;
     SparseLat2=DenseLat2;
+
     DenseLat3=DenseLat1.solve(DenseLat2);
     SparseLat3=SparseLat1.solve(SparseLat2);
+    DenseLat4=SparseLat1.solve(SparseLat2);
 
-    //DenseLat3.print();
-    //SparseLat3.print();
 
     BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(SparseLat3,test_precision<data_type>()),std::string("Full Dimension Solve Test for ")+typeid(data_type).name());
+    //BOOST_CHECK_MESSAGE(DenseLat3==DenseLat4,std::string("Sanity Check ")+typeid(data_type).name());
+
+
 
 
 
@@ -87,6 +90,7 @@ BOOST_AUTO_TEST_CASE( SparseLatticeSolveTests )
 
 
     //multwork<double>(3,3,3,3);
+
     solvework<double>(20,20,20,20);
     solvework<float>(20,20,20,20);
 
