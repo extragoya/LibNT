@@ -703,9 +703,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
     //determine whether we want to binary search or just scan through elements
     bool a_search_flag=false, b_search_flag=false;
-    if(this->depth()*std::log(this->size())<this->size())
+    if(this->depth()*log2(this->size())<this->size())
         a_search_flag=true;
-    if(this->depth()*std::log(b.size())<b.size())
+    if(this->depth()*log2(b.size())<b.size())
         b_search_flag=true;
 
     while(a_temp_begin<a_index_end && b_temp_begin<b_index_end){

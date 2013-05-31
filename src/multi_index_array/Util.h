@@ -126,6 +126,13 @@ template <> struct SparseTolerance<double>
 
 };
 
+
+
+inline long double log2(const long double x){
+    return  std::log(x) * M_LOG2E;
+}
+
+
 template <class Derived>
 class Lattice;
 
@@ -165,6 +172,7 @@ class SparseMIA;
 
 template<class _MIA,class m_Seq,size_t inter_product_size=0>
 struct MIA_Atom;
+
 
 
 namespace internal
@@ -591,6 +599,44 @@ struct MIAProductReturnType<L_MIA,R_MIA,order,
 template<class L_MIA,class R_MIA, size_t order
 >
 struct MIAProductReturnType<L_MIA,R_MIA,order,
+    typename boost::enable_if<
+        boost::mpl::and_<
+            internal::is_SparseMIA<L_MIA>,
+            internal::is_SparseMIA<R_MIA>
+        >
+    >::type
+>
+{
+    typedef SparseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+
+};
+
+
+template<class L_MIA, class R_MIA, size_t order,class Enable = void>
+struct MIANoLatticeProductReturnType
+{
+};
+
+
+
+template<class L_MIA,class R_MIA, size_t order
+>
+struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
+    typename boost::enable_if<
+        boost::mpl::and_<
+            internal::is_DenseMIA<L_MIA>,
+            internal::is_DenseMIA<R_MIA>
+        >
+    >::type
+>
+{
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+
+};
+
+template<class L_MIA,class R_MIA, size_t order
+>
+struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
             internal::is_SparseMIA<L_MIA>,

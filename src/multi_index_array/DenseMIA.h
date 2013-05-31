@@ -258,6 +258,22 @@ public:
 
     }
 
+    //!  Constructs DenseMIA of specified size.
+    /*!
+        Scalar data will be set to zero
+
+        \param[in] dims variadic parameter to specify size. Will assert a compile failure is number of parameters is different than _order
+
+    */
+    template<class array_index_type>
+    DenseMIA(std::array<array_index_type,mOrder> _dims):DenseMIABase<DenseMIA<T,_order> > (_dims), m_smart_raw_ptr(new T[this->m_dimensionality]),m_Data(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order())),hasOwnership(true)
+    {
+
+
+        this->zeros();
+
+    }
+
     //!  Constructs DenseMIA of specified size with a given raw data pointer.
     /*!
 
@@ -417,6 +433,7 @@ template<class T, size_t _order>
 template<typename otherDerived,typename index_param_type>
 void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
+
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
 

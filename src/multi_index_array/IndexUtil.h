@@ -55,7 +55,34 @@ namespace LibMIA
 namespace internal
 {
 
-//! same as collect_dimensions_to_order but we start at i=curIdx instead of 0
+
+
+template<class array_type1,class array_type2, class array_type3,class array_type4,size_t size1, size_t size2, size_t size3>
+void concat_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3,std::array<array_type4,size1+size2+size3>& to_array)
+{
+
+
+    size_t idx=0;
+    for(auto _elem: _array1)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    for(auto _elem: _array2)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    for(auto _elem: _array3)
+    {
+
+        to_array[idx++]=_elem;
+    }
+
+
+}
+
+//!
 template<class array_type1,class array_type2, class array_type3,size_t size1, size_t size2, size_t size3>
 std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3)
 {
@@ -81,46 +108,74 @@ std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_
 
 }
 
+//!
+template<class array_type1,class array_type2, size_t size1, size_t size2>
+std::array<size_t,size1+size2> concat_index_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2)
+{
+
+    std::array<size_t,size1+size2> to_array;
+    size_t idx=0;
+    for(auto _elem: _array1)
+    {
+
+        to_array[idx++]=_elem;
+    }
+    for(auto _elem: _array2)
+    {
+
+        to_array[idx++]=_elem;
+    }
+
+    return to_array;
+
+}
+
 
 //! same as reorder_to but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>
-void reorder_to(const array_type1& from_array, const array_type2& to_sequence_order,array_type3& to_array,size_t& curIdx)
+typename array_type3::value_type reorder_to(const array_type1& from_array, const array_type2& to_sequence_order,array_type3& to_array,size_t& curIdx)
 {
 
+    typename array_type3::value_type _dimensionality=1;
     for(auto _order: to_sequence_order)
     {
 
-        to_array[(size_t)_order]=from_array[curIdx++];
+        to_array[(size_t)_order]=from_array[curIdx];
+        _dimensionality*=from_array[curIdx++];
     }
+    return _dimensionality;
 
 }
 //! collect dimensions of MIA, where order indexes output array _dims, e.g., _dims[order[i]]=_mia.dims[i]
 template<class array_type1,class array_type2, class array_type3>
-void reorder_to(const array_type1& from_array, const array_type2& to_sequence_order,array_type3& to_array)
+typename array_type3::value_type reorder_to(const array_type1& from_array, const array_type2& to_sequence_order,array_type3& to_array)
 {
 
     size_t curIdx=0;
-    reorder_to(from_array,to_sequence_order,to_array,curIdx);
+    return reorder_to(from_array,to_sequence_order,to_array,curIdx);
 }
 //! same as collect_dimensions_from_order but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>
-void reorder_from(const array_type1& from_array, const array_type2& from_sequence_order,array_type3& to_array,size_t& curIdx)
+typename array_type3::value_type reorder_from(const array_type1& from_array, const array_type2& from_sequence_order,array_type3& to_array,size_t& curIdx)
 {
 
+    typename array_type3::value_type _dimensionality=1;
     for(auto _order: from_sequence_order)
     {
 
         to_array[curIdx++]=from_array[(size_t)_order];
+        _dimensionality*=from_array[(size_t)_order];
     }
+    return _dimensionality;
 
 }
 //! same as collect_dimensions_from_order but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>
-void reorder_from(const array_type1& from_array, const array_type2& from_sequence_order,array_type3& to_array)
+typename array_type3::value_type reorder_from(const array_type1& from_array, const array_type2& from_sequence_order,array_type3& to_array)
 {
 
     size_t curIdx=0;
-    reorder_from(from_array,from_sequence_order,to_array,curIdx);
+    return reorder_from(from_array,from_sequence_order,to_array,curIdx);
 }
 
 //should be undefined
@@ -259,7 +314,7 @@ template<typename idxType, typename orderType,typename dimType>
 dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
 {
 
-    dimType indices;
+    orderType indices;
 
     for(size_t i=0; i<_order.size(); ++i)
     {

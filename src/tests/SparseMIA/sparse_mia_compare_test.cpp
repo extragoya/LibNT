@@ -53,6 +53,12 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     std::fill(test1.data_begin(),test1.data_end(),1);
     *(test1.index_begin())=1;*(test1.index_begin()+1)=2;
 
+    DenseMIAType denseTest0;
+    MIAType test0;
+    BOOST_CHECK_MESSAGE(test0==denseTest0,std::string("Empty Dense Comparison for ")+typeid(MIAType).name());
+
+
+
     DenseMIAType denseTest1(dim1,dim2,dim3);
     denseTest1.atIdx(1)=1;
     denseTest1.atIdx(2)=1;
@@ -65,6 +71,10 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     denseTest1.atIdx(3)=2;
     BOOST_CHECK_MESSAGE(test1!=denseTest1,std::string("Dense Comparison test 5 for ")+typeid(MIAType).name());
     BOOST_CHECK_MESSAGE(denseTest1!=test1,std::string("Dense Comparison test 6 for ")+typeid(MIAType).name());
+
+    BOOST_CHECK_MESSAGE(test1!=denseTest0,std::string("Empty/Non-empty Dense Comparison 1 for ")+typeid(MIAType).name());
+
+    BOOST_CHECK_MESSAGE(test0!=denseTest1,std::string("Empty/Non-empty Dense Comparison 1 for ")+typeid(MIAType).name());
 
     denseTest1.randu(0,50);
     for(auto it=denseTest1.data_begin();it<denseTest1.data_end();++it)

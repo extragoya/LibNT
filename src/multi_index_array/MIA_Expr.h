@@ -264,26 +264,8 @@ public:
     {
 
 
-        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
-        auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
-        auto aLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
-
-        auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
-        auto cLat=aLat*bLat;
-        //cLat.print();
-
-
-
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
-
-
-        //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
-
-
+        return perform_product<otherMIA,r_Seq,other_inter_number>(Rhs);
 
 
     }
@@ -512,7 +494,71 @@ public:
 
 private:
 
+    template<class otherMIA,class r_Seq,size_t other_inter_number,
+                typename boost::disable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0
+            >
+    auto perform_product(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
+        >
+    {
 
+
+
+
+        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
+
+        auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
+        auto aLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
+
+        auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        auto cLat=aLat*bLat;
+        //cLat.print();
+
+
+
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
+
+
+        //create an MIA from cLat
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+
+
+
+
+    }
+    //when multiplication only has inter or outer products, we don't need to create a lattice, call specialized function in mia
+    template<class otherMIA,class r_Seq,size_t other_inter_number,typename boost::enable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0>
+    auto perform_product(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
+        >
+    {
+
+
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
+
+
+        MIA_return_type* cMIA(new MIA_return_type(m_mia->noLatticeMult(*Rhs.m_mia,helper::left_inter_product_order(),
+                                                                       helper::left_outer_product_order(),
+                                                                       helper::right_inter_product_order(),
+                                                                       helper::right_outer_product_order())));
+        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+
+        //create an MIA from cLat
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+
+
+
+
+    }
 
 };
 

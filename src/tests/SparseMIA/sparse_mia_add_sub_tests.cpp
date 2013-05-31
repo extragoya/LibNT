@@ -44,7 +44,7 @@ void do_work(size_t dim1,size_t dim2){
     //boost::timer::cpu_timer scan_t,total_t;
 
     std::array<size_t,4> new_sort_order{{2,0,3,1}};
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
     //scan_t.stop();
@@ -60,7 +60,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1b for ")+typeid(_data_type).name());
 
@@ -70,8 +70,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
-    b.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     //boost::timer::cpu_timer sort_t;
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
@@ -84,7 +84,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 1a for ")+typeid(_data_type).name());
@@ -95,7 +95,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 1b for ")+typeid(_data_type).name());
@@ -107,8 +107,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
-    b.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 1 for ")+typeid(_data_type).name());
@@ -119,7 +119,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)-dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 1a for ")+typeid(_data_type).name());
@@ -128,7 +128,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 1b for ")+typeid(_data_type).name());
 
@@ -136,8 +136,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
-    a.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 1 for ")+typeid(_data_type).name());
 
@@ -145,7 +145,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1a for ")+typeid(_data_type).name());
@@ -156,7 +156,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1b for ")+typeid(_data_type).name());
@@ -167,8 +167,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
-    b.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 1 for ")+typeid(_data_type).name());
@@ -193,7 +193,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2a for ")+typeid(_data_type).name());
@@ -202,7 +202,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2b for ")+typeid(_data_type).name());
 
@@ -211,8 +211,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
-    a.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Sort) 2 for ")+typeid(_data_type).name());
 
@@ -221,7 +221,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 2a for ")+typeid(_data_type).name());
@@ -231,7 +231,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 2b for ")+typeid(_data_type).name());
 
@@ -241,8 +241,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
-    a.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 2 for ")+typeid(_data_type).name());
 
@@ -252,7 +252,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)-dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 2a for ")+typeid(_data_type).name());
@@ -261,7 +261,7 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 2b for ")+typeid(_data_type).name());
 
@@ -269,8 +269,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
-    a.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 2 for ")+typeid(_data_type).name());
 
@@ -278,19 +278,19 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 2a for ")+typeid(_data_type).name());
 
-    a.change_sort_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
 
     b=dense_b_orig;
     a.reset_sort_order();
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 2b for ")+typeid(_data_type).name());
 
@@ -299,8 +299,8 @@ void do_work(size_t dim1,size_t dim2){
     a.sort();
     b.reset_sort_order();
     b.sort();
-    b.change_sort_order(new_sort_order);
-    a.change_sort_order(new_sort_order);
+    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_order(new_sort_order);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 2 for ")+typeid(_data_type).name());
 

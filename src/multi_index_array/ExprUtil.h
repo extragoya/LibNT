@@ -26,6 +26,7 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/print.hpp>
 #include <boost/mpl/count.hpp>
+#include <boost/mpl/plus.hpp>
 #include <boost/mpl/begin_end.hpp>
 #include <boost/mpl/push_front.hpp>
 #include <boost/mpl/push_back.hpp>
@@ -553,14 +554,33 @@ struct MIAPullIndicesUtil
     static constexpr size_t inter_product_number=boost::mpl::size<inter_product_indices>::value;
 };
 
+template<class l_Seq,class r_Seq>
+struct isPureOuterInterProduct
+{
+    typedef typename internal::pull_product_indices<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value>::outer_product_indices outer_l_indices;
+    typedef typename internal::pull_product_indices<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value>::inter_product_indices inter_l_indices;
+    typedef typename boost::mpl::equal_to<
+                typename boost::mpl::plus<
+                    typename boost::mpl::size<outer_l_indices>::type,
+                    typename boost::mpl::size<inter_l_indices>::type
+                >::type,
+                typename boost::mpl::size<l_Seq>::type
+            >::type type;
+
+};
+
 template<class L_MIA, class R_MIA,class l_Seq,class r_Seq >
 struct MIAProductUtil: MIAPullIndicesUtil<l_Seq,r_Seq>
 {
 
 
 
+    typedef typename boost::mpl::if_<
+                    typename isPureOuterInterProduct<l_Seq,r_Seq>::type,
+                    typename MIANoLatticeProductReturnType<L_MIA,R_MIA,MIAPullIndicesUtil<l_Seq,r_Seq>::MIA_return_order>::type,
+                    typename MIAProductReturnType<L_MIA,R_MIA,MIAPullIndicesUtil<l_Seq,r_Seq>::MIA_return_order>::type
+                 >::type MIA_return_type;
 
-    typedef typename MIAProductReturnType<L_MIA,R_MIA,MIAPullIndicesUtil<l_Seq,r_Seq>::MIA_return_order>::type MIA_return_type;
 
 };
 

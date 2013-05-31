@@ -105,7 +105,7 @@ public:
     DenseMIABase(): MIA<DenseMIABase<Derived > >(),mSolveInfo(NoInfo) {}
 
 
-    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): mSolveInfo(NoInfo),MIA<DenseMIABase<Derived > >(_dims) {}
+    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims),mSolveInfo(NoInfo) {}
 
     template<class otherDerived>
     bool operator==(const DenseMIABase<otherDerived>& otherMIA);
@@ -195,6 +195,11 @@ public:
     //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
     template<typename otherDerived, typename Op,typename index_param_type>
     void  merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
+
+    //! Routine for performing multiplication without the need for a lattice multiplication
+    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
+    noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
     data_iterator data_begin()
     {
@@ -315,6 +320,16 @@ public:
         return *this;
     }
 
+    void print()
+    {
+        std::cout << "Index\t Data" << std::endl;
+        for(auto it=this->data_begin();it<this->data_end();++it){
+            if(*it)
+                std::cout << it-this->data_begin() << "\t " << *it << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
 protected:
 
     SolveInfo mSolveInfo;
@@ -326,8 +341,62 @@ private:
 
 };
 
+template<typename Derived>
+template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
+auto  DenseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
+{
+    //statically check number of indices match up
+    static_assert(internal::check_index_compatibility<index_type,array_type>::type::value,"Must use an array convertable to index_type");
+    typedef typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type RetType; //get return type
+    typedef typename internal::index_type<otherDerived>::type b_index_type;
+
+    std::array<index_type, L_inter> l_inter_dims;
+    std::array<index_type, L_outer> l_outer_dims;
+    std::array<b_index_type, R_inter> r_inter_dims;
+    std::array<b_index_type, R_outer> r_outer_dims;
+    std::array<typename internal::index_type<RetType>::type,L_outer+R_outer+L_inter> return_dims;
 
 
+    //get inter and outer dimensionality and the individual dimensions that make up that number - should default to one if any of the arrays are empty
+    size_t l_inter_size=internal::reorder_from(this->dims(), l_inter_idx,l_inter_dims);
+    internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
+    if(l_inter_dims.size()!=r_inter_dims.size() || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
+        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
+    size_t l_outer_size=internal::reorder_from(this->dims(), l_outer_idx,l_outer_dims);
+    size_t r_outer_size=internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
+
+
+    //concatenate the pulled dimensions into a consolidated set of dimensions for the return mia
+
+    auto temp_end=std::copy(l_outer_dims.begin(),l_outer_dims.end(),return_dims.begin());
+    temp_end=std::copy(r_outer_dims.begin(),r_outer_dims.end(),temp_end);
+    temp_end=std::copy(l_inter_dims.begin(),l_inter_dims.end(),temp_end);
+    RetType C(return_dims);
+
+
+    index_type l_inter_linear_idx=0, l_outer_linear_idx=0;
+    b_index_type r_outer_linear_idx=0,r_inter_linear_idx=0;
+    for (index_type k=0;k<l_inter_size;++k){ //loop through every set of element-wise indices (in linearized form)
+        //compute the offset of the current elementwise index for both operands
+        l_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,l_inter_dims),l_inter_idx,this->dims());
+        r_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,r_inter_dims),r_inter_idx,b.dims());
+        //now loop through every possible set of outer-wise indices in both operands (these are not shared)
+        for (index_type j=0;j<l_outer_size;++j){
+            l_outer_linear_idx=l_inter_linear_idx+internal::sub2ind(internal::ind2sub(j,l_outer_dims),l_outer_idx,this->dims()); //compute offset
+            for (index_type i=0;i<r_outer_size;++i){
+                r_outer_linear_idx=r_inter_linear_idx+internal::sub2ind(internal::ind2sub(i,r_outer_dims),r_outer_idx,b.dims()); //compute offset
+                //set the element at the appropriate offset in C to the product of the two operand elements
+                C.atIdx(j+i*l_outer_size+k*r_outer_size*l_outer_size)=this->atIdx(l_outer_linear_idx)*b.atIdx(r_outer_linear_idx);
+
+            }
+        }
+
+
+    }
+    return C;
+
+}
 
 template<typename Derived>
 template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
@@ -343,33 +412,13 @@ auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_in
     std::array<index_type, R> row_dims;
     std::array<index_type, C> column_dims;
     std::array<index_type, T> tab_dims;
-    size_t idx=0;
+
     //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
     //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
 
-    for(auto _row: row_indices)
-    {
-
-        row_size*=this->m_dims[_row];
-        row_dims[idx++]=this->m_dims[_row];
-    }
-
-    idx=0;
-
-    for(auto _column: column_indices)
-    {
-
-        column_size*=this->m_dims[_column];
-        column_dims[idx++]=this->m_dims[_column];
-    }
-    idx=0;
-
-    for(auto _tab: tab_indices)
-    {
-
-        tab_size*=this->m_dims[_tab];
-        tab_dims[idx++]=this->m_dims[_tab];
-    }
+    row_size=internal::reorder_from(this->dims(), row_indices,row_dims);
+    column_size=internal::reorder_from(this->dims(), column_indices,column_dims);
+    tab_size=internal::reorder_from(this->dims(), tab_indices,tab_dims);
 
     //std::cout<< "Tab dims " << tab_dims[0] << "\n";
     DenseLattice<data_type> lat(row_size, column_size, tab_size);

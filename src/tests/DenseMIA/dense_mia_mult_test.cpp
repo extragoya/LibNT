@@ -34,6 +34,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::DenseMIA<_data_type,4> c_result(dim1,dim1,dim1,dim1);
     LibMIA::DenseMIA<_data_type,2> c_result2(dim1,dim1);
     LibMIA::DenseMIA<_data_type,4> c_result3(dim1,dim2,dim1,dim2);
+    LibMIA::DenseMIA<_data_type,4> c_result4(dim2,dim2,dim2,dim2);
 
     LibMIA::DenseMIA<_data_type,1> d(dim2);
     LibMIA::DenseMIA<_data_type,2> d2(dim2,dim2);
@@ -123,6 +124,31 @@ void mult_work(size_t dim1, size_t dim2){
 
     c(i,j,k,l)=a(k,!l,i,!j)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
+
+
+    c_result4.zeros();
+    for(size_t _i=0;_i<dim2;++_i){
+        for(size_t _j=0;_j<dim2;++_j){
+            val=1;
+            for(size_t _k=0;_k<dim2;++_k){
+                for(size_t _l=0;_l<dim2;++_l){
+                    c_result4.at(_i,_j,_k,_l)=val++;
+                }
+            }
+        }
+    }
+    d2.ones();
+    c(i,j,k,l)=b2(k,l)*d2(i,j);
+    BOOST_CHECK_MESSAGE(c==c_result4,std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
+
+    c(i,j,k,l)=b2(k,l)*d2(j,i);
+    BOOST_CHECK_MESSAGE(c==c_result4,std::string("Outer/Outer Product 2 for ")+typeid(_data_type).name());
+
+    c(i,j,k,l)=d2(j,i)*b2(k,l);
+    BOOST_CHECK_MESSAGE(c==c_result4,std::string("Outer/Outer Product 3 for ")+typeid(_data_type).name());
+
+
+
 
     val=1;
     for(size_t _i=0;_i<dim2;++_i)

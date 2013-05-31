@@ -452,10 +452,10 @@ public:
 
     }
 
-    void push_back(data_type _data, index_type _index)
+    void push_back(const data_type & _data, const index_type& _index)
     {
-        m_indices.push_back(_data);
-        m_data.push_back(_index);
+        m_indices.push_back(_index);
+        m_data.push_back(_data);
     }
 
 
@@ -488,9 +488,108 @@ public:
 
     }
 
+    //!resizes data and index containers. Previous references should be considered invalid
+    void resize(size_t _size)
+    {
+        m_data.resize(_size);
+        m_indices.resize(_size);
+        this->mIsSorted=false;
+    }
+
+    //!reserves capacity for data and index containers. Previous references should be considered invalid
+    void reserve(size_t _size)
+    {
+
+        m_data.reserve(_size);
+        m_indices.reserve(_size);
+    }
+
+    //! Removes data with duplicated indices - conflicts are solved by always choosing the first data entry encountered
+    void collect_duplicates(bool _stable=false)
+    {
+        select_first<data_type> selector;
+        collect_duplicates(selector,_stable);
+    }
+
+    //! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
+    template<class Collector>
+    void collect_duplicates(Collector collector,bool _stable=false)
+    {
+
+
+
+        this->sort(_stable);
+
+
+        auto result = this->storage_begin();
+        auto first=result;
+        while (++first != this->storage_end())
+        {
+            if (!(this->index_val(*result) == this->index_val(*first))){
+                *(++result)=*first;
+            }
+            else{
+
+                this->data_val(*result)=collector(this->data_val(*result),this->data_val(*first));
+            }
+        }
+        ++result;
+        size_t diff=result-this->storage_begin();
+        resize(diff);
+    }
 
 
 protected:
+
+    template<class otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
+    void copy_other_MIA(const otherMIAType & otherMIA)
+    {
+
+        std::cout << "copy other MIA with sparse " << std::endl;
+        this->mSortOrder=otherMIA.sort_order();
+        this->mIsSorted=otherMIA.is_sorted();
+
+        this->resize(otherMIA.size());
+
+        auto otherIt=otherMIA.storage_begin();
+        std::for_each(this->storage_begin(),this->storage_end(),[this,&otherIt](full_tuple cur_tuple){
+            this->data_val(cur_tuple)=this->convert(std::get<0>(*otherIt)); //need 'this' due to bug in gcc compiler
+            this->index_val(cur_tuple)=std::get<1>(*otherIt++);
+        });
+
+    }
+
+    template<class otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
+    void copy_other_MIA(const otherMIAType & denseMIA)
+    {
+
+
+
+        this->reset_sort_order();
+        this->mIsSorted=true;
+        //count the number of nnzs
+        size_t nnz=0;
+        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
+            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+                ++nnz;
+
+        //allocate the required data
+        this->resize(nnz);
+
+
+        //set m_data and m_indices
+        index_type idx=0;
+        nnz=0;
+        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it){
+            if(std::abs(*it)>SparseTolerance<data_type>::tolerance){
+                *(this->data_begin()+nnz)=*it;
+                *(this->index_begin()+nnz++)=it-denseMIA.data_begin();
+            }
+
+        }
+
+    }
+
 
     template<typename otherDerived, typename Op,typename index_param_type>
     void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
@@ -550,7 +649,7 @@ void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op
     //print_array(lhsOrder,"lhsOrder");
     //boost::timer::cpu_timer sort_t;
 
-    //this->change_sort_order(lhsOrder);
+    //this->change_linIdx_order(lhsOrder);
 
     //std::sort(this->index_begin(),this->index_end());
     //std::sort(this->data_begin(),this->data_end());
@@ -575,11 +674,11 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
 
     //b has less non-zeros than *this
     if(this->size()>b.size())
-        b.change_sort_order(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+        b.change_linIdx_order(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
     else{
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        this->change_sort_order(internal::reOrderArray(b.sort_order(), lhsOrder));
+        this->change_linIdx_order(internal::reOrderArray(b.sort_order(), lhsOrder));
     }
 
     size_t old_size=this->size();
@@ -621,7 +720,7 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
     //std::cout <<"We got to sparse assign" << std::endl;
     //otherMIA.print();
 
-    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
+    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the sort_order
     internal::reorder_to(otherMIA.sort_order(),index_order,this->mSortOrder);
     if(otherMIA.sort_order()!=this->mSortOrder)
         this->mIsSorted=false;
@@ -629,6 +728,7 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
         this->mIsSorted=otherMIA.is_sorted();
 
     this->resize(otherMIA.size());
+    this->m_dimensionality=otherMIA.dimensionality();
 
     auto otherDataIt=otherMIA.data_begin();
     std::for_each(this->data_begin(),this->data_end(),[&](data_type & cur_data){

@@ -73,7 +73,11 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,k,m,n)=dense_a(i,j,k,l)*dense_b(j,l,m,n);
     c(i,k,m,n)=a(i,j,k,l)*b(j,l,m,n);
+    d(j)*b(j,l,m,n);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
+
+
+
 
     dense_c(i,k,m,n)=dense_a(i,l,k,j)*dense_b(l,j,m,n);
     c(i,k,m,n)=a(i,l,k,j)*b(l,j,m,n);
@@ -97,6 +101,17 @@ void mult_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c2==dense_c2,std::string("Inner/Element-Wise Product 3 for ")+typeid(_data_type).name());
 
 
+    dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
+    c(i,j,k,l)=b2(i,j)*d2(k,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
+
+    dense_c(i,k,l,j)=dense_b2(k,j)*dense_d2(l,i);
+    c(i,k,l,j)=b2(k,j)*d2(l,i);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 2 for ")+typeid(_data_type).name());
+
+    dense_c(i,k,l,j)=dense_d2(l,i)*dense_b2(k,j);
+    c(i,k,l,j)=d2(l,i)*b2(k,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3 for ")+typeid(_data_type).name());
 
     dense_c(i,j,k,l)=dense_a(i,!j,k,!l)*dense_b2(!j,!l);
     c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
@@ -112,9 +127,6 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*dense_b2(!j,!!l))*dense_d(!l);
     c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
-
-
-
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
 
 
@@ -135,7 +147,7 @@ void mult_work(size_t dim1, size_t dim2){
 BOOST_AUTO_TEST_CASE( SparseMIAMultTests )
 {
 
-//    mult_work<double>(2,3);
+   // mult_work<double>(3,3);
 //    mult_work<float>(3,3);
 //    mult_work<int>(3,3);
 //    mult_work<long>(3,3);
@@ -147,6 +159,7 @@ BOOST_AUTO_TEST_CASE( SparseMIAMultTests )
     mult_work<float>(8,5);
     mult_work<int>(8,5);
     mult_work<long>(8,5);
+
 
 
     mult_work<double>(5,8);

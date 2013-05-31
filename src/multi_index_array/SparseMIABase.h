@@ -246,13 +246,7 @@ public:
     }
 
 
-    //!resizes data and index containers. Previous references should be considered invalid
-    void resize(size_t _size)
-    {
-        derived().m_data.resize(_size);
-        derived().m_indices.resize(_size);
-        mIsSorted=false;
-    }
+
 
     bool is_sorted() const{
         return mIsSorted;
@@ -269,8 +263,13 @@ public:
     */
     void sort(const std::array<size_t,mOrder> & _sort_order,bool _stable=false)
     {
-        change_sort_order(_sort_order);
+        change_linIdx_order(_sort_order);
         sort(_stable);
+    }
+
+    void sort(bool _stable=false){
+        sort(std::less<index_type>(),_stable);
+
     }
 
     //! Sort non-zero containers based on the current sort order
@@ -279,11 +278,12 @@ public:
         \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
 
     */
-    void sort(bool _stable=false)
+    template<typename Comp>
+    void sort(Comp comp,bool _stable=false)
     {
 
 
-        if(!mIsSorted)
+        if(!boost::is_same<Comp,std::less<index_type>>::value || !mIsSorted) //if comp is not std::less, then mIsSorted is meaningless
         {
             if(_stable){
                 //stable_sort doesn't work with permute_iterator, b/c permute_iterator violates some of the iterator requirements
@@ -294,11 +294,12 @@ public:
                 } );
             }
             else{
-                internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),
+                internal::Introsort(this->index_begin(),this->index_end(),comp,
                                     internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
             }
         }
-        mIsSorted=true;
+        if(boost::is_same<Comp,std::less<index_type>>::value) //if comp is not std::less, then mIsSorted should be false
+            mIsSorted=true;
 
 
     }
@@ -326,7 +327,7 @@ public:
     }
 
     template<class index_param_type>
-    void change_sort_order(const std::array<index_param_type,mOrder> & _sort_order)
+    void change_linIdx_order(const std::array<index_param_type,mOrder> & _sort_order)
     {
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
         if(_sort_order==mSortOrder)
@@ -342,7 +343,7 @@ public:
 
 
     void reset_sort_order(){
-        change_sort_order(mDefaultSortOrder);
+        change_linIdx_order(mDefaultSortOrder);
     }
 
     //!converts a linear index calculated using mSortOrder to a linear index calculated using mDefaultSortOrder
@@ -398,12 +399,7 @@ public:
 
     }
 
-    //! Removes data with duplicated indices - conflicts are solved by always choosing the first data entry encountered
-    void collect_duplicates(bool _stable=false)
-    {
-        select_first<data_type> selector;
-        collect_duplicates(selector,_stable);
-    }
+
 
     void setSorted(bool isSorted){
         mIsSorted=isSorted;
@@ -414,32 +410,7 @@ public:
         return mSortOrder;
     }
 
-    //! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
-    template<class Collector>
-    void collect_duplicates(Collector collector,bool _stable=false)
-    {
 
-
-
-        sort(_stable);
-
-
-        auto result = storage_begin();
-        auto first=result;
-        while (++first != storage_end())
-        {
-            if (!(index_val(*result) == index_val(*first))){
-                *(++result)=*first;
-            }
-            else{
-
-                data_val(*result)=collector(data_val(*result),data_val(*first));
-            }
-        }
-        ++result;
-        size_t diff=result-storage_begin();
-        resize(diff);
-    }
 
     template<class otherDerived>
     bool operator==(SparseMIABase<otherDerived>& otherMIA)
@@ -573,6 +544,10 @@ public:
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder);
 
+
+    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+
     index_type& index_val(const full_tuple & a)
     {
         return std::get<1>(a);
@@ -596,6 +571,12 @@ public:
         return std::get<0>(a);
 
     }
+
+    template <class BinaryPredicate>
+    index_iterator find_start_idx(index_iterator start_it, index_iterator end_it, const index_type & idx,BinaryPredicate predicate, bool search_flag=false);
+
+    template <class BinaryPredicate>
+    index_iterator find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate predicate, bool search_flag=false);
 
 protected:
 
@@ -662,53 +643,9 @@ protected:
     template<typename otherDerived, typename Op,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type outside_scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
 
-    template<class otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
-    void copy_other_MIA(const otherMIAType & otherMIA)
-    {
-
-        this->mSortOrder=otherMIA.sort_order();
-        this->mIsSorted=otherMIA.is_sorted();
-
-        this->resize(otherMIA.size());
-
-        auto otherIt=otherMIA.storage_begin();
-        std::for_each(this->storage_begin(),this->storage_end(),[this,&otherIt](full_tuple cur_tuple){
-            this->data_val(cur_tuple)=this->derived().convert(std::get<0>(*otherIt)); //need 'this' due to bug in gcc compiler
-            this->index_val(cur_tuple)=std::get<1>(*otherIt++);
-        });
-
-    }
-
-    template<class otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
-    void copy_other_MIA(const otherMIAType & denseMIA)
-    {
 
 
 
-        this->reset_sort_order();
-        this->mIsSorted=true;
-        //count the number of nnzs
-        size_t nnz=0;
-        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
-            if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
-                ++nnz;
-
-        //allocate the required data
-        this->resize(nnz);
-
-
-        //set m_data and m_indices
-        index_type idx=0;
-        nnz=0;
-        for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it){
-            if(std::abs(*it)>SparseTolerance<data_type>::tolerance){
-                *(this->data_begin()+nnz)=*it;
-                *(this->index_begin()+nnz++)=it-denseMIA.data_begin();
-            }
-
-        }
-
-    }
 
 private:
 
@@ -780,7 +717,7 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
         throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
 
     CType C(this->m_dims);
-    C.change_sort_order(this->mSortOrder);
+    C.change_linIdx_order(this->mSortOrder);
     C.resize(this->size()+b.size());
     auto new_end=internal::outside_merge_sparse_storage_containers(C.storage_begin(),this->storage_begin(),this->storage_end(),b.storage_begin(),b.storage_end(),op);
     C.resize(new_end-C.storage_begin());
@@ -807,7 +744,7 @@ auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_i
         sort(_sort_order);
         //for now lattices don't actually change index values when doing column vs. row major - they just change the sort criteria, so we change it back to column major
         //but sorted row major
-        change_sort_order(internal::concat_index_arrays(row_indices,column_indices,tab_indices));
+        change_linIdx_order(internal::concat_index_arrays(row_indices,column_indices,tab_indices));
     }
 
 
@@ -877,6 +814,8 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
 {
 
 
+    if(this->dims()!=otherMIA.dims())
+        return false;
     this->sort();
     if (!this->size())
     {
@@ -897,7 +836,7 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
             if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                 return false;
             }
 
@@ -928,6 +867,173 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     }
 
 }
+
+template<typename Derived>
+template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type
+{
+
+
+    static_assert(Inter+L_outer==mOrder,"Both index arrays must index all indices in MIA");
+    static_assert(Inter+R_outer==internal::order<otherDerived>::value,"Both index arrays must index all indices in MIA");
+    typedef typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type RetType;
+    typedef typename RetType::index_type c_index_type;
+    typedef typename internal::index_type<otherDerived>::type b_index_type;
+    std::array<index_type,Inter> l_inter_dims;
+    std::array<index_type, L_outer> l_outer_dims;
+    std::array<b_index_type,Inter> r_inter_dims;
+    std::array<b_index_type,R_outer> r_outer_dims;
+    //get inter and outer dimensionality and the individual dimensions that make up that number;
+    index_type l_inter_size=internal::reorder_from(this->dims(), l_inter_idx,l_inter_dims);
+    b_index_type r_inter_size=internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
+    index_type l_outer_size=internal::reorder_from(this->dims(), l_outer_idx,l_outer_dims);
+    b_index_type r_outer_size=internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
+    if(l_inter_dims.size()!=r_inter_dims.size() || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
+        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
+
+    std::array<c_index_type,L_outer+R_outer+Inter> c_dims;
+    internal::concat_arrays(l_outer_dims,r_outer_dims,l_inter_dims,c_dims);
+    RetType C (c_dims);
+    C.reserve(this->size()*b.size()/std::pow(2,l_inter_dims.size())); //make an estimate of the number of elements in C based on how many indices are used for elemwise products
+    if(Inter){
+        change_linIdx_order(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
+        b.change_linIdx_order(internal::concat_index_arrays(r_inter_idx,r_outer_idx));
+        std::function<bool(const index_type &idx_1, const index_type &idx_2)> lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
+            return idx1%l_inter_size<idx2%l_inter_size;
+        };
+        this->sort(lhs_compare);
+        std::function<bool(const index_type &idx_1, const index_type &idx_2)> rhs_compare=[&r_inter_size](const index_type &idx1, const index_type &idx2){
+            return idx1%r_inter_size<idx2%r_inter_size;
+        };
+        b.sort(rhs_compare);
+    }
+
+    std::function<bool(const index_type &, const index_type &)> a_start_pred=[&](const index_type& idx, const index_type &val){
+                return idx%l_inter_size<val;
+    };
+    std::function<bool(const index_type &, const index_type &)> a_end_pred=[&](const index_type& val, const index_type &idx){
+                return val<idx%l_inter_size;
+    };
+    std::function<bool(const b_index_type &, const b_index_type &)> b_start_pred=[&](const b_index_type& idx, const b_index_type &val){
+                return idx%r_inter_size<val;
+    };
+    std::function<bool(const b_index_type &, const b_index_type &)> b_end_pred=[&](const b_index_type& val, const b_index_type &idx){
+                return val<idx%r_inter_size;
+    };
+
+    index_type cur_elem_wise_idx, cur_a_elem_wise_idx;
+    b_index_type cur_b_elem_wise_idx;
+
+    auto a_idx_begin=this->index_begin();
+    auto b_idx_begin=b.index_begin();
+    auto a_idx_end=this->index_end();
+    auto b_idx_end=b.index_end();
+    decltype(a_idx_end) cur_a_end;
+    decltype(b_idx_end) cur_b_end;
+    auto cur_a_idx=this->index_begin();
+    auto cur_b_idx=b.index_begin();
+
+    //determine whether we want to binary search or just scan through elements
+    bool a_search_flag=false, b_search_flag=false;
+    if(l_inter_size*log2(this->size())<this->size())
+        a_search_flag=true;
+    if(r_inter_size*log2(b.size())<b.size())
+        b_search_flag=true;
+
+    while(cur_a_idx<a_idx_end && cur_b_idx<b_idx_end)
+    {
+        //if we're at the same tab, no work
+        cur_a_elem_wise_idx=*cur_a_idx%l_inter_size;
+        cur_b_elem_wise_idx=*cur_b_idx%r_inter_size;
+        if(cur_a_elem_wise_idx==cur_b_elem_wise_idx)
+        {
+            cur_elem_wise_idx=cur_a_elem_wise_idx;
+        }
+        else if (cur_a_elem_wise_idx<cur_b_elem_wise_idx)  //if a's inter idx is less than b's
+        {
+            cur_elem_wise_idx=cur_b_elem_wise_idx;
+
+            cur_a_idx=this->find_start_idx(cur_a_idx,a_idx_end,cur_elem_wise_idx,a_start_pred,a_search_flag);
+
+            if(cur_a_idx==a_idx_end) //no inter idx in A is greater than or equal to B's current idx - so we're finished the entire multiplication routine
+                break;
+            //couldn't find an inter idx in A equal to B's current inter idx, but we found one greater than it - so now we need to try to find a matching inter idx in b
+            if(*cur_a_idx%l_inter_size!=cur_elem_wise_idx)
+                continue;
+        }
+        else
+        {
+            cur_elem_wise_idx=cur_a_elem_wise_idx;
+
+            cur_b_idx=b.find_start_idx(cur_b_idx,b_idx_end,cur_elem_wise_idx,b_start_pred,b_search_flag);
+
+            if(cur_b_idx==b_idx_end) //no inter idx in B is greater than or equal to A's current idx - so we're finished the entire multiplication routine
+                break;
+            //couldn't find an inter idx in B equal to A's current inter idx, but we found one greater than it - so now we need to try to find a matching inter idx in A
+            if(*cur_b_idx%r_inter_size!=cur_elem_wise_idx)
+                continue;
+        }
+        cur_a_end=this->find_end_idx(cur_a_idx,a_idx_end,cur_elem_wise_idx,a_end_pred,a_search_flag);
+        cur_b_end=b.find_end_idx(cur_b_idx,b_idx_end,cur_elem_wise_idx,b_end_pred,b_search_flag);
+
+        auto c_elemwise_idx=cur_elem_wise_idx*l_outer_size*r_outer_size; //the convention is to have indices in this order: [l_outer r_outer inter]
+        for(auto a_it=cur_a_idx;a_it<cur_a_end;++a_it){
+            auto cur_a_data_it=this->data_begin()+(a_it-a_idx_begin);
+            auto l_outer_idx=(*a_it)/l_inter_size;
+            for(auto b_it=cur_b_idx;b_it<cur_b_end;++b_it){
+                auto cur_b_data_it=b.data_begin()+(b_it-b_idx_begin);
+                auto r_outer_idx=(*b_it)/r_inter_size;
+                C.push_back((*cur_a_data_it)*(*cur_b_data_it),l_outer_idx+r_outer_idx*l_outer_size+c_elemwise_idx);
+            }
+        }
+
+        cur_a_idx=cur_a_end;
+        cur_b_idx=cur_b_end;
+
+    }
+    return C;
+
+}
+
+template <class Derived>
+template <class BinaryPredicate>
+auto SparseMIABase<Derived>::find_start_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate pred,bool search_flag)->index_iterator
+{
+
+
+    if (search_flag){
+        start_it= std::lower_bound(start_it,end_it,idx,pred);
+    }
+    else{
+
+        while(start_it<end_it && pred(*start_it,idx))
+                start_it++;
+
+    }
+    return start_it;
+
+}
+
+template <class Derived>
+template <class BinaryPredicate>
+auto SparseMIABase<Derived>::find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate pred,bool search_flag)->index_iterator
+{
+
+
+    if (search_flag){
+        start_it= std::upper_bound(start_it,end_it,idx,pred);
+    }
+    else{
+
+        while(start_it<end_it && !pred(idx,*start_it))
+            start_it++;
+
+    }
+    return start_it;
+
+}
+
 
 
 /*! @} */
