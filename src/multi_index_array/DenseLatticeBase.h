@@ -127,6 +127,18 @@ public:
     typename DenseProductReturnType<Derived,otherDerived>::type
     operator*(const DenseLatticeBase<otherDerived> &b) const;
 
+
+    //!  Performs lattice product with sparse lattice.
+    /*!
+        c=a*b. Performs matrix/matrix product across each of the operand types. Operation is only defined for two dense lattice of the same scalar type (which may change as EigenLib evolves).
+
+        \returns DenseLattice<data_type> regardless of the operand types.
+    */
+    template<class otherDerived>
+    typename DenseProductReturnType<Derived,otherDerived>::type
+    operator*(SparseLatticeBase<otherDerived> &b) const;
+
+
     //!  Solves linear system of equations.
     /*!
     x=a.solve(b), solves a sequence of systems of linear equations represented by a*x=b. Uses <a href="http://eigen.tuxfamily.org">Eigen</a> to compute
@@ -150,6 +162,9 @@ public:
     void print() const;
 
     bool save(const std::string & _filename) const;
+
+    DenseLattice<data_type> transpose() const;
+    void inPlaceTranspose();
 
     template<class otherDerived>
     bool operator==(const DenseLatticeBase<otherDerived> &b) const;
@@ -309,6 +324,18 @@ public:
 
     }
 
+    const data_type& operator()(index_type i, index_type j, index_type k) const
+    {
+
+        return atIdx(this->sub2ind(i,j,k));
+    }
+    data_type& operator()(index_type i, index_type j, index_type k)
+    {
+
+        return atIdx(this->sub2ind(i,j,k));
+    }
+
+
     //! Returns scalar data at given linear index
     const data_type& atIdx(index_type idx) const{
 
@@ -366,24 +393,76 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b) co
 
     for (int i=0; i<this->depth(); i++)
     {
-
-
         c.derived().tab_matrix(i)=(tab_matrix(i))*(b.derived().tab_matrix(i));
 
     }
-//    std::cout << "a: " << std::endl;
-//    this->print();
-//    std::cout << "b: " << std::endl;
-//    b.print();
-//    std::cout << "c: " << std::endl;
-//    c.print();
+
+    return c;
+}
 
 
+template <class Derived>
+template<class otherDerived>
+inline
+typename DenseProductReturnType<Derived,otherDerived>::type
+DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> &b) const
+{
+
+
+
+    this->check_mult_dims(b);
+    b.sort(); //column major
+    auto &a=*this;
+
+    typedef typename DenseProductReturnType<Derived,otherDerived>::type RType;
+    typedef typename RType::index_type c_index_type;
+    RType c(this->height(),b.width(),this->depth()); //constructor should initialize to zeros
+    for(auto it=b.index_begin();it<b.index_end();++it){ //iterate through all sparse nonzeros
+        for(index_type a_row=0;a_row<this->height();++a_row){ //for every nonzero in b, multiply it with the appropriate column in a
+            c((c_index_type)a_row,b.column(*it),b.tab(*it))+=a(a_row,b.row(*it),b.tab(*it))*b.data_at(it-b.index_begin());
+        }
+
+    }
 
 
     return c;
 }
 
+template <class Derived>
+auto DenseLatticeBase<Derived>::transpose()  const->DenseLattice<data_type>{
+
+
+    DenseLattice<data_type> c(this->width(),this->height(),this->depth());
+
+
+    for (int i=0; i<this->depth(); i++)
+    {
+        c.derived().tab_matrix(i)=tab_matrix(i).transpose();
+
+    }
+
+    return c;
+
+
+}
+
+template <class Derived>
+void DenseLatticeBase<Derived>::inPlaceTranspose() {
+
+
+
+
+
+    for (int i=0; i<this->depth(); i++)
+    {
+        this->derived().tab_matrix(i).transposeInPlace();
+
+    }
+    std::swap(this->m_height,this->m_width);
+
+
+
+}
 
 template <class Derived>
 template<class otherDerived>

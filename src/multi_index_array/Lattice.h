@@ -99,6 +99,18 @@ public:
         return m_height;
     }
 
+    void set_height(index_type _height){
+        m_height=_height;
+    }
+
+    void set_width(index_type _width){
+        m_width=_width;
+    }
+
+    void set_depth(index_type _depth){
+        m_depth=_depth;
+    }
+
     index_type dimensionality() const
     {
         return m_height*m_width*m_depth;
@@ -112,6 +124,10 @@ public:
     static data_type convert(const from_data_type from){
 
         return internal::convert<data_type,from_data_type>(from);
+    }
+
+    index_type sub2ind(index_type _row, index_type _column, index_type _tab)const{
+        return _row+this->height()*(_column+this->width()*_tab);
     }
 
 

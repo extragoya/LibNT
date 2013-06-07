@@ -230,16 +230,7 @@ public:
 //
 //    }
 
-    const data_type& operator()(int i, int j, int k) const
-    {
 
-        return (*m_Data)[i][j][k];
-    }
-    data_type& operator()(int i, int j, int k)
-    {
-
-        return (*m_Data)[i][j][k];
-    }
 
 
     data_iterator data_begin() const
