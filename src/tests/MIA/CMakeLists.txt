@@ -12,9 +12,14 @@ set (MERGE_SOURCES mixed_mia_merge_test.cpp)
 add_executable(MixedMIAMergeTests ${MERGE_SOURCES})
 ADD_TEST(MixedMIAMergeTests ${CMAKE_CURRENT_BINARY_DIR}/MixedMIAMergeTests)
 
+set (MULT_SOURCES mixed_mia_mult_test.cpp)
+add_executable(MixedMIAMultTests ${MULT_SOURCES})
+ADD_TEST(MixedMIAMultTests ${CMAKE_CURRENT_BINARY_DIR}/MixedMIAMultTests)
+
 
 if(NOT MIA_USE_HEADER_ONLY_TESTS)
 	target_link_libraries(MIAAssignTests ${Boost_LIBRARIES})
 	target_link_libraries(MIAConstrTests ${Boost_LIBRARIES})
 	target_link_libraries(MixedMIAMergeTests ${Boost_LIBRARIES})
+	target_link_libraries(MixedMIAMultTests ${Boost_LIBRARIES})
 endif()

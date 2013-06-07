@@ -585,7 +585,7 @@ template<class L_MIA,class R_MIA, size_t order
 >
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
-        boost::mpl::and_<
+        boost::mpl::or_<
             internal::is_DenseMIA<L_MIA>,
             internal::is_DenseMIA<R_MIA>
         >
@@ -638,7 +638,7 @@ template<class L_MIA,class R_MIA, size_t order
 >
 struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
-        boost::mpl::and_<
+        boost::mpl::or_<
             internal::is_SparseMIA<L_MIA>,
             internal::is_SparseMIA<R_MIA>
         >
