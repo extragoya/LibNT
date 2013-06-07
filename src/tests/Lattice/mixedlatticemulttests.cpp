@@ -49,8 +49,8 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
 
     BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Full Dimension Mult Test 1 for ")+typeid(data_type).name());
-
-
+    //DenseLat3_dense.print();
+    //DenseLat3_sparse.print();
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
 

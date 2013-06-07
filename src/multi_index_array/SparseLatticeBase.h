@@ -698,10 +698,32 @@ auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator
 template <class Derived>
 template <class otherDerived>
 typename DenseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
-    this->inPlaceTranspose();
-    auto c=b.transpose()*(*this);
-    this->inPlaceTranspose();
-    return c.transpose();
+
+    this->check_mult_dims(b);
+    typedef typename DenseProductReturnType<Derived,otherDerived>::type c_type;
+    typedef typename otherDerived::index_type b_index_type;
+    c_type c(this->height(),b.width(),this->depth()); //should be zero-initialized
+    this->sort(RowMajor);
+
+    auto a_temp_begin=this->index_begin();
+    auto a_temp_end=a_temp_begin;
+
+    while(a_temp_begin<this->index_end()){
+        auto cur_tab=this->tab(*a_temp_begin);
+        auto cur_row=this->row(*a_temp_begin);
+        a_temp_end=a_temp_begin+1;
+        while(a_temp_end<this->index_end()&&this->tab(*a_temp_end)==cur_tab && this->row(*a_temp_end)==cur_row){
+            a_temp_end++;
+        }
+        for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
+            for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
+                c(cur_row,b_columns,cur_tab)+=this->data_at(a_it-this->index_begin())*b(this->column(*a_it),b_columns,cur_tab);
+            }
+        }
+        a_temp_begin=a_temp_end;
+    }
+    return c;
+
 
 }
 
