@@ -416,7 +416,7 @@ public:
 
 
 
-        cType* cMIA=new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
+        cType* cMIA(new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make())));
 
         MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
         return C;

@@ -56,6 +56,7 @@ void solve_work(size_t dim1,size_t dim2){
     d(m,j,k,i)=a(!i,!j,k,l)*c(!i,!j,l,m);
     BOOST_CHECK_MESSAGE(d.fuzzy_equals(b,test_precision<_data_type>()),std::string("Inner/Outer/Inter Product Inverse 2 for ")+typeid(_data_type).name() );
 
+
     c(i,j,m,n)=a2(k,l,i,j)|b2(k,l,m,n);
     //test with normal equations
     d(o,p,m,n)=a2(k,l,o,p)*a2(k,l,i,j)*c(i,j,m,n);
@@ -70,6 +71,7 @@ BOOST_AUTO_TEST_CASE( DenseMIASolveTests )
 
 
     solve_work<double>(8,10);
+
     solve_work<float>(8,10);
 
 

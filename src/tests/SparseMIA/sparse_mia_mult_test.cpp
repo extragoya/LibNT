@@ -140,7 +140,7 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,k,m,n)=~(dense_a(i,!l,k,!j)*dense_b(!j,!l,m,n))*dense_d2(l,j);
     c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
 
 }
 

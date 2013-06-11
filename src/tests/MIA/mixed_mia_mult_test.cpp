@@ -42,6 +42,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::SparseMIA<_data_type,2> b2(dim2,dim2);
     LibMIA::SparseMIA<_data_type,1> d(dim2);
     LibMIA::SparseMIA<_data_type,2> d2(dim2,dim2);
+    LibMIA::SparseMIA<_data_type,4> c;
 
 
     dense_a.randu(0,20);
@@ -109,55 +110,88 @@ void mult_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c2_mixed==dense_c2,std::string("Inner/Element-Wise Product 3a for ")+typeid(_data_type).name());
     c2_mixed(j,i)=dense_a(!j,l,!i,k)*b(k,l,!j,!i);
     BOOST_CHECK_MESSAGE(c2_mixed==dense_c2,std::string("Inner/Element-Wise Product 3a for ")+typeid(_data_type).name());
-//
-//
-//    dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
-//    c(i,j,k,l)=b2(i,j)*d2(k,l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,k,l,j)=dense_b2(k,j)*dense_d2(l,i);
-//    c(i,k,l,j)=b2(k,j)*d2(l,i);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 2 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,k,l,j)=dense_d2(l,i)*dense_b2(k,j);
-//    c(i,k,l,j)=d2(l,i)*b2(k,j);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,j,k,l)=dense_a(i,!j,k,!l)*dense_b2(!j,!l);
-//    c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,j,k,l)=dense_a(k,!j,i,!l)*dense_b2(!j,!l);
-//    c(i,j,k,l)=a(k,!j,i,!l)*b2(!j,!l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,j,k,l)=dense_a(k,!l,i,!j)*dense_b2(!j,!l);
-//    c(i,j,k,l)=a(k,!l,i,!j)*b2(!j,!l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
-//
-//    dense_c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*dense_b2(!j,!!l))*dense_d(!l);
-//    c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
-//
-//
-//    dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(j,l);
-//    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(j,l);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1 for ")+typeid(_data_type).name() );
-//
-//    dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(l,j);
-//    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(l,j);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
-//
-//    dense_c(i,k,m,n)=~(dense_a(i,!l,k,!j)*dense_b(!j,!l,m,n))*dense_d2(l,j);
-//    c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
-//    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
+
+
+    dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
+    c(i,j,k,l)=b2(i,j)*dense_d2(k,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1a for ")+typeid(_data_type).name());
+    c(i,j,k,l)=dense_b2(i,j)*d2(k,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1b for ")+typeid(_data_type).name());
+
+
+    dense_c(i,k,l,j)=dense_b2(k,j)*dense_d2(l,i);
+    c(i,k,l,j)=b2(k,j)*dense_d2(l,i);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 2a for ")+typeid(_data_type).name());
+    c(i,k,l,j)=dense_b2(k,j)*d2(l,i);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 2b for ")+typeid(_data_type).name());
+
+    dense_c(i,k,l,j)=dense_d2(l,i)*dense_b2(k,j);
+    c(i,k,l,j)=d2(l,i)*dense_b2(k,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3a for ")+typeid(_data_type).name());
+    c(i,k,l,j)=dense_d2(l,i)*b2(k,j);
+//    dense_c.print();
+//    c.print();
+//    c.reset_sort_order();
+//    c.print();
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3b for ")+typeid(_data_type).name());
+
+    dense_c(i,j,k,l)=dense_a(i,!j,k,!l)*dense_b2(!j,!l);
+    c(i,j,k,l)=a(i,!j,k,!l)*dense_b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 1a for ")+typeid(_data_type).name());
+    c(i,j,k,l)=dense_a(i,!j,k,!l)*b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 1b for ")+typeid(_data_type).name());
+
+    dense_c(i,j,k,l)=dense_a(k,!j,i,!l)*dense_b2(!j,!l);
+    c(i,j,k,l)=a(k,!j,i,!l)*dense_b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 2a for ")+typeid(_data_type).name());
+    c(i,j,k,l)=dense_a(k,!j,i,!l)*b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 2b for ")+typeid(_data_type).name());
+
+    dense_c(i,j,k,l)=dense_a(k,!l,i,!j)*dense_b2(!j,!l);
+    c(i,j,k,l)=a(k,!l,i,!j)*dense_b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 3a for ")+typeid(_data_type).name());
+    c(i,j,k,l)=dense_a(k,!l,i,!j)*b2(!j,!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 3b for ")+typeid(_data_type).name());
+
+    dense_c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*dense_b2(!j,!!l))*dense_d(!l);
+    c(i,j,k,l)=~(a(i,!j,k,!!l)*dense_b2(!j,!!l))*d(!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1a for ")+typeid(_data_type).name());
+    c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1b for ")+typeid(_data_type).name());
+    c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*dense_d(!l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1c for ")+typeid(_data_type).name());
+
+
+    dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(j,l);
+    c(i,k,m,n)=~(a(i,!j,k,!l)*dense_b(!j,!l,m,n))*d2(j,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1a for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(dense_a(i,!j,k,!l)*b(!j,!l,m,n))*d2(j,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1b for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*dense_d2(j,l);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1c for ")+typeid(_data_type).name() );
+
+    dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(l,j);
+    c(i,k,m,n)=~(a(i,!j,k,!l)*dense_b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2a for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(dense_a(i,!j,k,!l)*b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2b for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*dense_d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2c for ")+typeid(_data_type).name() );
+
+    dense_c(i,k,m,n)=~(dense_a(i,!l,k,!j)*dense_b(!j,!l,m,n))*dense_d2(l,j);
+    c(i,k,m,n)=~(a(i,!l,k,!j)*dense_b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3a for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(dense_a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3b for ")+typeid(_data_type).name() );
+    c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*dense_d2(l,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3c for ")+typeid(_data_type).name() );
 
 }
 
 BOOST_AUTO_TEST_CASE( MixedMIAMultTests )
 {
 
-   // mult_work<double>(3,3);
+    //mult_work<double>(3,3);
 //    mult_work<float>(3,3);
 //    mult_work<int>(3,3);
 //    mult_work<long>(3,3);

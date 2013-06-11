@@ -415,31 +415,29 @@ AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageI
 
 }
 
-//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
-template<class AStorageItType, class BStorageItType, class CStorageItType,class Op>
-AStorageItType outside_merge_sparse_storage_containers(CStorageItType  c_begin,AStorageItType  a_begin,AStorageItType  a_end,BStorageItType  b_begin,BStorageItType  b_end,Op op)
+//assumes C, A, and B are of the same dimensions and in the same sort order (and A and B are sorted)
+template<class ADerived, class BDerived, class CDerived,class Op>
+void outside_merge_sparse_storage_containers(SparseMIABase<CDerived> & C , const SparseMIABase<ADerived> & A,const SparseMIABase<BDerived> & B,Op op)
 {
     using namespace boost::numeric;
-    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type c_data_type;
-    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type b_data_type;
-    typedef typename boost::remove_reference<typename AStorageItType::value_type::first_type>::type a_data_type;
-
-    typedef converter<c_data_type,a_data_type,conversion_traits<c_data_type,a_data_type>,def_overflow_handler,RoundEven<a_data_type>> to_mdata_type_a;
-    typedef converter<c_data_type,b_data_type,conversion_traits<c_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type_b;
-    CStorageItType c_actual_end=c_begin;
-
+    typedef typename ADerived::data_type a_data_type;
+    C.clear();
+    C.reserve(A.size()+B.size());
+    auto a_begin=A.index_begin();
+    auto b_begin=B.index_begin();
+    auto a_end=A.index_end();
+    auto b_end=B.index_end();
     while(a_begin<a_end && b_begin<b_end){
-        if (std::get<1>(*a_begin)<std::get<1>(*b_begin)){
-            std::get<0>(*c_actual_end)=to_mdata_type_a::convert(std::get<0>(*a_begin));
-            std::get<1>(*c_actual_end++)=std::get<1>(*a_begin++);
+        if (*a_begin<*b_begin){
+            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            a_begin++;
         }
-        else if  (std::get<1>(*b_begin)<std::get<1>(*a_begin)){
-            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(a_data_type(0)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
-            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin++);
+        else if  (*b_begin<*a_begin){
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            b_begin++;
         }
         else{
-            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(std::get<0>(*a_begin)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
-            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin);
+            C.push_back(C.convert(op(A.data_at(a_begin-A.index_begin()),B.data_at(b_begin-B.index_begin()))),*a_begin);
             a_begin++;
             b_begin++;
         }
@@ -447,19 +445,19 @@ AStorageItType outside_merge_sparse_storage_containers(CStorageItType  c_begin,A
     }
     if (a_begin==a_end){
         while (b_begin<b_end){
-            std::get<0>(*c_actual_end)=op(to_mdata_type_a::convert(a_data_type(0)),to_mdata_type_b::convert(std::get<0>(*b_begin)));
-            std::get<1>(*c_actual_end++)=std::get<1>(*b_begin++);
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            b_begin++;
         }
     }
     else{
         while (a_begin<a_end){
-            std::get<0>(*c_actual_end)=to_mdata_type_a::convert(std::get<0>(*a_begin));
-            std::get<1>(*c_actual_end++)=std::get<1>(*a_begin++);
+            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            a_begin++;
         }
     }
 
 
-    return c_actual_end;
+
 
 }
 
@@ -585,7 +583,7 @@ template<class L_MIA,class R_MIA, size_t order
 >
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
-        boost::mpl::or_<
+        boost::mpl::or_< //when a lattice mapping is required, dense * sparse is always a dense
             internal::is_DenseMIA<L_MIA>,
             internal::is_DenseMIA<R_MIA>
         >
@@ -638,7 +636,7 @@ template<class L_MIA,class R_MIA, size_t order
 >
 struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
-        boost::mpl::or_<
+        boost::mpl::or_< //when no lattice mapping is required, dense * sparse is always a sparse
             internal::is_SparseMIA<L_MIA>,
             internal::is_SparseMIA<R_MIA>
         >

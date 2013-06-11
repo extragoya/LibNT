@@ -219,6 +219,15 @@ public:
 
 
 
+    SparseMIA(SparseMIA && otherMIA):SparseMIABase<SparseMIA<T,_order>>(otherMIA.dims())
+    {
+
+
+        this->mSortOrder=otherMIA.sort_order();
+        m_data.swap(otherMIA.m_data);
+        m_indices.swap(otherMIA.m_indices);
+
+    }
 
 
 
@@ -295,10 +304,14 @@ public:
         if(scalar_data.size()!=indice_data.size()){
             throw MIAParameterException("SparseMIA Constructor: Data and index container parameters must have equal size.");
         }
+
+
         m_data.swap(scalar_data);
         m_indices.swap(indice_data);
 
     }
+
+
 
 
     //!  Constructs SparseMIA of specified size with a given SparseLattice
@@ -349,6 +362,23 @@ public:
     template<typename otherDerived,typename index_param_type>
     void assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
+
+    //!  Assignment based on given order from a Dense MIA.
+    /*!
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up. Even otherMIA is
+        sorted, *this may not be if index_order designates a shuffle.
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order An index reshuffle denoting how otherMIA is indexed based on *this. E.g., if order is {2,0,1} this->at(0,1,2)==otherMIA.at(1,2,0).
+
+    */
+    template<typename otherDerived,typename index_param_type>
+    void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
+
+
+
     //!  Sparse assignment
     template<typename otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
@@ -362,10 +392,22 @@ public:
     template<typename otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
         this->m_dims=otherMIA.dims();
+
         this->copy_other_MIA(otherMIA);
         return *this;
     }
+    SparseMIA& operator=(const SparseMIA&)  = default;
 
+    //!  Sparse move assignment
+    SparseMIA & operator=(SparseMIA&& otherMIA){
+        this->m_dims=otherMIA.dims();
+        this->m_dimensionality=otherMIA.dimensionality();
+        this->mSortOrder=otherMIA.sort_order();
+
+        m_data.swap(otherMIA.m_data);
+        m_indices.swap(otherMIA.m_indices);
+        return *this;
+    }
 
     //! Returns the data container
     const Data & data() const{
@@ -545,7 +587,7 @@ protected:
     void copy_other_MIA(const otherMIAType & otherMIA)
     {
 
-        std::cout << "copy other MIA with sparse " << std::endl;
+        //std::cout << "copy other MIA with sparse " << std::endl;
         this->mSortOrder=otherMIA.sort_order();
         this->mIsSorted=otherMIA.is_sorted();
 
@@ -617,52 +659,57 @@ template <class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
-    //if b is sorted, but *this is not, then we scan based on b
-    if (b.is_sorted() && !this->is_sorted()){
-        //get the order of lhs indices in terms of rhs
-        auto lhsOrder=internal::reverseOrder(index_order);
-        //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
-        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
-        this->sort(lhsOrder);
-    }
-    else if(this->is_sorted()&&!b.is_sorted()){
-       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
 
-    } //if both *this and b are sorted, then we resort whichever mia has a smaller number of nonzeros
-    else if(this->is_sorted()&& b.is_sorted()){
-        if (b.size()<this->size()){
-            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
-        }
-        else{
-            //get the order of lhs indices in terms of rhs
-            auto lhsOrder=internal::reverseOrder(index_order);
-            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
-            this->sort(lhsOrder);
-        }
-    }
-    else
-        throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
+    *this=this->outside_scanMerge(b,op,index_order); //in_place merge will just require a copy anyway, so just go straight to a out-of place scan merge
 
 
 
-    //print_array(lhsOrder,"lhsOrder");
-    //boost::timer::cpu_timer sort_t;
-
-    //this->change_linIdx_order(lhsOrder);
-
-    //std::sort(this->index_begin(),this->index_end());
-    //std::sort(this->data_begin(),this->data_end());
-
-    //std::cout << "Scan sort " << boost::timer::format(sort_t.elapsed()) << std::endl;
-    //this->print();
-    size_t old_size=this->size();
-    this->resize(this->size()+b.size());
-    //boost::timer::cpu_timer merge_t;
-
-    //merge the two sorted containers to *this's containers
-    auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
-    this->resize(new_end-this->storage_begin());
+//    //if b is sorted, but *this is not, then we scan based on b
+//    if (b.is_sorted() && !this->is_sorted()){
+//        //get the order of lhs indices in terms of rhs
+//        auto lhsOrder=internal::reverseOrder(index_order);
+//        //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
+//        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+//        this->sort(lhsOrder);
+//    }
+//    else if(this->is_sorted()&&!b.is_sorted()){
+//       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+//
+//    } //if both *this and b are sorted, then we resort whichever mia has a smaller number of nonzeros
+//    else if(this->is_sorted()&& b.is_sorted()){
+//        if (b.size()<this->size()){
+//            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
+//        }
+//        else{
+//            //get the order of lhs indices in terms of rhs
+//            auto lhsOrder=internal::reverseOrder(index_order);
+//            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
+//            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+//            this->sort(lhsOrder);
+//        }
+//    }
+//    else
+//        throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
+//
+//
+//
+//    //print_array(lhsOrder,"lhsOrder");
+//    //boost::timer::cpu_timer sort_t;
+//
+//    //this->change_linIdx_order(lhsOrder);
+//
+//    //std::sort(this->index_begin(),this->index_end());
+//    //std::sort(this->data_begin(),this->data_end());
+//
+//    //std::cout << "Scan sort " << boost::timer::format(sort_t.elapsed()) << std::endl;
+//    //this->print();
+//    size_t old_size=this->size();
+//    this->resize(this->size()+b.size());
+//    //boost::timer::cpu_timer merge_t;
+//
+//    //merge the two sorted containers to *this's containers
+//    auto new_end=internal::merge_sparse_storage_containers(this->storage_begin(),this->storage_begin()+old_size,b.storage_begin(),b.storage_end(),op);
+//    this->resize(new_end-this->storage_begin());
 
 }
 
@@ -673,13 +720,24 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
 {
 
     //b has less non-zeros than *this
-    if(this->size()>b.size())
-        b.change_linIdx_order(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+    if(this->size()>b.size()){
+        std::cout << "this is bigger " << std::endl;
+        auto b_sort_order=b.sort_order();
+
+        internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
+
+        b.change_linIdx_order(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
+    }
     else{
+        std::cout << "b is bigger " << std::endl;
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        this->change_linIdx_order(internal::reOrderArray(b.sort_order(), lhsOrder));
+        auto temp_sort_order=this->mSortOrder;
+        internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
+        this->change_linIdx_order(temp_sort_order);
     }
+
+
 
     size_t old_size=this->size();
     this->resize(this->size()+b.size());
@@ -719,9 +777,16 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
     //std::cout <<"We got to sparse assign" << std::endl;
     //otherMIA.print();
-
+    static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the sort_order
-    internal::reorder_to(otherMIA.sort_order(),index_order,this->mSortOrder);
+    //print_array(index_order,"index_order");
+    //print_array(otherMIA.sort_order(),"otherMIA.sort_order()");
+
+    //get the order of lhs indices in terms of rhs
+    auto lhsOrder=internal::reverseOrder(index_order);
+    //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
+    internal::reorder_from(lhsOrder,otherMIA.sort_order(),this->mSortOrder);
+    //print_array(this->mSortOrder,"this->mSortOrder");
     if(otherMIA.sort_order()!=this->mSortOrder)
         this->mIsSorted=false;
     else
@@ -738,6 +803,43 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
 
 
+
+
+}
+
+template<class T, size_t _order>
+template<typename otherDerived,typename index_param_type>
+void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
+{
+
+    static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
+    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //shuffle the dimensions around based on index_order
+    internal::reverseOrder(index_order,this->mSortOrder); //don't bother to re-sort, just change the sort_order
+    this->m_dimensionality=otherMIA.dimensionality();
+    if(this->mSortOrder!=this->mDefaultSortOrder)
+        this->mIsSorted=false;
+    else
+        this->mIsSorted=true;
+
+    size_t nnz=0;
+    for(auto it=otherMIA.data_begin();it<otherMIA.data_end();++it)
+        if(std::abs(*it)>SparseTolerance<data_type>::tolerance)
+            ++nnz;
+
+    //allocate the required data
+    this->resize(nnz);
+
+
+    //set m_data and m_indices
+    nnz=0;
+    for(auto it=otherMIA.data_begin();it<otherMIA.data_end();++it){
+        if(std::abs(*it)>SparseTolerance<data_type>::tolerance){
+            *(this->data_begin()+nnz)=this->convert(*it);
+            *(this->index_begin()+nnz++)=it-otherMIA.data_begin();
+
+        }
+
+    }
 
 
 }

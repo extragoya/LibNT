@@ -245,12 +245,25 @@ public:
         return derived().index_end();
     }
 
-
+    void clear(){
+        derived().clear();
+    }
+    void reserve(size_t _size){
+        derived().reserve(_size);
+    }
+    void resize(size_t _size){
+        derived().resize(_size);
+    }
+    void push_back(const data_type & _data, const index_type& _index)
+    {
+        derived().push_back(_data,_index);
+    }
 
 
     bool is_sorted() const{
         return mIsSorted;
     }
+
 
 
     //! Sort non-zero containers based on the given order
@@ -332,15 +345,24 @@ public:
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
         if(_sort_order==mSortOrder)
             return;
-
+        //print_array(mSortOrder,"mSortOrder");
         for(auto& it: derived().m_indices){
+            //std::cout << "idx " << it << std::endl;
+            //print_array(this->ind2sub_reorder(it,mSortOrder),"ind2sub");
+            //std::cout << "sub2ind " << this->sub2ind_reorder(this->ind2sub_reorder(it,mSortOrder),_sort_order) << std::endl;
             it=this->sub2ind_reorder(this->ind2sub_reorder(it,mSortOrder),_sort_order);
         }
-        mSortOrder=_sort_order;
+        set_linIdx_order(_sort_order);
         mIsSorted=false;
     }
 
+    template<class index_param_type>
+    void set_linIdx_order(const std::array<index_param_type,mOrder> & _sort_order)
+    {
+        static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
+        mSortOrder=_sort_order;
 
+    }
 
     void reset_sort_order(){
         change_linIdx_order(mDefaultSortOrder);
@@ -350,8 +372,7 @@ public:
     index_type convert_to_default_sort(const index_type idx) const
     {
 
-        //print_array(this->ind2sub(idx,mSortOrder),"ind2sub");
-        //std::cout << "sub2ind " << this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder) << std::endl;
+
         return this->sub2ind_reorder(this->ind2sub_reorder(idx,mSortOrder),mDefaultSortOrder);
     }
 
@@ -377,6 +398,12 @@ public:
 
     //!Assignment operator. Will call Derived's operator
     SparseMIABase& operator=(const SparseMIABase& otherMIA){
+
+        return derived()=otherMIA;
+    }
+
+    //!Assignment move operator. Will call Derived's operator
+    SparseMIABase& operator=(SparseMIABase&& otherMIA){
 
         return derived()=otherMIA;
     }
@@ -416,6 +443,7 @@ public:
     bool operator==(SparseMIABase<otherDerived>& otherMIA)
     {
 
+        //should be sorted first I believe
         bool passed=std::equal(this->index_begin(),this->index_end(),otherMIA.index_begin());
         if(!passed)
             return false;
@@ -548,6 +576,9 @@ public:
     template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
+    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+
     index_type& index_val(const full_tuple & a)
     {
         return std::get<1>(a);
@@ -572,11 +603,28 @@ public:
 
     }
 
+    //!returns the data value at the internal DOK data container index
+    data_type& data_at(size_t dok_index)
+    {
+        return *(this->data_begin()+dok_index);
+
+    }
+    //!returns the data value at the internal DOK data container index
+    const data_type& data_at(size_t dok_index) const
+    {
+        return *(this->data_begin()+dok_index);
+
+    }
+
     template <class BinaryPredicate>
     index_iterator find_start_idx(index_iterator start_it, index_iterator end_it, const index_type & idx,BinaryPredicate predicate, bool search_flag=false);
 
     template <class BinaryPredicate>
     index_iterator find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate predicate, bool search_flag=false);
+
+    void set_sort_order(const std::array<size_t,mOrder> & _sort_order){
+        mSortOrder=_sort_order;
+    }
 
 protected:
 
@@ -615,9 +663,7 @@ protected:
         mDefaultSortOrder=mSortOrder;
     }
 
-    void set_sort_order(const std::array<size_t,mOrder> & _sort_order){
-        mSortOrder=_sort_order;
-    }
+
 
 
 
@@ -693,24 +739,28 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
     if (b.is_sorted() && !this->is_sorted()){
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
-        this->sort(lhsOrder);
+        auto temp_sort_order=this->mSortOrder;
+        internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
+        this->sort(temp_sort_order);
     }
     else if(this->is_sorted()&&!b.is_sorted()){
-       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+        auto b_sort_order=b.sort_order();
+        internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
+        b.sort(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
 
     }
     else if(this->is_sorted()&& b.is_sorted()){
         if (b.size()<this->size()){
-            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
+            auto b_sort_order=b.sort_order();
+            internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
+            b.sort(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
         }
         else{
             //get the order of lhs indices in terms of rhs
             auto lhsOrder=internal::reverseOrder(index_order);
-            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
-            this->sort(lhsOrder);
+            auto temp_sort_order=this->mSortOrder;
+            internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
+            this->sort(temp_sort_order);
         }
     }
     else
@@ -718,9 +768,9 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
 
     CType C(this->m_dims);
     C.change_linIdx_order(this->mSortOrder);
-    C.resize(this->size()+b.size());
-    auto new_end=internal::outside_merge_sparse_storage_containers(C.storage_begin(),this->storage_begin(),this->storage_end(),b.storage_begin(),b.storage_end(),op);
-    C.resize(new_end-C.storage_begin());
+
+    internal::outside_merge_sparse_storage_containers(C,*this,b,op);
+
 
     return C;
 }
@@ -821,7 +871,7 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     {
         for(auto it=otherMIA.data_begin(); it<otherMIA.data_end(); ++it)
              if(!predicate(*it,0)){
-                //std::cout << "Trigered not-zero no size " << it-otherMIA.data_begin() << " " << *it << std::endl;
+                std::cout << "Trigered not-zero no size " << it-otherMIA.data_begin() << " " << *it << std::endl;
                 return false;
              }
         return true;
@@ -830,13 +880,13 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     {
         auto it=this->storage_begin();
         if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it))){
-            //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+            std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
             return false;
         }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
             if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                 return false;
             }
 
@@ -845,13 +895,13 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
         {
             if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
             {
-                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+                std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
                 if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                    //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+                    std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                     return false;
                 }
 
@@ -859,7 +909,7 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
             if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
                 return false;
             }
 
@@ -990,6 +1040,80 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
 
         cur_a_idx=cur_a_end;
         cur_b_idx=cur_b_end;
+
+    }
+    return C;
+
+}
+
+
+template<typename Derived>
+template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+auto  SparseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type
+{
+
+
+    static_assert(Inter+L_outer==mOrder,"Both index arrays must index all indices in MIA");
+    static_assert(Inter+R_outer==internal::order<otherDerived>::value,"Both index arrays must index all indices in MIA");
+    typedef typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type RetType;
+    typedef typename RetType::index_type c_index_type;
+    typedef typename internal::index_type<otherDerived>::type b_index_type;
+    std::array<index_type,Inter> l_inter_dims;
+    std::array<index_type, L_outer> l_outer_dims;
+    std::array<b_index_type,Inter> r_inter_dims;
+    std::array<b_index_type,R_outer> r_outer_dims;
+    //get inter and outer dimensionality and the individual dimensions that make up that number;
+    index_type l_inter_size=internal::reorder_from(this->dims(), l_inter_idx,l_inter_dims);
+    internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
+    index_type l_outer_size=internal::reorder_from(this->dims(), l_outer_idx,l_outer_dims);
+    b_index_type r_outer_size=internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
+    if(l_inter_dims.size()!=r_inter_dims.size() || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
+        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
+
+    std::array<c_index_type,L_outer+R_outer+Inter> c_dims;
+    internal::concat_arrays(l_outer_dims,r_outer_dims,l_inter_dims,c_dims);
+    RetType C (c_dims);
+    C.reserve(this->size()*b.dimensionality()*0.8); //make an estimate of the number of elements in C based on how many indices are used for elemwise products
+    if(Inter){
+        change_linIdx_order(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
+        std::function<bool(const index_type &idx_1, const index_type &idx_2)> lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
+            return idx1%l_inter_size<idx2%l_inter_size;
+        };
+        this->sort(lhs_compare);
+    }
+
+
+    index_type cur_a_elem_wise_idx;
+    b_index_type cur_b_elem_wise_idx;
+
+    auto a_idx_begin=this->index_begin();
+    auto a_idx_end=this->index_end();
+    auto cur_a_idx=this->index_begin();
+
+
+    while(cur_a_idx<a_idx_end)
+    {
+
+        cur_a_elem_wise_idx=*cur_a_idx%l_inter_size;
+        auto c_elemwise_idx=cur_a_elem_wise_idx*l_outer_size*r_outer_size; //the convention is to have indices in this order: [l_outer r_outer inter]
+        cur_b_elem_wise_idx=internal::sub2ind(internal::ind2sub(cur_a_elem_wise_idx,r_inter_dims),r_inter_idx,b.dims());
+        auto l_outer_idx=(*cur_a_idx)/l_inter_size;
+        auto cur_a_data_it=this->data_begin()+(cur_a_idx-a_idx_begin);
+        if(*cur_a_data_it){
+
+            for(b_index_type b_cur_outer=0;b_cur_outer<r_outer_size;++b_cur_outer)
+            {
+                auto cur_b_data_it=b.data_begin()+cur_b_elem_wise_idx+internal::sub2ind(internal::ind2sub(b_cur_outer,r_outer_dims),r_outer_idx,b.dims());
+                if(*cur_b_data_it){
+                    C.push_back((*cur_a_data_it)*(*cur_b_data_it),l_outer_idx+b_cur_outer*l_outer_size+c_elemwise_idx);
+                }
+
+            }
+        }
+
+
+        cur_a_idx++;
 
     }
     return C;

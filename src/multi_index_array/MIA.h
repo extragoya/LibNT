@@ -173,7 +173,9 @@ public:
     index_type dimensionality() const{
         return m_dimensionality;
     }
-
+    void set_dims(const std::array<index_type,mOrder>& _dims){
+        m_dims=_dims;
+    }
 
     index_type sub2ind(const std::array<index_type,mOrder> & indices) const{
         return internal::sub2ind(indices,this->dims());

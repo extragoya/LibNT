@@ -201,6 +201,24 @@ public:
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
     noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
+    //! Routine for performing multiplication without the need for a lattice multiplication
+    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
+    noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const{
+            auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx);
+            auto c_reorder=internal::concat_index_arrays(internal::createAscendingIndex<L_outer>(R_outer),internal::createAscendingIndex<R_outer>(),internal::createAscendingIndex<R_inter>(L_outer+R_outer));
+            //print_array(c.sort_order(),"Old sort order");
+            c.set_sort_order(c_reorder);
+            //print_array(c.sort_order(),"New sort order");
+            //print_array(c.dims(),"Old dims");
+            auto new_c_dims=c.dims();
+            internal::reorder_from(c.dims(), c_reorder,new_c_dims);
+            //print_array(new_c_dims,"New dims");
+            c.set_dims(new_c_dims);
+            return c;
+
+    }
+
     data_iterator data_begin()
     {
 

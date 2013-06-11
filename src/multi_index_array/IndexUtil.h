@@ -403,7 +403,7 @@ std::array<arrayType1,_size> reOrderArray(const std::array<arrayType1,_size> & _
 
 
 template<class index_param_type,size_t _size>
-std::array<index_param_type,_size> reverseOrder(std::array<index_param_type,_size> init_order)
+std::array<index_param_type,_size> reverseOrder(const std::array<index_param_type,_size>& init_order)
 {
     std::array<index_param_type,_size> output_order;
     for(size_t i=0;i<_size;++i)
@@ -420,12 +420,30 @@ std::array<index_param_type,_size> reverseOrder(std::array<index_param_type,_siz
     return output_order;
 }
 
+template<class index_param_type1,class index_param_type2, size_t _size>
+void reverseOrder(const std::array<index_param_type1,_size> & init_order,std::array<index_param_type2,_size>& output_order)
+{
+
+    for(size_t i=0;i<_size;++i)
+    {
+        for(size_t j=0;j<_size;++j)
+        {
+            if (init_order[j]==(index_param_type1)i){
+                 output_order[i]=j;
+                break;
+            }
+        }
+
+    }
+
+}
+
 template<size_t _size>
-std::array<size_t,_size> createAscendingIndex(){
+std::array<size_t,_size> createAscendingIndex(size_t _start=0){
     std::array<size_t,_size> ret;
     size_t idx=0;
     for (size_t &x : ret) {
-        x=idx++;
+        x=_start+idx++;
     }
     return ret;
 

@@ -190,7 +190,7 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(l,j);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
     c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
-    BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
 
 }
 
