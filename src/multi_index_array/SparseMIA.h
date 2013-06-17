@@ -721,7 +721,7 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
 
     //b has less non-zeros than *this
     if(this->size()>b.size()){
-        std::cout << "this is bigger " << std::endl;
+        //std::cout << "this is bigger " << std::endl;
         auto b_sort_order=b.sort_order();
 
         internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
@@ -729,7 +729,7 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
         b.change_linIdx_order(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
     }
     else{
-        std::cout << "b is bigger " << std::endl;
+        //std::cout << "b is bigger " << std::endl;
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
         auto temp_sort_order=this->mSortOrder;

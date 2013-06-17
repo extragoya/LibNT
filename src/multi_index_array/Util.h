@@ -744,8 +744,8 @@ struct array_converter
 };
 
 //!prec must be positive
-template<typename T>
-inline bool isEqualFuzzy(T a, T b, T prec = Tolerance<T>::tolerance)
+template<typename T, typename T2,typename T3>
+inline bool isEqualFuzzy(T a, T2 b, T3 prec = Tolerance<T>::tolerance)
 {
   if(std::abs(a) < 1 || std::abs(b) < 1)
     return std::abs(a-b)<=prec;

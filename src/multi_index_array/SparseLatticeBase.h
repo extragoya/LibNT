@@ -469,8 +469,10 @@ public:
 
     void to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
 
-    index_iterator find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag=true);
-    index_iterator find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag=true);
+    index_iterator find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag);
+    index_iterator find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag);
+    index_iterator find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it);
+    index_iterator find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it);
 
 protected:
 
@@ -681,6 +683,16 @@ auto SparseLatticeBase<Derived>::find_tab_start_idx(index_type _tab,index_iterat
 }
 
 template <class Derived>
+auto SparseLatticeBase<Derived>::find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it)->index_iterator
+{
+    bool search_flag=false;
+    if(this->depth()*log2(this->size())<this->size())
+        search_flag=true;
+    return find_tab_start_idx(_tab,start_it,end_it,search_flag);
+
+}
+
+template <class Derived>
 auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag)->index_iterator
 {
     if(search_flag)
@@ -692,6 +704,17 @@ auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator
             start_it++;
     }
     return start_it;
+
+}
+
+template <class Derived>
+auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it)->index_iterator
+{
+    bool search_flag=false;
+    if(this->depth()*log2(this->size())<this->size())
+        search_flag=true;
+    return find_tab_end_idx(_tab,start_it,end_it,search_flag);
+
 
 }
 

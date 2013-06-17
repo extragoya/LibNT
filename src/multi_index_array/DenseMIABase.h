@@ -490,7 +490,7 @@ bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & othe
 
     for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
         if(!isEqualFuzzy(*it1,*it2,precision)){
-            std::cout << "Triggered " << *it1 << " " << *it2 << std::endl;
+            //std::cout << "Triggered " << *it1 << " " << *it2 << std::endl;
             return false;
         }
 

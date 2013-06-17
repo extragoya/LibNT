@@ -151,13 +151,20 @@ public:
     typename DenseSolveReturnType<Derived,otherDerived>::type
     solve(const DenseLatticeBase<otherDerived> &b) const;
 
-    //!  Similar to solve, but assumes non-singular 'a'.
-    template<class otherDerived>
-    void inverse_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const;
 
-    //!  Similar to solve, but assumes overdetermined 'a'.
+    //!  Solves linear system of equations.
+    /*!
+    x=a.solve(b), solves a sequence of systems of linear equations represented by a*x=b, where b is sparse. Uses <a href="http://eigen.tuxfamily.org">Eigen</a> to compute
+        the solution. System can be over-determined. Operation is only defined for two lattices of the same scalar type (which may change as EigenLib evolves). Scalar type
+        must be floating point.
+
+        \returns DenseLattice<data_type> regardless of the operand types.
+    */
     template<class otherDerived>
-    void lsqr_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const;
+    typename DenseSolveReturnType<Derived,otherDerived>::type
+    solve(SparseLatticeBase<otherDerived> &b) const;
+
+
 
     void print() const;
 
@@ -178,6 +185,9 @@ public:
     bool fuzzy_equals(SparseLatticeBase<otherDerived> &b,double precision){
         return b.fuzzy_equals(*this,precision);
     }
+
+    template<class otherDerived>
+    bool fuzzy_equals(const DenseLatticeBase<otherDerived> &b,double precision) const;
 
     template<class otherDerived>
     bool operator!=(SparseLatticeBase<otherDerived> &b){
@@ -352,6 +362,14 @@ public:
 
 protected:
 
+    template<class otherDerived,class Predicate>
+    bool compare_with_dense(const DenseLatticeBase<otherDerived>& b, Predicate pred) const;
+
+    template<class otherDerived,bool LSQR>
+    inline void perform_solve(SparseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const;
+
+    template<class otherDerived,bool LSQR>
+    inline void perform_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const;
 
     SolveInfo mSolveInfo;
 
@@ -464,6 +482,40 @@ void DenseLatticeBase<Derived>::inPlaceTranspose() {
 
 }
 
+
+//!Helper class to pull least squares or householder inversion
+template<bool LSQR,class Lattice>
+struct solver;
+
+template<class Lattice>
+struct solver<false,Lattice> {
+
+    static auto get_solver(const Lattice & lattice,int _tab,SolveInfo &_solveInfo)->decltype(lattice.tab_matrix(_tab).colPivHouseholderQr()){
+        auto _QR=lattice.tab_matrix(_tab).colPivHouseholderQr();
+        if(!_QR.isInvertible())
+            _solveInfo=RankDeficient;
+        else
+            _solveInfo=FullyRanked;
+        return _QR;
+
+    }
+
+};
+
+template<class Lattice>
+struct solver<true,Lattice> {
+
+    static auto get_solver(const Lattice & lattice,int _tab,SolveInfo &_solveInfo)->decltype(lattice.tab_matrix(_tab).jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)){
+        auto _SVD=lattice.tab_matrix(_tab).jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+        if(!_SVD.nonzeroSingularValues()!=lattice.width())
+            _solveInfo=RankDeficient;
+        else
+            _solveInfo=FullyRanked;
+        return _SVD;
+    }
+
+};
+
 template <class Derived>
 template<class otherDerived>
 inline
@@ -480,10 +532,40 @@ DenseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b) const{
     RType c(this->width(),b.width(),this->depth());
 
     if (this->width()==this->height()){
-        inverse_solve(b,c);
+        perform_solve<otherDerived,false>(b,c);
     }
     else if (this->width()<this->height()){
-        lsqr_solve(b,c);
+       perform_solve<otherDerived,true>(b,c);
+
+    }
+
+
+
+    return c;
+
+
+}
+
+template <class Derived>
+template<class otherDerived>
+inline
+typename DenseSolveReturnType<Derived,otherDerived>::type
+DenseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b) const{
+
+
+    this->check_solve_dims(b);
+
+
+
+    typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
+
+    RType c(this->width(),b.width(),this->depth());
+
+    if (this->width()==this->height()){
+        perform_solve<otherDerived,false>(b,c);
+    }
+    else if (this->width()<this->height()){
+        perform_solve<otherDerived,true>(b,c);
 
     }
 
@@ -496,47 +578,79 @@ DenseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b) const{
 
 
 template <class Derived>
-template<class otherDerived>
-inline void DenseLatticeBase<Derived>::inverse_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
+template<class otherDerived,bool LSQR>
+inline void DenseLatticeBase<Derived>::perform_solve(SparseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
+
+    typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
+    typedef typename otherDerived::MappedSparseMatrix_cm MappedSparseMatrix_cm; //Sparse Matrix type for A
+    typedef Eigen::Matrix<data_type, Eigen::Dynamic, 1> temp_vector_type;
+
+    b.sort();
+    SolveInfo _solveInfo;
+    c.setSolveInfo(FullyRanked);
+    auto b_temp_tab_begin=b.index_begin();
+    decltype(b_temp_tab_begin) b_temp_tab_end;
+    auto b_index_end=b.index_end();
+    temp_vector_type temp_column(temp_vector_type::Zero(b.height()));
+    for (index_type cur_tab=0; cur_tab<this->depth(); ++cur_tab)
+    {
+
+        b_temp_tab_begin=b.find_tab_start_idx(cur_tab,b_temp_tab_begin,b_index_end);
+        b_temp_tab_end=b.find_tab_end_idx(cur_tab,b_temp_tab_begin,b_index_end);
+        if(b_temp_tab_begin==b_index_end)
+            break;
+        if(b_temp_tab_end==b_temp_tab_begin)
+            continue;
+
+        auto _solver=solver<LSQR,DenseLatticeBase>::get_solver(*this,cur_tab,_solveInfo);
+        c.setSolveInfo(_solveInfo);
+
+        auto b_temp_col_begin=b_temp_tab_begin;
+        while(b_temp_col_begin<b_temp_tab_end){
+            auto cur_col=b.column(*b_temp_col_begin);
+            auto b_temp_col_end=b_temp_col_begin;
+            temp_column.setZero();
+            while(b_temp_col_end < b_temp_tab_end && b.column(*b_temp_col_end)==cur_col){
+                temp_column(b.row(*b_temp_col_end))=b.data_at(b_temp_col_end-b.index_begin()); //convert to rows
+                ++b_temp_col_end;
+            }
+            c.derived().tab_matrix(cur_tab).col(cur_col)=_solver.solve(temp_column);
+            b_temp_col_begin=b_temp_col_end;
+        }
+
+        b_temp_tab_begin=b_temp_tab_end;
+
+    }
+
+
+}
+
+
+
+
+template <class Derived>
+template<class otherDerived,bool LSQR>
+inline void DenseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
 
     typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
     typedef typename RType::matrix_type return_matrix_type;
     typedef typename otherDerived::const_matrix_type b_matrix_type;
 
     c.setSolveInfo(FullyRanked);
+    SolveInfo _solveInfo;
     for (int i=0; i<this->depth(); i++)
     {
 
-        auto _QR=tab_matrix(i).colPivHouseholderQr();
-        if(!_QR.isInvertible())
-            c.setSolveInfo(RankDeficient);
-        c.derived().tab_matrix(i)=_QR.solve(b.derived().tab_matrix(i));
+        auto _solver=solver<LSQR,DenseLatticeBase>::get_solver(*this,i,_solveInfo);
+        c.setSolveInfo(_solveInfo);
+        c.derived().tab_matrix(i)=_solver.solve(b.derived().tab_matrix(i));
 
     }
 
 
 }
 
-template <class Derived>
-template<class otherDerived>
-inline void DenseLatticeBase<Derived>::lsqr_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
 
-    typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
-    typedef typename RType::matrix_type return_matrix_type;
-    typedef typename otherDerived::const_matrix_type b_matrix_type;
-    using namespace Eigen;
-    c.setSolveInfo(LeastSquares);
-    for (int i=0; i<this->depth(); i++)
-    {
-
-        auto _SVD=tab_matrix(i).jacobiSvd(ComputeThinU | ComputeThinV);
-        if(!_SVD.nonzeroSingularValues()!=this->width())
-            c.setSolveInfo(RankDeficient);
-        c.derived().tab_matrix(i)=_SVD.solve(b.derived().tab_matrix(i));
-    }
-
-
-}
 
 
 template<class Derived>
@@ -569,20 +683,47 @@ void DenseLatticeBase<Derived>::eye()
 }
 
 template<class Derived>
-template<class otherDerived>
-bool DenseLatticeBase<Derived>::operator==(const DenseLatticeBase<otherDerived> &b) const{
+template<class otherDerived,class Predicate>
+bool DenseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<otherDerived> &b,Predicate predicate) const{
 
     if(this->height()!=b.height()||this->width()!=b.width()||this->depth()!=b.depth())
         return false;
 
     for(auto it=derived().data_begin(), itb=b.data_begin();it<derived().data_end();++it,++itb)
-        if(*it!=*itb)
+        if(!predicate(*it,*itb))
             return false;
 
     return true;
 
 
 }
+
+template<class Derived>
+template<class otherDerived>
+bool DenseLatticeBase<Derived>::operator==(const DenseLatticeBase<otherDerived> &b) const{
+
+    typedef typename internal::index_type<otherDerived>::type b_index_type;
+    std::function<bool(index_type,b_index_type)>pred=[](index_type lhs, b_index_type rhs){
+        return lhs==rhs;
+    };
+    return compare_with_dense(b,pred);
+
+}
+
+template<typename Derived>
+template<typename otherDerived>
+bool DenseLatticeBase<Derived>::fuzzy_equals(const DenseLatticeBase<otherDerived> & b,double precision ) const
+{
+
+
+    typedef typename otherDerived::index_type b_index_type;
+    std::function<bool(index_type,b_index_type)>pred=[precision](index_type lhs, b_index_type rhs){
+        return isEqualFuzzy(lhs,rhs,precision);
+    };
+    return compare_with_dense(b,pred);
+
+}
+
 
 template<class Derived>
 bool DenseLatticeBase<Derived>::save(const std::string & _filename) const
