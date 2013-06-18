@@ -41,6 +41,7 @@
 #include "MIAConfig.h"
 #include <Eigen/Sparse>
 //if we're using sparse_solve then we must include SuperLU support
+//#define LIBMIA_USE_SPARSE_SOLVE 1
 #ifdef LIBMIA_USE_SPARSE_SOLVE
 #include <Eigen/SuperLUSupport>
 #endif
@@ -133,6 +134,9 @@ public:
     //only enable for operands that have the same index_type
     template <class otherDerived>
     typename SparseSolveReturnType<Derived,otherDerived>::type solve(SparseLatticeBase<otherDerived> &b);
+
+    template <class otherDerived>
+    typename SparseSolveReturnType<Derived,otherDerived>::type solve(DenseLatticeBase<otherDerived> &b);
 
     data_type operator()(index_type _row, index_type _column, index_type _tab) const;
 
@@ -1643,10 +1647,129 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     return c;
 }
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(DenseLatticeBase<otherDerived> &b)
+{
+
+    this->check_solve_dims(b);
+    typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
+
+
+
+
+    sort(ColumnMajor); //tab/column major for A
+
+    //iterators for for indices and data
+    index_iterator a_temp_begin=this->index_begin();
+    auto a_index_end=this->index_end();
+    index_iterator a_temp_end;
+
+
+    //hold compressed indices for Sparse matrix of each tab
+    std::vector<index_type> a_columns;
+    //since all columns must have at least one non-zero entry to be fully-ranked, we can just do direct mapping to CSC
+    a_columns.resize(this->width()+1);
+
+    typedef const typename  Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
+    typedef Eigen::SuperLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
+
+    c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
+
+
+    for (int k=0; k<this->depth(); k++) //loop through every tab
+    {
+
+
+        a_temp_begin=this->find_tab_start_idx(k,a_temp_begin,a_index_end);
+
+        //find the last occurence of current tab in A lattices
+        a_temp_end=this->find_tab_end_idx(k,a_temp_begin,a_index_end);
+
+        //tab from a must have nonzeros
+        if (a_temp_end!=a_temp_begin)
+        {
+
+
+            //now we temporarily remap a_indices to rows
+            *a_temp_begin=this->row(*a_temp_begin); //set first to 0 row
+            auto a_cur_it=a_temp_begin+1;
+            size_t cur_column=0; //if size_t can't hold the number of columns, we're in big trouble anyway
+            a_columns[0]=0;
+            while(a_cur_it<a_temp_end){
+                if(this->column(*a_cur_it)!=cur_column){
+                    //check to make sure we didn't skip a row - if we did then we have a rank-deficient tab b/c of a zero-column
+                    if(this->column(*a_cur_it)-cur_column>1){
+                        std::stringstream t;
+                        t << "Rank deficient tab. Column " << cur_column << " in tab " << k << " of LHS has zero entries.";
+                        throw RankDeficientException(t.str());
+                    }
+                    cur_column++;
+                    a_columns[cur_column]=a_cur_it-a_temp_begin;
+                }
+                *a_cur_it=this->row(*a_cur_it); //remap indices to rows
+                ++a_cur_it;
+            }
+
+            //end value of outer index array
+            a_columns.back()=a_temp_end-a_temp_begin;
+
+            //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
+            MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
+
+            //compute LU decomposition
+            LU_decomp lu_of_A(A);
+            if(lu_of_A.info()!=Eigen::Success)
+            {
+                std::stringstream t;
+                t << "Could not perform LU decomp on tab " << k << ".";
+                throw RankDeficientException(t.str());
+            }
+            c.derived().tab_matrix(k)=lu_of_A.solve(b.derived().tab_matrix(k));
+            if(lu_of_A.info()!=Eigen::Success)
+            {
+                std::stringstream t;
+                t << "Solution process on tab " << k << " failed.";
+                throw RankDeficientException(t.str());
+            }
+             //now map back to A's full index, using the temp CSC matrix that was created
+            for(auto column_it=a_columns.begin();column_it<a_columns.end()-1;++column_it){
+                auto cur_column=column_it-a_columns.begin();
+                for(auto row_it=a_temp_begin+*column_it;row_it<a_temp_begin+*(column_it+1);++row_it)
+                    *row_it=*row_it+this->height()*(cur_column+this->width()*k);
+            }
+
+
+        }
+        else
+        {
+            std::stringstream t;
+            t << "Rank deficient tab. Tab " << k << "has zero entries.";
+            throw RankDeficientException(t.str());
+
+        }
+        //update current tab location
+        a_temp_begin=a_temp_end;
+
+
+    }
+
+
+
+    return c;
+}
+
 #else
 template <class Derived>
 template <class otherDerived>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b){
+    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
+    struct fake : std::false_type{};
+    static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");
+}
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b){
     //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
     struct fake : std::false_type{};
     static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");

@@ -510,23 +510,17 @@ struct SparseProductReturnType
 
 };
 
-//sparse sparse lattice product only enabled if operands share index types and LHS data type is floating point
+//sparse sparse lattice product only enabled if  LHS data type is floating point
 template<typename Lhs, typename Rhs>
 struct SparseSolveReturnType
 {
 
     typedef
     typename boost::enable_if<
-    boost::mpl::and_<
     boost::is_floating_point<
     typename internal::data_type<Lhs>::type
     >, //floating point datatypes
-    boost::is_same<
-    typename internal::index_type<Lhs>::type,
-    typename internal::index_type<Rhs>::type
-    >
-    >
-    , DenseLattice<typename internal::data_type<Lhs>::type> //return type
+    DenseLattice<typename internal::data_type<Lhs>::type> //return type
     >::type type;
 };
 

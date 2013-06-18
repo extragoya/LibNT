@@ -54,10 +54,7 @@ template<class Derived>
 struct data_type<DenseLatticeBase<Derived> >: public data_type<Derived> {};
 
 template<class Derived>
-struct index_type<DenseLatticeBase<Derived> >
-{
-    typedef typename Eigen::Matrix<typename data_type<Derived>::type,Eigen::Dynamic,Eigen::Dynamic>::Index type;
-};
+struct index_type<DenseLatticeBase<Derived> >: public index_type<Derived> {};
 
 
 template<class Derived>
@@ -100,9 +97,9 @@ public:
     typedef typename internal::storage_iterator<DenseLatticeBase>::type storage_iterator;
     typedef typename internal::const_storage_iterator<DenseLatticeBase>::type const_storage_iterator;
     typedef typename Eigen::Map<Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > matrix_type;
-    typedef const typename Eigen::Map<const Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > const_matrix_type;
+    typedef typename Eigen::Map<const Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > const_matrix_type;
     typedef typename Eigen::Map<Eigen::Matrix<data_type, Eigen::Dynamic, 1> > vector_type;
-    typedef const typename Eigen::Map<const Eigen::Matrix<data_type, Eigen::Dynamic, 1> > const_vector_type;
+    typedef typename Eigen::Map<const Eigen::Matrix<data_type, Eigen::Dynamic, 1> > const_vector_type;
 
     Derived& derived()
     {
@@ -319,7 +316,7 @@ public:
     }
 
     const_matrix_type tab_matrix(int _tab) const{
-        return const_matrix_type(&(derived()(0,0,_tab)),this->height(),this->width());
+        return const_matrix_type( const_cast<data_type *>(&(derived()(0,0,_tab))),this->height(),this->width());
 
     }
 
@@ -490,13 +487,13 @@ struct solver;
 template<class Lattice>
 struct solver<false,Lattice> {
 
-    static auto get_solver(const Lattice & lattice,int _tab,SolveInfo &_solveInfo)->decltype(lattice.tab_matrix(_tab).colPivHouseholderQr()){
-        auto _QR=lattice.tab_matrix(_tab).colPivHouseholderQr();
-        if(!_QR.isInvertible())
+    static auto get_solver(const Lattice & lattice,int _tab,SolveInfo &_solveInfo)->decltype(lattice.tab_matrix(_tab).fullPivLu()){
+        auto _solver=lattice.tab_matrix(_tab).fullPivLu();
+        if(!_solver.isInvertible())
             _solveInfo=RankDeficient;
         else
             _solveInfo=FullyRanked;
-        return _QR;
+        return _solver;
 
     }
 

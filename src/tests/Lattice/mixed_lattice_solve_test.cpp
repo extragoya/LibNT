@@ -86,12 +86,17 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
 
 
-    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("Full Dimension Solve Test for ")+typeid(data_type).name());
-    //BOOST_CHECK_MESSAGE(DenseLat3==DenseLat4,std::string("Sanity Check ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("Full Dimension Solve Test 1 for ")+typeid(data_type).name());
+    //now invert the sparse version instead
+    DenseLat3_mixed=SparseLat1.solve(DenseLat2);
+    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("Full Dimension Solve Test 2 for ")+typeid(data_type).name());
+
+
+
     DenseLat3=DenseLat1_lsqr.solve(DenseLat2);
     DenseLat3_mixed=DenseLat1_lsqr.solve(SparseLat2);
 
-    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("LSQR Solve Test for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("LSQR Solve Test 1 for ")+typeid(data_type).name());
 
 
 

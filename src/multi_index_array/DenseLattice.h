@@ -57,6 +57,12 @@ struct Data<DenseLattice<T> >
 };
 
 template<typename T>
+struct index_type<DenseLattice<T> >
+{
+    typedef typename Eigen::Matrix<typename data_type<DenseLattice<T>>::type,Eigen::Dynamic,Eigen::Dynamic>::Index type;
+};
+
+template<typename T>
 struct storage_iterator<DenseLattice<T> >
 {
     typedef typename Data<DenseLattice<T> >::type::iterator type;
