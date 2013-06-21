@@ -91,6 +91,12 @@ struct const_data_iterator<DenseMIA<T,_order> >
     typedef const T* type;
 };
 
+template<typename T,size_t _order>
+struct FinalDerived<DenseMIA<T,_order> >
+{
+    typedef DenseMIA<T,_order> type;
+};
+
 }
 
 

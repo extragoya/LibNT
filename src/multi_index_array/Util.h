@@ -225,6 +225,9 @@ struct data_iterator;
 template<typename Derived>
 struct const_data_iterator;
 
+template<typename Derived>
+struct FinalDerived;
+
 template<typename... Ts>
 struct Indicial_Sequence;
 
@@ -416,11 +419,12 @@ AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageI
 }
 
 //assumes C, A, and B are of the same dimensions and in the same sort order (and A and B are sorted)
-template<class ADerived, class BDerived, class CDerived,class Op>
-void outside_merge_sparse_storage_containers(SparseMIABase<CDerived> & C , const SparseMIABase<ADerived> & A,const SparseMIABase<BDerived> & B,Op op)
+template<class ADerived, class BDerived, class c_data_type,size_t c_order,class Op>
+void outside_merge_sparse_storage_containers(SparseMIA<c_data_type,c_order> & C , const SparseMIABase<ADerived> & A,const SparseMIABase<BDerived> & B,Op op)
 {
     using namespace boost::numeric;
     typedef typename ADerived::data_type a_data_type;
+
     C.clear();
     C.reserve(A.size()+B.size());
     auto a_begin=A.index_begin();

@@ -81,6 +81,10 @@ struct full_tuple<SparseMIABase<Derived> >: public full_tuple<Derived> {};
 template<class Derived>
 struct const_full_tuple<SparseMIABase<Derived> >: public const_full_tuple<Derived> {};
 
+template<class Derived>
+struct FinalDerived<SparseMIABase<Derived> >:public FinalDerived<Derived>{};
+
+
 }
 
 
@@ -91,6 +95,11 @@ struct const_full_tuple<SparseMIABase<Derived> >: public const_full_tuple<Derive
   which is more commonly known as the CTRP. It is the base class for all
   sparse multi-index array types. Provides operations and functions common to all sparse
   multi-index arrays.
+
+  It assumes that non-zero data and corresponding indices are kept in two seperate data containers (as controlled by the Derived class).
+  Indices are calculated using a linearized index. The lexographical precedence of indices used to caculate the linear index is controlled by mLinIdxSequence.
+  By default the sequence is {0,1,2,...mOrder-1}, meaning calculation is idx0+dim0*idx1+dim0*dim1*idx2+.... However, mLinIdxSequence can be any
+  permutation of the indices.
 
   \tparam Derived   should only be a sparse multi-index array class, eg, SparseMIA
 */
@@ -111,6 +120,7 @@ public:
     typedef typename internal::const_storage_iterator<SparseMIABase>::type const_storage_iterator;
     typedef typename internal::full_tuple<SparseMIABase>::type full_tuple;
     typedef typename internal::const_full_tuple<SparseMIABase>::type const_full_tuple;
+    typedef typename internal::FinalDerived<SparseMIABase>::type FinalDerived;
     constexpr static size_t mOrder=internal::order<SparseMIABase>::value;
     Derived& derived()
     {
@@ -122,16 +132,26 @@ public:
         return *static_cast<const Derived*>(this);
     }
 
-    //!Creates empty MIA of provided dimensionality
+    FinalDerived& final_derived() {
+
+        return derived().final_derived();
+    }
+    /** \returns a const reference to the derived object */
+    const FinalDerived& final_derived() const {
+
+        return derived().final_derived();
+    }
+
+    //!Creates empty MIA of provided dimensionality. Number of variadic parameters must equal mOrder and be integer-like types
     template<typename... Dims>
     SparseMIABase(Dims... dims): MIA<SparseMIABase<Derived > >(dims...),mIsSorted(true) {
-        init_sort_order();
+        init_linIdx_sequence();
     }
 
 
     //!Creates empty MIA of zero dimensionality
     SparseMIABase(): MIA<SparseMIABase<Derived > >(),mIsSorted(true) {
-        init_sort_order();
+        init_linIdx_sequence();
     }
 
 
@@ -139,10 +159,15 @@ public:
 
     //!Creates empty MIA of provided dimensionality
     SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims),mIsSorted(true) {
-        init_sort_order();
+        init_linIdx_sequence();
     }
 
     //! Returns iterator to data and indices at given linear index. Should check if it equals storage_end() before dereferencing
+    /*!
+        Will search the non-zero values for one whose linear index equals idx, meaning complexity is nnz*log(nnz). Note it assumes
+        idx is calculated in the same way as mLinIdxSequence
+
+    */
     const_storage_iterator atIdx(index_type idx) const{
 
 
@@ -151,6 +176,11 @@ public:
     }
 
     //! Returns iterator to data and indices at given linear index. Should check if it equals storage_end() before dereferencing
+    /*!
+        Will search the non-zero values for one whose linear index equals idx, meaning complexity is nnz*log(nnz). Note it assumes
+        idx is calculated in the same way as mLinIdxSequence
+
+    */
     storage_iterator atIdx(index_type idx) {
 
         return find_idx(idx);
@@ -245,21 +275,25 @@ public:
         return derived().index_end();
     }
 
-    void clear(){
-        derived().clear();
-    }
-    void reserve(size_t _size){
-        derived().reserve(_size);
-    }
-    void resize(size_t _size){
-        derived().resize(_size);
-    }
-    void push_back(const data_type & _data, const index_type& _index)
-    {
-        derived().push_back(_data,_index);
-    }
+//    //! Clears the data and index arrays
+//    void clear(){
+//        derived().clear();
+//    }
+//    //! Reserves space for the data and index arrays, but does not change the number of non-zeros
+//    void reserve(size_t _size){
+//        derived().reserve(_size);
+//    }
+//    //! Resizes space for the data and index arrays, and changes the number of non-zeros
+//    void resize(size_t _size){
+//        derived().resize(_size);
+//    }
+//    //! Pushes data and index pair to back of non-zero container
+//    void push_back(const data_type & _data, const index_type& _index)
+//    {
+//        derived().push_back(_data,_index);
+//    }
 
-
+    //! True if data and index containers are sorted based on index container
     bool is_sorted() const{
         return mIsSorted;
     }
@@ -270,24 +304,31 @@ public:
     /*!
         Will update the current sort order.
 
-        \param[in]  _sort_order the lexographical precedence to use in the sort - for instance {3,1,2} would sort based on the 3rd,1st, then 2nd index
+        \param[in]  _linIdxSequence the lexographical precedence to use in the sort - for instance {3,1,2} would sort based on the 3rd,1st, then 2nd index and update mLinIdxSequence accordingly
         \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
 
     */
-    void sort(const std::array<size_t,mOrder> & _sort_order,bool _stable=false)
+    void sort(const std::array<size_t,mOrder> & _linIdxSequence,bool _stable=false)
     {
-        change_linIdx_order(_sort_order);
+        change_linIdx_sequence(_linIdxSequence);
         sort(_stable);
-    }
-
-    void sort(bool _stable=false){
-        sort(std::less<index_type>(),_stable);
-
     }
 
     //! Sort non-zero containers based on the current sort order
     /*!
 
+        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+
+    */
+    void sort(bool _stable=false){
+        sort(std::less<index_type>(),_stable);
+
+    }
+
+    //! Sort non-zero containers based on the current sort order that allows one to specify the comparison operation
+    /*!
+
+        \param[in] comp a binary predicate that returns true if its first argument is less than its second
         \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
 
     */
@@ -317,7 +358,7 @@ public:
 
     }
 
-    //don't use - just here for benchmark purposes - will probably disappear in later versions
+    //!don't use - just here for benchmark purposes - will probably disappear in later versions
     void old_sort()
     {
         if(!mIsSorted)
@@ -329,6 +370,7 @@ public:
         }
     }
 
+    //!Prints non-zero values and indices
     void print() const
     {
         std::cout << "Index\t Data" << std::endl;
@@ -339,50 +381,55 @@ public:
 
     }
 
+    //! Changes the lexicographical precedence used to calculate the linear indices. If different than mLinIdxSequence, all index values are recalculated based upon _linIdx_sequence
     template<class index_param_type>
-    void change_linIdx_order(const std::array<index_param_type,mOrder> & _sort_order)
+    void change_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
-        if(_sort_order==mSortOrder)
+        if(_linIdx_sequence==mLinIdxSequence) //do nothing if we're already at the desired linIdxSequence
             return;
-        //print_array(mSortOrder,"mSortOrder");
+
         for(auto& it: derived().m_indices){
             //std::cout << "idx " << it << std::endl;
-            //print_array(this->ind2sub_reorder(it,mSortOrder),"ind2sub");
-            //std::cout << "sub2ind " << this->sub2ind_reorder(this->ind2sub_reorder(it,mSortOrder),_sort_order) << std::endl;
-            it=this->sub2ind_reorder(this->ind2sub_reorder(it,mSortOrder),_sort_order);
+            //print_array(this->ind2sub_reorder(it,mLinIdxSequence),"ind2sub");
+            //std::cout << "sub2ind " << this->sub2ind_reorder(this->ind2sub_reorder(it,mLinIdxSequence),_linIdxSequence) << std::endl;
+
+            //get the full set of indices from the current linear index, and then recalculate the linear index based on _linIdx_sequence
+            it=this->sub2ind_reorder(this->ind2sub_reorder(it,mLinIdxSequence),_linIdx_sequence);
         }
-        set_linIdx_order(_sort_order);
+        set_linIdx_sequence(_linIdx_sequence);
         mIsSorted=false;
     }
 
+    //! Changes the lexicographical precedence used to calculate the linear indices, but does not actually update the actual index values. Only use this function if you are certain of the consequences.
     template<class index_param_type>
-    void set_linIdx_order(const std::array<index_param_type,mOrder> & _sort_order)
+    void set_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
-        mSortOrder=_sort_order;
+        mLinIdxSequence=_linIdx_sequence;
 
     }
 
-    void reset_sort_order(){
-        change_linIdx_order(mDefaultSortOrder);
+    //! Resets the lexographical predence of the linear indices to the default precedence, i.e., {0,1...mOrder-1}. Index values are updated as well.
+    void reset_linIdx_sequence(){
+        change_linIdx_sequence(mDefaultLinIdxSequence);
     }
 
-    //!converts a linear index calculated using mSortOrder to a linear index calculated using mDefaultSortOrder
-    index_type convert_to_default_sort(const index_type idx) const
+    //!converts a linear index calculated using mLinIdxSequence to a linear index calculated using mDefaultLinIdxSequence
+    index_type convert_to_default_linIdxSequence(const index_type idx) const
     {
 
 
-        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mSortOrder),mDefaultSortOrder);
+        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mLinIdxSequence),mDefaultLinIdxSequence);
     }
 
-    //!converts a linear index calculated using mDefaultSortOrder to a linear index calculated using mSortOrder
+    //!converts a linear index calculated using mDefaultLinIdxSequence to a linear index calculated using mLinIdxSequence
     index_type convert_from_default_sort(const index_type idx) const
     {
 
-        //print_array(this->ind2sub(idx,mSortOrder),"ind2sub");
-        //std::cout << "sub2ind " << this->sub2ind(this->ind2sub(idx,mSortOrder),mDefaultSortOrder) << std::endl;
-        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mDefaultSortOrder),mSortOrder);
+        //print_array(this->ind2sub(idx,mLinIdxSequence),"ind2sub");
+        //std::cout << "sub2ind " << this->sub2ind(this->ind2sub(idx,mLinIdxSequence),mDefaultLinIdxSequence) << std::endl;
+        return this->sub2ind_reorder(this->ind2sub_reorder(idx,mDefaultLinIdxSequence),mLinIdxSequence);
     }
 
     template<class otherDerived,class index_param_type>
@@ -432,9 +479,9 @@ public:
         mIsSorted=isSorted;
     }
 
-    const std::array<size_t,mOrder> & sort_order() const
+    const std::array<size_t,mOrder> & linIdxSequence() const
     {
-        return mSortOrder;
+        return mLinIdxSequence;
     }
 
 
@@ -622,16 +669,16 @@ public:
     template <class BinaryPredicate>
     index_iterator find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate predicate, bool search_flag=false);
 
-    void set_sort_order(const std::array<size_t,mOrder> & _sort_order){
-        mSortOrder=_sort_order;
+    void set_linIdxSequence(const std::array<size_t,mOrder> & _linIdxSequence){
+        mLinIdxSequence=_linIdxSequence;
     }
 
 protected:
 
     //!keeps track of the order of dims used to calculate linear indices
-    std::array<size_t,mOrder> mSortOrder;
+    std::array<size_t,mOrder> mLinIdxSequence;
     //!keeps track of the order of dims used to calculate linear indices
-    std::array<size_t,mOrder> mDefaultSortOrder;
+    std::array<size_t,mOrder> mDefaultLinIdxSequence;
     //!keeps track of whether SparseMIA is sorted or not
     bool mIsSorted;
 
@@ -657,10 +704,10 @@ protected:
     bool compare_with_dense(const DenseMIABase<otherDerived>& otherMIA,Predicate predicate);
 
 
-    void init_sort_order(){
-        for(size_t i=0;i<mSortOrder.size();++i)
-            mSortOrder[i]=i;
-        mDefaultSortOrder=mSortOrder;
+    void init_linIdx_sequence(){
+        for(size_t i=0;i<mLinIdxSequence.size();++i)
+            mLinIdxSequence[i]=i;
+        mDefaultLinIdxSequence=mLinIdxSequence;
     }
 
 
@@ -739,35 +786,35 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
     if (b.is_sorted() && !this->is_sorted()){
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        auto temp_sort_order=this->mSortOrder;
-        internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
-        this->sort(temp_sort_order);
+        auto temp_linIdxSequence=this->mLinIdxSequence;
+        internal::reorder_from(lhsOrder,b.linIdxSequence(),temp_linIdxSequence);
+        this->sort(temp_linIdxSequence);
     }
     else if(this->is_sorted()&&!b.is_sorted()){
-        auto b_sort_order=b.sort_order();
-        internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
-        b.sort(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
+        auto b_linIdxSequence=b.linIdxSequence();
+        internal::reorder_from(index_order,this->mLinIdxSequence,b_linIdxSequence);
+        b.sort(b_linIdxSequence); //change b's sort order to it matches the index order, and also *this's current sort order
 
     }
     else if(this->is_sorted()&& b.is_sorted()){
         if (b.size()<this->size()){
-            auto b_sort_order=b.sort_order();
-            internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
-            b.sort(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
+            auto b_linIdxSequence=b.linIdxSequence();
+            internal::reorder_from(index_order,this->mLinIdxSequence,b_linIdxSequence);
+            b.sort(b_linIdxSequence); //change b's sort order to it matches the index order, and also *this's current sort order
         }
         else{
             //get the order of lhs indices in terms of rhs
             auto lhsOrder=internal::reverseOrder(index_order);
-            auto temp_sort_order=this->mSortOrder;
-            internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
-            this->sort(temp_sort_order);
+            auto temp_linIdxSequence=this->mLinIdxSequence;
+            internal::reorder_from(lhsOrder,b.linIdxSequence(),temp_linIdxSequence);
+            this->sort(temp_linIdxSequence);
         }
     }
     else
         throw MIAParameterException("Scan Merge should never have been called if both MIAs are unsorted");
 
     CType C(this->m_dims);
-    C.change_linIdx_order(this->mSortOrder);
+    C.change_linIdx_sequence(this->mLinIdxSequence);
 
     internal::outside_merge_sparse_storage_containers(C,*this,b,op);
 
@@ -783,18 +830,18 @@ auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_i
     static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
     static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
     static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-    std::array<size_t,mOrder> _sort_order;
+    std::array<size_t,mOrder> _linIdxSequence;
 
     if(columnMajor){
-        _sort_order=internal::concat_index_arrays(row_indices,column_indices,tab_indices);
-        sort(_sort_order);
+        _linIdxSequence=internal::concat_index_arrays(row_indices,column_indices,tab_indices);
+        sort(_linIdxSequence);
     }
     else{
-        _sort_order=internal::concat_index_arrays(column_indices,row_indices,tab_indices);
-        sort(_sort_order);
+        _linIdxSequence=internal::concat_index_arrays(column_indices,row_indices,tab_indices);
+        sort(_linIdxSequence);
         //for now lattices don't actually change index values when doing column vs. row major - they just change the sort criteria, so we change it back to column major
         //but sorted row major
-        change_linIdx_order(internal::concat_index_arrays(row_indices,column_indices,tab_indices));
+        change_linIdx_sequence(internal::concat_index_arrays(row_indices,column_indices,tab_indices));
     }
 
 
@@ -879,37 +926,37 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     else
     {
         auto it=this->storage_begin();
-        if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it))){
-            std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+        if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))),data_val(*it))){
+            std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
             return false;
         }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
-            if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+            if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
+                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                 return false;
             }
 
 
         for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
         {
-            if (!predicate(otherMIA.atIdx(convert_to_default_sort(index_val(*it))),data_val(*it)))
+            if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))),data_val(*it)))
             {
-                std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_sort(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_sort(index_val(*it))) << std::endl;
+                std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
-                if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                    std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+                if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
+                    std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                     return false;
                 }
 
         }
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
-            if (!predicate(otherMIA.atIdx(convert_to_default_sort(idx)),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_sort(idx)) << std::endl;
+            if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
+                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                 return false;
             }
 
@@ -947,8 +994,8 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
     RetType C (c_dims);
     C.reserve(this->size()*b.size()/std::pow(2,l_inter_dims.size())); //make an estimate of the number of elements in C based on how many indices are used for elemwise products
     if(Inter){
-        change_linIdx_order(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
-        b.change_linIdx_order(internal::concat_index_arrays(r_inter_idx,r_outer_idx));
+        change_linIdx_sequence(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
+        b.change_linIdx_sequence(internal::concat_index_arrays(r_inter_idx,r_outer_idx));
         std::function<bool(const index_type &idx_1, const index_type &idx_2)> lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
             return idx1%l_inter_size<idx2%l_inter_size;
         };
@@ -1076,7 +1123,7 @@ auto  SparseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,
     RetType C (c_dims);
     C.reserve(this->size()*b.dimensionality()*0.8); //make an estimate of the number of elements in C based on how many indices are used for elemwise products
     if(Inter){
-        change_linIdx_order(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
+        change_linIdx_sequence(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
         std::function<bool(const index_type &idx_1, const index_type &idx_2)> lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
             return idx1%l_inter_size<idx2%l_inter_size;
         };

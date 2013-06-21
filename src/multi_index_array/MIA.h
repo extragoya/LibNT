@@ -50,6 +50,10 @@ struct storage_iterator<MIA<Derived> >: public storage_iterator<Derived> {};
 
 template<class Derived>
 struct const_storage_iterator<MIA<Derived> >: public const_storage_iterator<Derived> {};
+
+template<class Derived>
+struct FinalDerived<MIA<Derived> >:public FinalDerived<Derived>{};
+
 }
 
 
@@ -75,12 +79,23 @@ class MIA
 
 public:
 
-    typedef typename internal::index_type<Derived>::type index_type;
-    typedef typename internal::data_type<Derived>::type data_type;
+    typedef typename internal::index_type<MIA>::type index_type;
+    typedef typename internal::data_type<MIA>::type data_type;
+    typedef typename internal::FinalDerived<MIA>::type FinalDerived;
     constexpr static size_t mOrder=internal::order<Derived>::value;
     Derived& derived() { return *static_cast<Derived*>(this); }
     /** \returns a const reference to the derived object */
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
+
+    FinalDerived& final_derived() {
+
+        return derived().final_derived();
+    }
+    /** \returns a const reference to the derived object */
+    const FinalDerived& final_derived() const {
+
+        return derived().final_derived();
+    }
 
     template<class...Ts>
     auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence> {

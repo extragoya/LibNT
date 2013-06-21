@@ -212,7 +212,7 @@ public:
     SparseLattice(const SparseLattice& other): m_data(other.m_data),m_indices(other.m_indices)
     {
         this->init(other.height(),other.width(),other.depth());
-        this->sparse_init(other.is_sorted(),other.sort_order());
+        this->sparse_init(other.is_sorted(),other.linIdxSequence());
 
     }
 
@@ -230,7 +230,7 @@ public:
         }
 
         this->init(other.height(),other.width(),other.depth());
-        this->sparse_init(other.is_sorted(),other.sort_order());
+        this->sparse_init(other.is_sorted(),other.linIdxSequence());
 
     }
 
@@ -306,7 +306,7 @@ public:
         clear();
         std::copy(b.begin(),b.end(),this->begin());
         this->init(b.height(),b.width(),b.depth());
-        this->sparse_init(b.is_sorted(),b.sort_order());
+        this->sparse_init(b.is_sorted(),b.linIdxSequence());
 
         return *this;
     }
@@ -377,7 +377,7 @@ public:
 
 
 
-        this->sort(this->sort_order());
+        this->sort(this->linIdxSequence());
 
 
         auto result = this->storage_begin();

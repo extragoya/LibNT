@@ -150,11 +150,11 @@ public:
 //
 
 
-    void sparse_init(bool _is_sorted, bool _sort_order)
+    void sparse_init(bool _is_sorted, bool _linIdxSequence)
     {
 
         m_is_sorted=_is_sorted;
-        m_sort_order=_sort_order;
+        m_linIdxSequence=_linIdxSequence;
 
 
     }
@@ -187,7 +187,7 @@ public:
 
 
 
-        sort(m_sort_order);
+        sort(m_linIdxSequence);
         std::cout << "Val\t" ;
         std::cout << "Row\t"<< "Column\t" << "Tab\n";
         for (storage_iterator i=storage_begin(); i<storage_end(); i++)
@@ -223,7 +223,7 @@ public:
     }
 
 
-    void sort(bool sort_order=ColumnMajor)
+    void sort(bool linIdxSequence=ColumnMajor)
     {
 
 
@@ -232,10 +232,10 @@ public:
 
         storage_iterator temp=storage_begin();
 
-        if (m_sort_order!=sort_order || !is_sorted())
+        if (m_linIdxSequence!=linIdxSequence || !is_sorted())
         {
 
-            if (sort_order==ColumnMajor)
+            if (linIdxSequence==ColumnMajor)
                 internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
             else{
@@ -247,7 +247,7 @@ public:
             }
 
             m_is_sorted=true;
-            m_sort_order=sort_order;
+            m_linIdxSequence=linIdxSequence;
         }
 
 
@@ -309,10 +309,10 @@ public:
 
         return m_is_sorted;
     }
-    bool sort_order() const
+    bool linIdxSequence() const
     {
 
-        return m_sort_order;
+        return m_linIdxSequence;
     }
 
     bool tab_compare(index_type lin_index1, index_type lin_index2) const
@@ -490,7 +490,7 @@ protected:
 
     index_type full2lin_index(index_type _row, index_type _column, index_type _tab) const;
     bool m_is_sorted;
-    bool m_sort_order;
+    bool m_linIdxSequence;
 
 
 };
@@ -581,7 +581,7 @@ void SparseLatticeBase<Derived>::inPlaceTranspose(bool do_sort)
 
     std::swap(this->m_height,this->m_width);
     if(do_sort)
-        this->sort(this->sort_order());
+        this->sort(this->linIdxSequence());
     else
         this->set_sorted(false);
 

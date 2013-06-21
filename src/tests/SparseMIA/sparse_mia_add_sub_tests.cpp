@@ -43,9 +43,9 @@ void do_work(size_t dim1,size_t dim2){
     //b.print();
     //boost::timer::cpu_timer scan_t,total_t;
 
-    std::array<size_t,4> new_sort_order{{2,0,3,1}};
-    std::array<size_t,4> new_sort_order2{{1,3,0,2}};
-    a.change_linIdx_order(new_sort_order);
+    std::array<size_t,4> new_linIdxSequence{{2,0,3,1}};
+    std::array<size_t,4> new_linIdxSequence2{{1,3,0,2}};
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
     //scan_t.stop();
@@ -57,30 +57,30 @@ void do_work(size_t dim1,size_t dim2){
 
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1a for ")+typeid(_data_type).name());
     //now check when b is not sorted
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1b for ")+typeid(_data_type).name());
 
     //now check when a and b have non default sort orders
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1c for ")+typeid(_data_type).name());
 
     //test when a is not sorted (uses a different merge algorithm)
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
-    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
+    b.change_linIdx_sequence(new_linIdxSequence);
     //boost::timer::cpu_timer sort_t;
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
@@ -89,12 +89,12 @@ void do_work(size_t dim1,size_t dim2){
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Sort) 1a for ")+typeid(_data_type).name());
 
     //test when a is not sorted (uses a different merge algorithm) and both have different sort orders
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
-    b.change_linIdx_order(new_sort_order2);
+    a.change_linIdx_sequence(new_linIdxSequence);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     //boost::timer::cpu_timer sort_t;
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
@@ -104,33 +104,33 @@ void do_work(size_t dim1,size_t dim2){
 
 
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 1a for ")+typeid(_data_type).name());
 
     dense_b.ones();
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 1b for ")+typeid(_data_type).name());
 
     dense_b.ones();
     b=dense_b;
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 1c for ")+typeid(_data_type).name());
@@ -138,124 +138,124 @@ void do_work(size_t dim1,size_t dim2){
 
     dense_b.ones();
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
-    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 1a for ")+typeid(_data_type).name());
 
     dense_b.ones();
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
-    b.change_linIdx_order(new_sort_order2);
+    a.change_linIdx_sequence(new_linIdxSequence);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 1b for ")+typeid(_data_type).name());
 
     dense_b.init(3);
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)-dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 1a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 1b for ")+typeid(_data_type).name());
 
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 1c for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 1a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence2);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 1b for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1a for ")+typeid(_data_type).name());
 
     dense_b.init(3);
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1b for ")+typeid(_data_type).name());
 
     dense_b.init(3);
     b=dense_b;
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1c for ")+typeid(_data_type).name());
 
     dense_b.init(3);
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
-    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 1a for ")+typeid(_data_type).name());
 
     dense_b.init(3);
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order2);
-    b.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence2);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 1b for ")+typeid(_data_type).name());
@@ -276,149 +276,149 @@ void do_work(size_t dim1,size_t dim2){
     dense_a=dense_a_orig;
     dense_b=dense_b_orig;
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2b for ")+typeid(_data_type).name());
 
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2c for ")+typeid(_data_type).name());
 
     //test when a is not sorted (uses a different merge algorithm)
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Sort) 2a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence2);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Sort) 2b for ")+typeid(_data_type).name());
 
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 2a for ")+typeid(_data_type).name());
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 2b for ")+typeid(_data_type).name());
 
     b=dense_b_orig;
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Scan) 2c for ")+typeid(_data_type).name());
 
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 2a for ")+typeid(_data_type).name());
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence2);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)+=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 2b for ")+typeid(_data_type).name());
 
     dense_b=dense_b_orig;
     b=dense_b;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     dense_c(i,j,k,l)=dense_b(i,j,k,l)-dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 2a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 2b for ")+typeid(_data_type).name());
 
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Scan) 2c for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 2a for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence2);
+    a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Subtract (Sort) 2b for ")+typeid(_data_type).name());
 
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 2a for ")+typeid(_data_type).name());
@@ -426,41 +426,41 @@ void do_work(size_t dim1,size_t dim2){
 
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 2b for ")+typeid(_data_type).name());
 
     b=dense_b_orig;
-    a.change_linIdx_order(new_sort_order);
+    a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
+    b.change_linIdx_sequence(new_linIdxSequence2);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 2c for ")+typeid(_data_type).name());
 
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 2a for ")+typeid(_data_type).name());
 
     b=dense_b_orig;
-    a.reset_sort_order();
+    a.reset_linIdx_sequence();
     a.sort();
-    b.reset_sort_order();
+    b.reset_linIdx_sequence();
     b.sort();
-    b.change_linIdx_order(new_sort_order2);
-    a.change_linIdx_order(new_sort_order);
+    b.change_linIdx_sequence(new_linIdxSequence2);
+    a.change_linIdx_sequence(new_linIdxSequence);
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 2b for ")+typeid(_data_type).name());
 

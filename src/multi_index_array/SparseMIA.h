@@ -134,6 +134,12 @@ struct const_storage_iterator<SparseMIA<T,_order> >
 };
 
 
+template<typename T,size_t _order>
+struct FinalDerived<SparseMIA<T,_order> >
+{
+    typedef SparseMIA<T,_order> type;
+};
+
 }
 
 
@@ -174,6 +180,7 @@ public:
     typedef typename internal::const_index_iterator<SparseMIA>::type const_index_iterator;
     typedef typename internal::full_tuple<SparseMIA>::type full_tuple;
     typedef typename internal::const_full_tuple<SparseMIA>::type const_full_tuple;
+    typedef typename internal::FinalDerived<SparseMIA>::type FinalDerived;
     //! raw data pointer type
     typedef T* raw_pointer;
     //! order of the MIA
@@ -190,7 +197,15 @@ private:
 
 public:
 
+    FinalDerived& final_derived() {
 
+        return *this;
+    }
+    /** \returns a const reference to the derived object */
+    const FinalDerived& final_derived() const {
+
+        return *this;
+    }
 
 
 
@@ -217,13 +232,21 @@ public:
 
     }
 
+    //! Copy constructor for SparseMIAs
+    SparseMIA(const SparseMIA& sparseMIA):SparseMIABase<SparseMIA<T,_order>>(sparseMIA.dims())
+    {
+
+        this->copy_other_MIA(sparseMIA);
+
+    }
+
 
 
     SparseMIA(SparseMIA && otherMIA):SparseMIABase<SparseMIA<T,_order>>(otherMIA.dims())
     {
 
 
-        this->mSortOrder=otherMIA.sort_order();
+        this->mLinIdxSequence=otherMIA.linIdxSequence();
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
 
@@ -384,7 +407,7 @@ public:
     SparseMIA & operator=(const otherMIAType& otherMIA){
         this->m_dims=otherMIA.dims();
         this->m_dimensionality=otherMIA.dimensionality();
-        this->mSortOrder=otherMIA.sort_order();
+        this->mLinIdxSequence=otherMIA.linIdxSequence();
         this->copy_other_MIA(otherMIA);
         return *this;
     }
@@ -402,7 +425,7 @@ public:
     SparseMIA & operator=(SparseMIA&& otherMIA){
         this->m_dims=otherMIA.dims();
         this->m_dimensionality=otherMIA.dimensionality();
-        this->mSortOrder=otherMIA.sort_order();
+        this->mLinIdxSequence=otherMIA.linIdxSequence();
 
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
@@ -588,7 +611,7 @@ protected:
     {
 
         //std::cout << "copy other MIA with sparse " << std::endl;
-        this->mSortOrder=otherMIA.sort_order();
+        this->mLinIdxSequence=otherMIA.linIdxSequence();
         this->mIsSorted=otherMIA.is_sorted();
 
         this->resize(otherMIA.size());
@@ -607,7 +630,7 @@ protected:
 
 
 
-        this->reset_sort_order();
+        this->reset_linIdx_sequence();
         this->mIsSorted=true;
         //count the number of nnzs
         size_t nnz=0;
@@ -669,22 +692,22 @@ void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op
 //        //get the order of lhs indices in terms of rhs
 //        auto lhsOrder=internal::reverseOrder(index_order);
 //        //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
-//        lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+//        lhsOrder= internal::reOrderArray(b.linIdxSequence(), lhsOrder);
 //        this->sort(lhsOrder);
 //    }
 //    else if(this->is_sorted()&&!b.is_sorted()){
-//       b.sort(internal::reOrderArray(this->mSortOrder,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
+//       b.sort(internal::reOrderArray(this->mLinIdxSequence,index_order)); //change b's sort order to it matches the index order, and also *this's current sort order
 //
 //    } //if both *this and b are sorted, then we resort whichever mia has a smaller number of nonzeros
 //    else if(this->is_sorted()&& b.is_sorted()){
 //        if (b.size()<this->size()){
-//            b.sort(internal::reOrderArray(this->mSortOrder,index_order));
+//            b.sort(internal::reOrderArray(this->mLinIdxSequence,index_order));
 //        }
 //        else{
 //            //get the order of lhs indices in terms of rhs
 //            auto lhsOrder=internal::reverseOrder(index_order);
 //            //we also need to reorder b's sort order (which may not be {0,1,2, etc.}) using the index order
-//            lhsOrder= internal::reOrderArray(b.sort_order(), lhsOrder);
+//            lhsOrder= internal::reOrderArray(b.linIdxSequence(), lhsOrder);
 //            this->sort(lhsOrder);
 //        }
 //    }
@@ -696,7 +719,7 @@ void  SparseMIA<T,_order>::scanMerge(SparseMIABase<otherDerived> &b,const Op& op
 //    //print_array(lhsOrder,"lhsOrder");
 //    //boost::timer::cpu_timer sort_t;
 //
-//    //this->change_linIdx_order(lhsOrder);
+//    //this->change_linIdx_sequence(lhsOrder);
 //
 //    //std::sort(this->index_begin(),this->index_end());
 //    //std::sort(this->data_begin(),this->data_end());
@@ -722,19 +745,19 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
     //b has less non-zeros than *this
     if(this->size()>b.size()){
         //std::cout << "this is bigger " << std::endl;
-        auto b_sort_order=b.sort_order();
+        auto b_linIdxSequence=b.linIdxSequence();
 
-        internal::reorder_from(index_order,this->mSortOrder,b_sort_order);
+        internal::reorder_from(index_order,this->mLinIdxSequence,b_linIdxSequence);
 
-        b.change_linIdx_order(b_sort_order); //change b's sort order to it matches the index order, and also *this's current sort order
+        b.change_linIdx_sequence(b_linIdxSequence); //change b's sort order to it matches the index order, and also *this's current sort order
     }
     else{
         //std::cout << "b is bigger " << std::endl;
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        auto temp_sort_order=this->mSortOrder;
-        internal::reorder_from(lhsOrder,b.sort_order(),temp_sort_order);
-        this->change_linIdx_order(temp_sort_order);
+        auto temp_linIdxSequence=this->mLinIdxSequence;
+        internal::reorder_from(lhsOrder,b.linIdxSequence(),temp_linIdxSequence);
+        this->change_linIdx_sequence(temp_linIdxSequence);
     }
 
 
@@ -778,16 +801,16 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
     //std::cout <<"We got to sparse assign" << std::endl;
     //otherMIA.print();
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
-    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the sort_order
+    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the linIdxSequence
     //print_array(index_order,"index_order");
-    //print_array(otherMIA.sort_order(),"otherMIA.sort_order()");
+    //print_array(otherMIA.linIdxSequence(),"otherMIA.linIdxSequence()");
 
     //get the order of lhs indices in terms of rhs
     auto lhsOrder=internal::reverseOrder(index_order);
     //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
-    internal::reorder_from(lhsOrder,otherMIA.sort_order(),this->mSortOrder);
-    //print_array(this->mSortOrder,"this->mSortOrder");
-    if(otherMIA.sort_order()!=this->mSortOrder)
+    internal::reorder_from(lhsOrder,otherMIA.linIdxSequence(),this->mLinIdxSequence);
+    //print_array(this->mLinIdxSequence,"this->mLinIdxSequence");
+    if(otherMIA.linIdxSequence()!=this->mLinIdxSequence)
         this->mIsSorted=false;
     else
         this->mIsSorted=otherMIA.is_sorted();
@@ -814,9 +837,9 @@ void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,cons
 
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //shuffle the dimensions around based on index_order
-    internal::reverseOrder(index_order,this->mSortOrder); //don't bother to re-sort, just change the sort_order
+    internal::reverseOrder(index_order,this->mLinIdxSequence); //don't bother to re-sort, just change the linIdxSequence
     this->m_dimensionality=otherMIA.dimensionality();
-    if(this->mSortOrder!=this->mDefaultSortOrder)
+    if(this->mLinIdxSequence!=this->mDefaultLinIdxSequence)
         this->mIsSorted=false;
     else
         this->mIsSorted=true;

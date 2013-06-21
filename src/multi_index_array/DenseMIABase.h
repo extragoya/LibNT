@@ -61,6 +61,9 @@ struct storage_iterator<DenseMIABase<Derived> >: public storage_iterator<Derived
 template<class Derived>
 struct const_storage_iterator<DenseMIABase<Derived> >: public const_storage_iterator<Derived> {};
 
+template<class Derived>
+struct FinalDerived<DenseMIABase<Derived> >:public FinalDerived<Derived>{};
+
 }
 
 
@@ -207,9 +210,9 @@ public:
     noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const{
             auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx);
             auto c_reorder=internal::concat_index_arrays(internal::createAscendingIndex<L_outer>(R_outer),internal::createAscendingIndex<R_outer>(),internal::createAscendingIndex<R_inter>(L_outer+R_outer));
-            //print_array(c.sort_order(),"Old sort order");
-            c.set_sort_order(c_reorder);
-            //print_array(c.sort_order(),"New sort order");
+            //print_array(c.linIdxSequence(),"Old sort order");
+            c.set_linIdxSequence(c_reorder);
+            //print_array(c.linIdxSequence(),"New sort order");
             //print_array(c.dims(),"Old dims");
             auto new_c_dims=c.dims();
             internal::reorder_from(c.dims(), c_reorder,new_c_dims);
@@ -529,7 +532,7 @@ void  DenseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op
 
     for(auto it=b.storage_begin();it<b.storage_end();++it){
         //the index values of b may correspond to a shuffled version of the default linear index
-        auto default_order_idx=b.convert_to_default_sort(b.index_val(*it));
+        auto default_order_idx=b.convert_to_default_linIdxSequence(b.index_val(*it));
         //calculate the lhs_index based on how the MIA indices matched up
         auto lhs_index=internal::sub2ind_reorder(b.ind2sub(default_order_idx),index_order,b.dims());
         this->atIdx(lhs_index)=op(this->atIdx(lhs_index),derived().convert(b.data_val(*it)));

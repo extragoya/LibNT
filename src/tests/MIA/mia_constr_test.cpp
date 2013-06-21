@@ -114,14 +114,40 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
 
 
     denseTest.randu(-1,1);
-    MIAType test4(denseTest);
     for(auto it=denseTest.data_begin();it<denseTest.data_end();++it)
         if(*it<0)
             *it=0;
-//    MIAType test3(denseTest);
-//    bool passed=true;
-//    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
-//        passed=(passed&&*it==*it2);
+    MIAType test4(denseTest);
+    BOOST_CHECK_MESSAGE(test4==denseTest,std::string("Sparse copy constructor for DenseMIA for ")+typeid(MIAType).name());
+    denseTest.zeros();
+    MIAType test5(denseTest);
+    passed=test5.index_end()-test5.index_begin()==0;
+    passed=passed&&test5.data_end()-test5.data_begin()==0;
+    passed=passed&&test5.size()==0;
+    BOOST_CHECK_MESSAGE(passed,std::string("Sparse copy constructor for all-zero DenseMIA for ")+typeid(MIAType).name());
+
+    test5.resize(test5.dimensionality()/2);
+    test5.randu(-50,50);
+    test5.rand_indices();
+    test5.collect_duplicates();
+
+    MIAType test6(test5);
+    passed=test6.linIdxSequence()==test5.linIdxSequence();
+    passed=passed&&test5.index_end()-test5.index_begin()==test6.index_end()-test6.index_begin();
+    passed=passed&&test5.data_end()-test5.data_begin()==test6.data_end()-test6.data_begin();
+    passed=passed&&test5.size()==test6.size();
+    auto it5=test5.data_begin();
+    for(auto it=test6.data_begin();it<test6.data_end();++it){
+        passed=passed&&*it==*it5;
+        it5++;
+    }
+    auto it5_2=test5.index_begin();
+    for(auto it=test6.index_begin();it<test6.index_end();++it){
+        passed=passed&&*it==*it5_2;
+        it5_2++;
+    }
+    BOOST_CHECK_MESSAGE(passed,std::string("Sparse copy constructor for SparseMIA for ")+typeid(MIAType).name());
+
 
 
 }

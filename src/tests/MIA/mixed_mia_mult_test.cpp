@@ -131,7 +131,7 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,k,l,j)=dense_d2(l,i)*b2(k,j);
 //    dense_c.print();
 //    c.print();
-//    c.reset_sort_order();
+//    c.reset_linIdx_sequence();
 //    c.print();
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3b for ")+typeid(_data_type).name());
 
