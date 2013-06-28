@@ -19,10 +19,13 @@
 #include <iostream>
 #include <array>
 #include <algorithm>
+#include <numeric>
+#include <functional>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/numeric/conversion/converter.hpp>
 #include <boost/mpl/apply.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 #include "Util.h"
 #include "MIA.h"
@@ -351,6 +354,37 @@ public:
         std::cout << std::endl;
     }
 
+
+    void inplace_permute(const std::array<index_type,mOrder> & reshuffle_order);
+    void inplace_permute_new(const std::array<index_type,mOrder> & reshuffle_order);
+
+    //!
+    /*!
+        Based on An Optimal Index Reshuffle Algorithm for Multidimensional Arrays and Its Applications for Parallel Architectures by Chris H.Q. Ding and the modification
+        in Sec. III A by Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays
+    */
+    template<typename... Dims>
+    void inplace_permute(Dims... dims){
+        static_assert(internal::check_mia_constructor<DenseMIABase,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+
+        std::array<index_type, mOrder> reshuffle_order{{dims...}};
+        inplace_permute(reshuffle_order);
+
+    }
+
+    //!
+    /*!
+        An Idea tried to speed-up inplace_permutation, but ended up being slower
+    */
+    template<typename... Dims>
+    void inplace_permute_new(Dims... dims){
+        static_assert(internal::check_mia_constructor<DenseMIABase,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+
+        std::array<index_type, mOrder> reshuffle_order{{dims...}};
+        inplace_permute_new(reshuffle_order);
+
+    }
+
 protected:
 
     SolveInfo mSolveInfo;
@@ -538,6 +572,173 @@ void  DenseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op
         this->atIdx(lhs_index)=op(this->atIdx(lhs_index),derived().convert(b.data_val(*it)));
 
     }
+
+}
+
+template<typename Derived>
+void DenseMIABase<Derived>::inplace_permute(const std::array<index_type,mOrder>& reshuffle_order){
+    boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
+    std::array<index_type,mOrder> new_dims; //stores new dimensions
+    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
+    index_type ioffset_next,ioffset;
+
+    std::array<index_type,mOrder> dim_accumulator; //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    for(size_t i=0;i<mOrder;++i){
+        dim_accumulator[i]=std::accumulate(new_dims.begin(),new_dims.begin()+i,1,std::multiplies<index_type>());
+    }
+
+    dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
+    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
+    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
+        index_type to_lin_idx=0;
+        index_type multiplier=1;
+        for(size_t i=0;i<mOrder;++i){
+            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+            multiplier*=this->dim(i);
+        }
+        return to_lin_idx;
+    };
+    index_type touch_ctr=0;
+    //iterate through the entire bit array
+    for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
+        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
+        if(bit_array[start_idx]==0){
+
+            auto temp=this->atIdx(start_idx); //get the start of the cycle
+            ioffset=start_idx; //permuted array linIdx
+            while(true){
+
+                index_type ioffset_next=0;
+                index_type multiplier=1;
+                for(size_t i=0;i<mOrder;++i){
+                    ioffset_next+=(ioffset/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+                    multiplier*=this->dim(i);
+                }
+                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
+
+
+                bit_array[ioffset]=1; //touch the current data location
+                ++touch_ctr;
+                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
+                    if(ioffset_next!=ioffset)
+                        this->atIdx(ioffset)=temp;
+                    break;
+                }
+
+                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
+                ioffset=ioffset_next; //update the location in the current cycle
+
+            }
+            if (touch_ctr==this->dimensionality()){
+                break;
+            }
+
+        }
+
+
+    }
+    this->m_dims=new_dims;
+
+
+}
+
+
+template<typename Derived>
+void DenseMIABase<Derived>::inplace_permute_new(const std::array<index_type,mOrder>& reshuffle_order){
+    //boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
+    std::array<index_type,mOrder> new_dims; //stores new dimensions
+    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
+    index_type ioffset_next,ioffset;
+    std::string dummy;
+    std::array<index_type,mOrder> dim_accumulator; //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    for(size_t i=0;i<mOrder;++i){
+        dim_accumulator[i]=std::accumulate(new_dims.begin(),new_dims.begin()+i,1,std::multiplies<index_type>());
+    }
+
+    dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
+    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
+    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
+        index_type to_lin_idx=0;
+        index_type multiplier=1;
+        for(size_t i=0;i<mOrder;++i){
+            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+            multiplier*=this->dim(i);
+        }
+        return to_lin_idx;
+    };
+    index_type touch_ctr=0;
+    //iterate through the entire bit array
+    index_type bottom_idx=-1;
+    index_type start_idx;
+    bool do_bottom=true;
+    index_type top_idx=this->dimensionality();
+    while(true){
+    //for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
+        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
+
+
+        if (do_bottom){
+            bottom_idx++;
+            start_idx=bottom_idx;
+
+        }
+        else{
+            top_idx--;
+            start_idx=top_idx;
+        }
+        //std::cout <<"Start idx " << start_idx << std::endl;
+        ioffset_next=func(start_idx); //get the location of ioffset in the old array
+        //std::cout <<"ioffset_next " << ioffset_next << std::endl;
+        while(ioffset_next>bottom_idx&& ioffset_next<top_idx){
+            index_type old_one=ioffset_next;
+            ioffset_next=0;
+            index_type multiplier=1;
+            for(size_t i=0;i<mOrder;++i){
+                ioffset_next+=(old_one/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+                multiplier*=this->dim(i);
+            }
+            //ioffset_next=func(ioffset_next);
+            //std::cout <<"ioffset_next " << ioffset_next << std::endl;
+        }
+        //std::cin >> dummy;
+
+        do_bottom=!do_bottom;
+        //std::cout <<"Past" << std::endl;
+        if(ioffset_next==start_idx){ //found a new cycle
+            //std::cout <<"In" << std::endl;
+            auto temp=this->atIdx(start_idx); //get the start of the cycle
+            ioffset=start_idx; //permuted array linIdx
+            while(true){
+                //std::cout << "ioffset " << ioffset << std::endl;
+                index_type ioffset_next=0;
+                index_type multiplier=1;
+                for(size_t i=0;i<mOrder;++i){
+                    ioffset_next+=(ioffset/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+                    multiplier*=this->dim(i);
+                }
+
+                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
+                //std::cout << "ioffset next" << ioffset_next << std::endl;
+                //std::cin >> dummy;
+                ++touch_ctr;
+                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
+                    if(ioffset_next!=ioffset)
+                        this->atIdx(ioffset)=temp;
+                    break;
+                }
+
+                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
+                ioffset=ioffset_next; //update the location in the current cycle
+            }
+            if (touch_ctr==this->dimensionality()){
+                break;
+            }
+
+        }
+
+
+    }
+    this->m_dims=new_dims;
 
 }
 

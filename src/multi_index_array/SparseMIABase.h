@@ -275,25 +275,9 @@ public:
         return derived().index_end();
     }
 
-//    //! Clears the data and index arrays
-//    void clear(){
-//        derived().clear();
-//    }
-//    //! Reserves space for the data and index arrays, but does not change the number of non-zeros
-//    void reserve(size_t _size){
-//        derived().reserve(_size);
-//    }
-//    //! Resizes space for the data and index arrays, and changes the number of non-zeros
-//    void resize(size_t _size){
-//        derived().resize(_size);
-//    }
-//    //! Pushes data and index pair to back of non-zero container
-//    void push_back(const data_type & _data, const index_type& _index)
-//    {
-//        derived().push_back(_data,_index);
-//    }
 
-    //! True if data and index containers are sorted based on index container
+
+    //! True if data and index containers are sorted based on the index container
     bool is_sorted() const{
         return mIsSorted;
     }
@@ -381,7 +365,10 @@ public:
 
     }
 
-    //! Changes the lexicographical precedence used to calculate the linear indices. If different than mLinIdxSequence, all index values are recalculated based upon _linIdx_sequence
+    //! Changes the lexicographical precedence used to calculate the linear indices.
+    /*!
+        If different than mLinIdxSequence, all index values are recalculated based upon _linIdx_sequence, and sorted flag will be set to false.
+    */
     template<class index_param_type>
     void change_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
@@ -401,7 +388,7 @@ public:
         mIsSorted=false;
     }
 
-    //! Changes the lexicographical precedence used to calculate the linear indices, but does not actually update the actual index values. Only use this function if you are certain of the consequences.
+    //! Changes the lexicographical precedence stored in mLinIdxSequence, but does not actually update the actual index values. Only use this function if you are certain of the consequences.
     template<class index_param_type>
     void set_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
@@ -432,32 +419,11 @@ public:
         return this->sub2ind_reorder(this->ind2sub_reorder(idx,mDefaultLinIdxSequence),mLinIdxSequence);
     }
 
-    template<class otherDerived,class index_param_type>
-    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,mOrder>& index_order){
-        derived().assign(otherMIA.derived(),index_order);
-    }
 
-    template<class otherDerived>
-    SparseMIABase& operator=(const MIA<otherDerived>& otherMIA){
 
-        return derived()=otherMIA.derived();
-    }
-
-    //!Assignment operator. Will call Derived's operator
-    SparseMIABase& operator=(const SparseMIABase& otherMIA){
-
-        return derived()=otherMIA;
-    }
-
-    //!Assignment move operator. Will call Derived's operator
-    SparseMIABase& operator=(SparseMIABase&& otherMIA){
-
-        return derived()=otherMIA;
-    }
-
-    //!  Sets MIA index data to uniformly distributed random values.
+    //!  Sets MIA index data to uniformly distributed random values within the valid index range.
     /*!
-    May cause duplicates
+        Does not check that no duplicates are formed.
 
     */
     void rand_indices(){
@@ -479,21 +445,29 @@ public:
         mIsSorted=isSorted;
     }
 
+    //!Returns the current lexicographical precedence used to compute the linearized indices
     const std::array<size_t,mOrder> & linIdxSequence() const
     {
         return mLinIdxSequence;
     }
 
 
-
+    //!Comparison operator to another Sparse MIA. Will account for differing lexicographical precedences.
     template<class otherDerived>
     bool operator==(SparseMIABase<otherDerived>& otherMIA)
     {
-
-        //should be sorted first I believe
-        bool passed=std::equal(this->index_begin(),this->index_end(),otherMIA.index_begin());
-        if(!passed)
+        if(this->dims()!=otherMIA.dims())
             return false;
+        if(this->size()!=otherMIA.size())
+            return false;
+        this->sort();
+        otherMIA.sort();
+        auto it2=otherMIA.index_begin();
+        for(auto it=this->index_begin();it<this->index_end();++it,++it2){
+            if (this->convert_to_default_linIdxSequence(*it)!=otherMIA.convert_to_default_linIdxSequence(*it2))
+                return false;
+
+        }
         return std::equal(this->data_begin(),this->data_end(),otherMIA.data_begin());
 
     }
@@ -918,7 +892,7 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     {
         for(auto it=otherMIA.data_begin(); it<otherMIA.data_end(); ++it)
              if(!predicate(*it,0)){
-                std::cout << "Trigered not-zero no size " << it-otherMIA.data_begin() << " " << *it << std::endl;
+                //std::cout << "Trigered not-zero no size " << it-otherMIA.data_begin() << " " << *it << std::endl;
                 return false;
              }
         return true;
@@ -927,13 +901,13 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
     {
         auto it=this->storage_begin();
         if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))),data_val(*it))){
-            std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
+            //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
             return false;
         }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
             if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
+                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                 return false;
             }
 
@@ -942,13 +916,13 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
         {
             if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))),data_val(*it)))
             {
-                std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
+                //std::cout << "Trigered " << index_val(*it) << " " << convert_to_default_linIdxSequence(index_val(*it)) << " " << data_val(*it) << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << " " << data_val(*it)-otherMIA.atIdx(convert_to_default_linIdxSequence(index_val(*it))) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
                 if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
-                    std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
+                    //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                     return false;
                 }
 
@@ -956,7 +930,7 @@ bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->m_dimensionality; idx++)
             if (!predicate(otherMIA.atIdx(convert_to_default_linIdxSequence(idx)),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
+                //std::cout << "Trigered not-zero " << idx << " " << otherMIA.atIdx(convert_to_default_linIdxSequence(idx)) << std::endl;
                 return false;
             }
 

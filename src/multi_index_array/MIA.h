@@ -122,9 +122,27 @@ public:
         m_dimensionality(compute_dimensionality());
     }
 
+    template<class otherDerived,class index_param_type>
+    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,mOrder>& index_order){
+        final_derived().assign(otherMIA.final_derived(),index_order);
+    }
+
     template<class otherDerived>
-    void assign(const MIA<otherDerived>& otherMIA,const std::array<typename otherDerived::index_type,internal::order<MIA>::value>& index_order){
-        derived().assign(otherMIA,index_order);
+    FinalDerived& operator=(const MIA<otherDerived>& otherMIA){
+
+        return final_derived()=otherMIA.final_derived();
+    }
+
+    //!Assignment operator. Will call Derived's operator
+    FinalDerived& operator=(const MIA& otherMIA){
+
+        return final_derived()=otherMIA.final_derived();
+    }
+
+    //!Assignment move operator. Will call Derived's operator
+    FinalDerived& operator=(MIA&& otherMIA){
+
+        return final_derived()=std::move(otherMIA.final_derived());
     }
 
 //    toLatticeExpression(std::array<size_t> outer_product_indices, std::array<size_t> inner_product_indices,,std::array<size_t> inter_product_indices){

@@ -419,7 +419,14 @@ public:
         this->copy_other_MIA(otherMIA);
         return *this;
     }
-    SparseMIA& operator=(const SparseMIA&)  = default;
+    SparseMIA& operator=(const SparseMIA& otherMIA) {
+
+        this->m_dims=otherMIA.dims();
+
+        this->copy_other_MIA(otherMIA);
+        return *this;
+
+    }
 
     //!  Sparse move assignment
     SparseMIA & operator=(SparseMIA&& otherMIA){

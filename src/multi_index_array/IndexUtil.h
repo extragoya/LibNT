@@ -130,6 +130,23 @@ std::array<size_t,size1+size2> concat_index_arrays(const std::array<array_type1,
 
 }
 
+//!
+template<class array_type1,class array_type2>
+array_type1 reorder_to(const array_type1& from_array, const array_type2& to_sequence_order)
+{
+
+    array_type1 to_array;
+    size_t curIdx=0;
+    for(auto _order: to_sequence_order)
+    {
+
+        to_array[(size_t)_order]=from_array[curIdx++];
+
+    }
+    return to_array;
+
+}
+
 
 //! same as reorder_to but we start at i=curIdx instead of 0
 template<class array_type1,class array_type2, class array_type3>
@@ -342,6 +359,23 @@ indexType sub2ind(const std::array<indexType,T> & indices, const std::array<inde
     return idx;
 
 }
+
+template<typename function_type, typename indexType,size_t T>
+inline indexType sub2ind_function(const std::array<function_type,T> & indices_function, const indexType original_idx, const std::array<indexType,T> & dims)
+{
+
+
+    indexType idx=0;
+    indexType multiplier=1;
+    for(size_t i=0; i<T; ++i)
+    {
+        idx+=indices_function[i](original_idx)*multiplier;
+        multiplier*=dims[i];
+    }
+    return idx;
+
+}
+
 //!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
 template<typename accessType, typename accessType2,typename dimType>
 typename dimType::value_type sub2ind(const accessType & indices, const accessType2 &order, const dimType & dims)

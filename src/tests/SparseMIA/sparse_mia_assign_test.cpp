@@ -1,6 +1,6 @@
 #include <iostream>
 
-#define BOOST_TEST_MODULE MIAAssignTests
+#define BOOST_TEST_MODULE SparseAssignTests
 
 
 
@@ -11,7 +11,7 @@
 #else
 #include <boost/test/unit_test.hpp>
 #endif
-#include "DenseMIA.h"
+#include "SparseMIA.h"
 
 #include "Index.h"
 
@@ -28,10 +28,16 @@ void assign_work(){
     MIAType b;
     MIAType c;
 
-    a.randu(-5,5);
 
     c=a;
-    BOOST_CHECK_MESSAGE(a==c,"Straight MIA assignment");
+    BOOST_CHECK_MESSAGE(a==c && c==a,"Empty SparseMIA assignment");
+
+    a.resize(a.dimensionality()/2);
+    a.randu(-5,5);
+    a.rand_indices();
+    a.collect_duplicates();
+    c=a;
+    BOOST_CHECK_MESSAGE(a==c && c==a,"Straight SparseMIA assignment");
 
     b.zeros();
     c.zeros();
@@ -53,13 +59,13 @@ void assign_work(){
 
 }
 
-BOOST_AUTO_TEST_CASE( MIAAssignTests )
+BOOST_AUTO_TEST_CASE( SparseAssignTests )
 {
 
-    assign_work<LibMIA::DenseMIA<double,3>>();
-    assign_work<LibMIA::DenseMIA<float,3>>();
-    assign_work<LibMIA::DenseMIA<int,3>>();
-    assign_work<LibMIA::DenseMIA<long,3>>();
+    assign_work<LibMIA::SparseMIA<double,3>>();
+    assign_work<LibMIA::SparseMIA<float,3>>();
+    assign_work<LibMIA::SparseMIA<int,3>>();
+    assign_work<LibMIA::SparseMIA<long,3>>();
 
 
 
