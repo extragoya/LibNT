@@ -214,6 +214,7 @@ public:
     {
 
 
+
         this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
         m_Data.swap(otherMIA.m_Data);
@@ -321,6 +322,21 @@ public:
     template<typename otherDerived,typename index_param_type>
     void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
+    //!  Assignment based on given order using an rvalue reference.
+    /*!
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {2,0,1} this->at(x,y,z)==otherMIA.at(y,z,x).
+
+        If *this owns its data, an in-place permutation of otherMIA's data is performed, and then *this is set to refer to otherMIA's raw data
+
+    */
+    template<typename index_param_type>
+    void assign(DenseMIA&& otherMIA,const std::array<index_param_type,_order>& index_order);
+
     //!  Assignment operator.
     /*!
         \param[in] otherMIA
@@ -332,6 +348,26 @@ public:
     //!  Straight-out assignment.
     DenseMIA& operator=(const DenseMIA& otherMIA){
         return *this=static_cast<const DenseMIABase<DenseMIA>&>(otherMIA);
+    }
+    //!Move assignment
+    DenseMIA& operator=(DenseMIA&& otherMIA)
+    {
+
+        if(this==&otherMIA)
+            return *this;
+
+        if (this->ownsData()){ //we can only swap if data is owned by *this
+            m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
+            m_Data.swap(otherMIA.m_Data);
+            this->hasOwnership=otherMIA.ownsData();
+            this->m_dimensionality=otherMIA.dimensionality();
+            this->m_dims=otherMIA.dims();
+            this->mSolveInfo=otherMIA.solveInfo();
+            return *this;
+        }
+        else{ //perform copy assignment
+            return *this=static_cast<DenseMIA&>(otherMIA);
+        }
     }
 
     //! Returns a smart pointer to the data container used
@@ -404,6 +440,8 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIABase<otherDerive
 {
     static_assert(_order==internal::order<otherDerived>::value,"Orders of MIAs must be the same to be assigned");
 
+    if(this==&otherMIA)
+        return *this;
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
         if(hasOwnership){
@@ -442,6 +480,11 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
 
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
+    if(this==&otherMIA){
+        //std::cout << "NO! " << std::endl;
+        this->inplace_permute(index_order);
+        return;
+    }
 
     if(this->m_dimensionality!=otherMIA.dimensionality()){
         if(hasOwnership){
@@ -467,6 +510,34 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
         *this_it=this->convert(*(other_it+internal::sub2ind(this->ind2sub(curIdx++),index_order,otherMIA.dims())));
 
     }
+
+
+}
+
+template<class T, size_t _order>
+template<typename index_param_type>
+void DenseMIA<T,_order>::assign(DenseMIA<T,_order>&& otherMIA,const std::array<index_param_type,_order>& index_order)
+{
+
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
+
+    if(this==&otherMIA){
+        this->inplace_permute(index_order);
+        return;
+    }
+    if(!this->ownsData()){
+        this->assign(static_cast<DenseMIA&>(otherMIA), index_order); //copy if *this doesn't own its data
+        return;
+    }
+    //otherwise we are free to swap, so do it, after a permute of course.
+    otherMIA.inplace_permute(index_order);
+    m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
+    m_Data.swap(otherMIA.m_Data);
+    this->hasOwnership=otherMIA.ownsData();
+    this->m_dimensionality=otherMIA.dimensionality();
+    this->m_dims=otherMIA.dims();
+    this->mSolveInfo=otherMIA.solveInfo();
+
 
 
 }

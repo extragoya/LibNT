@@ -76,6 +76,8 @@ void mult_work(size_t dim1, size_t dim2){
     dense_c(i,k,m,n)=dense_a(i,j,k,l)*dense_b(j,l,m,n);
     c_mixed(i,k,m,n)=a(i,j,k,l)*dense_b(j,l,m,n);
     BOOST_CHECK_MESSAGE(dense_c==c_mixed,std::string("Inner/Outer Product 1a for ")+typeid(_data_type).name() );
+
+
     c_mixed(i,k,m,n)=dense_a(i,j,k,l)*b(j,l,m,n);
     BOOST_CHECK_MESSAGE(dense_c==c_mixed,std::string("Inner/Outer Product 1b for ")+typeid(_data_type).name() );
 
@@ -109,7 +111,7 @@ void mult_work(size_t dim1, size_t dim2){
     c2_mixed(j,i)=a(!j,l,!i,k)*dense_b(k,l,!j,!i);
     BOOST_CHECK_MESSAGE(c2_mixed==dense_c2,std::string("Inner/Element-Wise Product 3a for ")+typeid(_data_type).name());
     c2_mixed(j,i)=dense_a(!j,l,!i,k)*b(k,l,!j,!i);
-    BOOST_CHECK_MESSAGE(c2_mixed==dense_c2,std::string("Inner/Element-Wise Product 3a for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c2_mixed==dense_c2,std::string("Inner/Element-Wise Product 3b for ")+typeid(_data_type).name());
 
 
     dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
@@ -129,6 +131,7 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,k,l,j)=d2(l,i)*dense_b2(k,j);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3a for ")+typeid(_data_type).name());
     c(i,k,l,j)=dense_d2(l,i)*b2(k,j);
+
 //    dense_c.print();
 //    c.print();
 //    c.reset_linIdx_sequence();
@@ -163,10 +166,12 @@ void mult_work(size_t dim1, size_t dim2){
 
 
     dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(j,l);
+
     c(i,k,m,n)=~(a(i,!j,k,!l)*dense_b(!j,!l,m,n))*d2(j,l);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1a for ")+typeid(_data_type).name() );
     c(i,k,m,n)=~(dense_a(i,!j,k,!l)*b(!j,!l,m,n))*d2(j,l);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1b for ")+typeid(_data_type).name() );
+
     c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*dense_d2(j,l);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1c for ")+typeid(_data_type).name() );
 
@@ -192,9 +197,9 @@ BOOST_AUTO_TEST_CASE( MixedMIAMultTests )
 {
 
     //mult_work<double>(3,3);
-//    mult_work<float>(3,3);
-//    mult_work<int>(3,3);
-//    mult_work<long>(3,3);
+    //mult_work<float>(3,3);
+    //mult_work<int>(3,3);
+    //mult_work<long>(3,3);
 //
 //
 

@@ -44,24 +44,24 @@ void functions_work(){
     a2=a;
 
     b(j,k,i)=a(i,j,k);
-    a2.inplace_permute_new(1,2,0);
+    a2.inplace_permute(1,2,0);
     //b.print();
     //a2.print();
     BOOST_CHECK_MESSAGE(b==a2,std::string("Third-order in place permutation 1 for ")+typeid(_data_type).name());
     a2=a;
     b(k,i,j)=a(i,j,k);
-    a2.inplace_permute_new(2,0,1);
+    a2.inplace_permute(2,0,1);
     BOOST_CHECK_MESSAGE(b==a2,std::string("Third-order in place permutation 2 for ")+typeid(_data_type).name());
 
     c.randu(-50,50);
     c2=c;
     d(k,l,i,j)=c(i,j,k,l);
-    c2.inplace_permute_new(2,3,0,1);
+    c2.inplace_permute(2,3,0,1);
     BOOST_CHECK_MESSAGE(d==c2,std::string("Fourth-order in place permutation 1 for ")+typeid(_data_type).name());
 
     c2=c;
     d(j,l,i,k)=c(i,j,k,l);
-    c2.inplace_permute_new(1,3,0,2);
+    c2.inplace_permute(1,3,0,2);
     BOOST_CHECK_MESSAGE(d==c2,std::string("Fourth-order in place permutation 2 for ")+typeid(_data_type).name());
 
 }

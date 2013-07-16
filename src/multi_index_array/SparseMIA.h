@@ -805,7 +805,7 @@ template<typename otherDerived,typename index_param_type>
 void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
 
-    //std::cout <<"We got to sparse assign" << std::endl;
+
     //otherMIA.print();
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the linIdxSequence
@@ -842,6 +842,7 @@ template<typename otherDerived,typename index_param_type>
 void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
 
+    //std::cout << "Dense assign" << std::endl;
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //shuffle the dimensions around based on index_order
     internal::reverseOrder(index_order,this->mLinIdxSequence); //don't bother to re-sort, just change the linIdxSequence

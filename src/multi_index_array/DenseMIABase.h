@@ -355,7 +355,8 @@ public:
     }
 
 
-    void inplace_permute(const std::array<index_type,mOrder> & reshuffle_order);
+    template<typename index_param_type>
+    void inplace_permute(const std::array<index_param_type,mOrder> & reshuffle_order);
     void inplace_permute_new(const std::array<index_type,mOrder> & reshuffle_order);
 
     //!
@@ -575,8 +576,23 @@ void  DenseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op
 
 }
 
+
 template<typename Derived>
-void DenseMIABase<Derived>::inplace_permute(const std::array<index_type,mOrder>& reshuffle_order){
+template<typename index_param_type>
+void DenseMIABase<Derived>::inplace_permute(const std::array<index_param_type,mOrder>& reshuffle_order){
+
+    //first check that the reshuffle_order array isn't just {0,1,...mOrder}
+    //if it is, we do nothing
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
+
+    size_t check;
+    for(check=0;check<reshuffle_order.size();++check){
+        if(reshuffle_order[check]!=(index_param_type)check)
+            break;
+    }
+    if (check==reshuffle_order.size())
+        return;
+
     boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
     std::array<index_type,mOrder> new_dims; //stores new dimensions
     internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
@@ -589,15 +605,16 @@ void DenseMIABase<Derived>::inplace_permute(const std::array<index_type,mOrder>&
 
     dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
     //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
-    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
-        index_type to_lin_idx=0;
-        index_type multiplier=1;
-        for(size_t i=0;i<mOrder;++i){
-            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-            multiplier*=this->dim(i);
-        }
-        return to_lin_idx;
-    };
+    //EDIT - using the lambda slowed down the implementation, so it's just hard-coded now
+//    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
+//        index_type to_lin_idx=0;
+//        index_type multiplier=1;
+//        for(size_t i=0;i<mOrder;++i){
+//            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+//            multiplier*=this->dim(i);
+//        }
+//        return to_lin_idx;
+//    };
     index_type touch_ctr=0;
     //iterate through the entire bit array
     for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){

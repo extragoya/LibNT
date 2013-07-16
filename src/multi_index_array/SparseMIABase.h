@@ -175,6 +175,22 @@ public:
 
     }
 
+    //!  Assignment based on given order. Will call Derived's operator
+    /*!
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
+                                Will assert a compile failure is size of index_order is not the same as this->mOrder
+    */
+    template<class otherDerived,class index_param_type>
+    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,mOrder>& index_order){
+        derived().assign(otherMIA.derived(),index_order);
+    }
+
+
     //! Returns iterator to data and indices at given linear index. Should check if it equals storage_end() before dereferencing
     /*!
         Will search the non-zero values for one whose linear index equals idx, meaning complexity is nnz*log(nnz). Note it assumes

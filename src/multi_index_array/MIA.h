@@ -98,9 +98,9 @@ public:
     }
 
     template<class...Ts>
-    auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence> {
+    auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence,false> {
         static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
-        return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence>(&derived());
+        return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&derived());
 
     }
 
@@ -122,10 +122,11 @@ public:
         m_dimensionality(compute_dimensionality());
     }
 
-    template<class otherDerived,class index_param_type>
-    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,mOrder>& index_order){
-        final_derived().assign(otherMIA.final_derived(),index_order);
-    }
+//    template<class otherDerived,class index_param_type>
+//    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,mOrder>& index_order){
+//        std::cout << "MIA Assign " << std::endl;
+//        final_derived().assign(otherMIA.final_derived(),index_order);
+//    }
 
     template<class otherDerived>
     FinalDerived& operator=(const MIA<otherDerived>& otherMIA){

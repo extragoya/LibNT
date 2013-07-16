@@ -100,6 +100,9 @@ public:
 
 }
 
+
+
+
 template<class l_Seq,class r_Seq,int rule,typename Pred=boost::mpl::quote2<boost::is_same> >
 struct perform_cartesian_check
 {
@@ -129,6 +132,7 @@ struct index_decrementer
     template<
         class _MIA,
         class Seq,
+        bool hasownership,
         size_t inter_product_number,
         typename boost::enable_if<
             boost::mpl::greater<
@@ -138,16 +142,17 @@ struct index_decrementer
             int
         >::type=0
     >
-    static auto apply(MIA_Atom<_MIA,Seq,inter_product_number>& mia_atom)->MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq>
+    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>
     {
-        bool old_has_ownership=mia_atom.mHasOwnership;
-        mia_atom.mHasOwnership=false;
-        return MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq>(mia_atom.m_mia,old_has_ownership);
+        _MIA * _mia=mia_atom.m_mia;
+        mia_atom.m_mia=nullptr;
+        return MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>(_mia);
     }
 
     template<
         class _MIA,
         class Seq,
+        bool hasownership,
         size_t inter_product_number,
         typename boost::enable_if<
             boost::mpl::equal_to<
@@ -156,9 +161,11 @@ struct index_decrementer
             >,
         int >::type=0
     >
-    static auto apply(MIA_Atom<_MIA,Seq,inter_product_number>& mia_atom)->MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq>
+    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,Seq,hasownership,inter_product_number>
     {
-        return mia_atom;
+        _MIA * _mia=mia_atom.m_mia;
+        mia_atom.m_mia=nullptr;
+        return MIA_Atom<_MIA,Seq,hasownership,inter_product_number>(_mia);
     }
 
 };
@@ -236,45 +243,47 @@ struct product_solve_expr_helper
 
 
 
-template<class _MIA,class m_Seq,size_t inter_product_number>
+template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number>
 class MIA_Atom
 {
 public:
     _MIA* m_mia;
-    bool mHasOwnership;
-    MIA_Atom(_MIA* mia,bool _has_ownership=false): m_mia(mia),mHasOwnership(_has_ownership)
+    static constexpr bool mHasOwnership=ownership;
+    MIA_Atom(_MIA* mia): m_mia(mia)
     {
         static_assert(internal::is_MIA<_MIA>::value,"Somehow expression was instantiated with a non-MIA class.");
 
 
     }
     ~MIA_Atom(){
-        if(mHasOwnership)
+        if(m_mia && mHasOwnership)
             delete m_mia;
 
     }
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    auto operator*(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    auto operator*(const MIA_Atom<otherMIA,r_Seq, other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            true,
             MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
 
 
 
-        return perform_product<otherMIA,r_Seq,other_inter_number>(Rhs);
+        return perform_product<otherMIA,r_Seq,other_ownership,other_inter_number>(Rhs);
 
 
     }
 
-    template<class otherMIA,class r_Seq>
-    auto operator|(const MIA_Atom<otherMIA,r_Seq> & Rhs)->
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    auto operator|(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            true,
             MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
@@ -283,7 +292,10 @@ public:
 
         auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
 
+
         auto aLat=m_mia->toLatticeExpression(helper::left_inner_product_order(),helper::left_outer_product_order(),helper::left_inter_product_order());
+
+
 
         auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
 
@@ -297,7 +309,7 @@ public:
 
 
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+        return MIA_Atom<MIA_return_type,typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
 
 
 
@@ -310,22 +322,23 @@ public:
     MIA_Atom& operator=(const MIA_Atom & Rhs)
     {
 
-        if(mHasOwnership)
+
+        if(Rhs.mHasOwnership)
             *m_mia=std::move(*(Rhs.m_mia));
         else
             *m_mia=*(Rhs.m_mia);
         return *this;
     }
 
-    template<class otherMIA,size_t other_inter_number>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq,other_inter_number> & Rhs)
+    template<class otherMIA,bool other_ownership,size_t other_inter_number>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq,other_ownership,other_inter_number> & Rhs)
     {
 
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
 
-        if(mHasOwnership)
+        if(other_ownership)
             *m_mia=std::move(*(Rhs.m_mia));
         else
             *m_mia=*(Rhs.m_mia);
@@ -335,12 +348,13 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)
     {
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
+
 
         typedef perform_cartesian_check<m_Seq,r_Seq,internal::assign_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
@@ -353,8 +367,10 @@ public:
         typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
-        if(mHasOwnership)
+        if(other_ownership){
+
             m_mia->assign(std::move(*(Rhs.m_mia)),internal::to_std_array<typename pulling_index_order::match_order>::make());
+        }
         else
             m_mia->assign(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
 
@@ -364,14 +380,14 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    MIA_Atom& operator+=(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    MIA_Atom& operator+=(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)
     {
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
 
         //check to makes sure no left-hand indice is repeated
@@ -379,8 +395,8 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
 
-        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
 
+        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
         m_mia->plus_equal(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
@@ -391,11 +407,12 @@ public:
     }
 
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    auto operator+(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)->
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    auto operator+(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAMergeReturnType<_MIA,otherMIA>::type,
             m_Seq,
+            true,
             inter_product_number
         >
     {
@@ -404,7 +421,7 @@ public:
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
 
         //check to makes sure no left-hand indice is repeated
@@ -412,27 +429,27 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
 
         cType* cMIA(new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make())));
 
-        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
+        MIA_Atom<cType,m_Seq,true,inter_product_number> C(cMIA);
         return C;
 
 
     }
 
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    MIA_Atom& operator-=(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    MIA_Atom& operator-=(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)
     {
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
 
         //check to makes sure no left-hand indice is repeated
@@ -440,7 +457,7 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
 
-        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
 
@@ -452,11 +469,12 @@ public:
     }
 
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number>
-    auto operator-(const MIA_Atom<otherMIA,r_Seq,other_inter_number> & Rhs)->
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    auto operator-(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAMergeReturnType<_MIA,otherMIA>::type,
             m_Seq,
+            true,
             inter_product_number
         >
     {
@@ -464,7 +482,7 @@ public:
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule > cartesian_check;
+        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
 
         //check to makes sure no left-hand indice is repeated
@@ -472,19 +490,19 @@ public:
         //check to makes sure no left-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef internal::pull_right_index_order<m_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
         cType* cMIA=new cType(m_mia->minus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
-        MIA_Atom<cType,m_Seq,inter_product_number> C(cMIA,true);
+        MIA_Atom<cType,m_Seq,true,inter_product_number> C(cMIA);
         return C;
 
 
     }
 
 
-    auto operator~()->MIA_Atom<_MIA,typename internal::decrement_back_indices<m_Seq,inter_product_number>::newSeq>{
-        return index_decrementer::template apply<_MIA,m_Seq,inter_product_number>(*this);
+    auto operator~()->MIA_Atom<_MIA,typename internal::decrement_back_indices<m_Seq,inter_product_number>::newSeq,mHasOwnership>{
+        return index_decrementer::template apply<_MIA,m_Seq,mHasOwnership,inter_product_number>(*this);
 
     }
 
@@ -494,6 +512,9 @@ public:
 
 private:
 
+
+
+
     template<class otherMIA,class r_Seq,size_t other_inter_number,
                 typename boost::disable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0
             >
@@ -501,20 +522,23 @@ private:
         MIA_Atom<
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            true,
             MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
 
 
 
-
+        //std::cout << "Entered MIA Expr*" << std::endl;
         typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
         auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
         auto aLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
-
+       // std::cout << "ALat done" << std::endl;
         auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        //std::cout << "BLat done" << std::endl;
         auto cLat=aLat*bLat;
+        //std::cout << "CLat done" << std::endl;
         //cLat.print();
 
 
@@ -522,10 +546,10 @@ private:
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
-
+        //std::cout << "Lattice product finished " << std::endl;
 
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
 
 
 
@@ -537,6 +561,7 @@ private:
         MIA_Atom<
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            true,
             MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
@@ -551,9 +576,9 @@ private:
                                                                        helper::right_inter_product_order(),
                                                                        helper::right_outer_product_order())));
         constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-
+        //std::cout << "Pure outer/inter finished " << std::endl;
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,inter_product_number>(cMIA,true);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
 
 
 
