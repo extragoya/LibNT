@@ -30,7 +30,7 @@
 #include "Util.h"
 #include "MIA.h"
 #include "DenseLattice.h"
-
+#include "MappedDenseLattice.h"
 
 
 namespace LibMIA
@@ -183,6 +183,29 @@ public:
 
     }
 
+
+    //! Flattens the MIA to a Lattice by permuting the data in-place.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return MappedDenseLattice class that wraps this's raw data
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    MappedDenseLattice<data_type> toLatticePermute(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices);
+
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.
+    /*!
+        For DenseMIAs, this function calls toLatticePermute
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    auto toLatticeDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
+    ->decltype(this->toLatticePermute(row_indices, column_indices, tab_indices))
+    {
+        return this->toLatticePermute(row_indices, column_indices, tab_indices);
+
+    }
+
     //! Flattens the MIA to a Lattice by creating a copy of the data.
     /*!
         \param[in] row_indices indices to map to the lattice rows - will perserve ordering
@@ -192,6 +215,8 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
+
+
 
 
     //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
@@ -462,7 +487,7 @@ auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_in
     static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
     static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
     static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-
+    static_assert(R+C+T==mOrder,"Size of all three arrays must equal mOrder");
     //statically check number of indices match up
     size_t row_size=1, column_size=1, tab_size=1;
     std::array<index_type, R> row_dims;
@@ -499,6 +524,42 @@ auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_in
 
     //lat.print();
     return lat;
+
+
+}
+
+template<typename Derived>
+template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+auto DenseMIABase<Derived>::toLatticePermute(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) ->MappedDenseLattice<data_type>
+{
+
+    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
+    static_assert(R+C+T==mOrder,"Size of all three arrays must equal mOrder");
+    //statically check number of indices match up
+    size_t row_size=1, column_size=1, tab_size=1;
+    std::array<index_type,R+C+T> permute_order;
+    internal::concat_arrays(row_indices,column_indices,tab_indices,permute_order);
+
+    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
+    this->inplace_permute(permute_order);
+    for(size_t i=0;i<R;++i)
+        row_size*=this->dim(i);
+    for(size_t i=R;i<C+R;++i)
+        column_size*=this->dim(i);
+    for(size_t i=C+R;i<mOrder;++i)
+        tab_size*=this->dim(i);
+
+
+
+    return MappedDenseLattice<data_type>(derived().raw_data_ptr(),row_size, column_size, tab_size);
+
+
+
+
 
 
 }

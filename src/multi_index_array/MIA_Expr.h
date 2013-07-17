@@ -127,6 +127,33 @@ struct perform_auto_check
 
 };
 
+
+template<typename _MIA, typename array1Type,typename array2Type, typename array3Type, bool hasOwnership>
+struct lattice_maker
+{
+
+};
+
+template<typename _MIA, typename array1Type,typename array2Type, typename array3Type>
+struct lattice_maker<_MIA,array1Type,array2Type,array3Type,true>
+{
+    static auto apply(_MIA & _mia,const array1Type& array1, const array2Type& array2, const array3Type& array3)
+    ->decltype(_mia.toLatticeDiscard(array1,array2,array3))
+    {
+        return _mia.toLatticeDiscard(array1,array2,array3);
+    }
+};
+
+template<typename _MIA, typename array1Type,typename array2Type, typename array3Type>
+struct lattice_maker<_MIA,array1Type,array2Type,array3Type,false>
+{
+    static auto apply(_MIA & _mia,const array1Type& array1, const array2Type& array2, const array3Type& array3)
+    ->decltype(_mia.toLatticeExpression(array1,array2,array3))
+    {
+        return _mia.toLatticeExpression(array1,array2,array3);
+    }
+};
+
 struct index_decrementer
 {
     template<
@@ -515,10 +542,10 @@ private:
 
 
 
-    template<class otherMIA,class r_Seq,size_t other_inter_number,
+    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
                 typename boost::disable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0
             >
-    auto perform_product(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
+    auto perform_product(const MIA_Atom<otherMIA,r_Seq, otherOwnership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
@@ -533,9 +560,16 @@ private:
         typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
         auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
-        auto aLat=m_mia->toLatticeExpression(helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
+
+
+        auto aLat=lattice_maker<_MIA,decltype(helper::left_outer_product_order()),decltype(helper::left_inner_product_order()),decltype(helper::left_inter_product_order()),mHasOwnership>
+            ::apply(*m_mia,helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
+
+        auto bLat=lattice_maker<otherMIA,decltype(helper::right_inner_product_order()),decltype(helper::right_outer_product_order()),decltype(helper::right_inter_product_order()),otherOwnership>
+            ::apply(*(Rhs.m_mia),helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+
        // std::cout << "ALat done" << std::endl;
-        auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        //auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
         //std::cout << "BLat done" << std::endl;
         auto cLat=aLat*bLat;
         //std::cout << "CLat done" << std::endl;

@@ -234,6 +234,27 @@ public:
 
     }
 
+    //!  Move constructor
+    SparseLattice(SparseLattice&& other): m_data(), m_indices()
+    {
+        m_data.swap(other.m_data);
+        m_indices.swap(other.m_indices);
+        this->init(other.height(),other.width(),other.depth());
+        this->sparse_init(other.is_sorted(),other.linIdxSequence());
+
+    }
+
+    //!  Move assignment
+    SparseLattice& operator=(SparseLattice&& other)
+    {
+        m_data.swap(other.m_data);
+        m_indices.swap(other.m_indices);
+        this->init(other.height(),other.width(),other.depth());
+        this->sparse_init(other.is_sorted(),other.linIdxSequence());
+        return *this;
+
+    }
+
     //!  Constructs a sparse lattice from two prexisting std::vectors.
     /*!
     Copies the contents of _data and _indices to the lattice's internal vectors.

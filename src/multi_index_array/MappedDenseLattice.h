@@ -69,6 +69,12 @@ struct data_iterator<MappedDenseLattice<T> >
     typedef T* type;
 };
 
+template<typename T>
+struct index_type<MappedDenseLattice<T> >
+{
+    typedef typename Eigen::Matrix<typename data_type<MappedDenseLattice<T>>::type,Eigen::Dynamic,Eigen::Dynamic>::Index type;
+};
+
 
 }
 

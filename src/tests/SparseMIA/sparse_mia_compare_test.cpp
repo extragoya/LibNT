@@ -39,12 +39,13 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     BOOST_CHECK_MESSAGE(test1!=test2,std::string("Comparison test 3 for ")+typeid(MIAType).name());
 
     test1.resize(test1.dimensionality()/2);
-    test2.resize(test1.dimensionality()/2);
+
     test1.randu(-50,50);
     test1.rand_indices();
     test1.collect_duplicates();
-
+    test2.resize(test1.size());
     std::copy(test1.storage_begin(),test1.storage_end(),test2.storage_begin());
+
     BOOST_CHECK_MESSAGE(test1==test2,std::string("Comparison test 4 for ")+typeid(MIAType).name());
 
 

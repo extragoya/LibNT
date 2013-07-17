@@ -173,6 +173,22 @@ public:
 
     }
 
+    //!  Move assignment.
+    DenseLattice& operator=(DenseLattice && other)
+    {
+
+        if(this!=&other){
+            this->mSolveInfo=other.solveInfo();
+            m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
+            m_Data.swap(other.m_Data);
+            this->init( other.height(), other.width(), other.depth());
+        }
+        return *this;
+
+
+    }
+
+
 
 
     //TODO move constructor and move assignment
