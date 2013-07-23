@@ -48,6 +48,17 @@ struct data_type<SparseMIA<T,_order> >
 };
 
 template<typename T,size_t _order>
+struct data_type_ref<SparseMIA<T,_order> >
+{
+    typedef T & type;
+};
+template<typename T,size_t _order>
+struct const_data_type_ref<SparseMIA<T,_order> >
+{
+    typedef const T & type;
+};
+
+template<typename T,size_t _order>
 struct index_type<SparseMIA<T,_order> >
 {
     typedef long long type;

@@ -61,6 +61,9 @@ template<class Derived>
 struct data_iterator<DenseLatticeBase<Derived> >: public data_iterator<Derived> {};
 
 template<class Derived>
+struct const_data_iterator<DenseLatticeBase<Derived> >: public const_data_iterator<Derived> {};
+
+template<class Derived>
 struct storage_iterator<DenseLatticeBase<Derived> >: public storage_iterator<Derived> {};
 
 template<class Derived>
@@ -94,6 +97,7 @@ public:
     typedef typename internal::index_type<DenseLatticeBase>::type index_type;
     typedef typename internal::Data<DenseLatticeBase>::type Data;
     typedef typename internal::data_iterator<DenseLatticeBase>::type data_iterator;
+    typedef typename internal::const_data_iterator<DenseLatticeBase>::type const_data_iterator;
     typedef typename internal::storage_iterator<DenseLatticeBase>::type storage_iterator;
     typedef typename internal::const_storage_iterator<DenseLatticeBase>::type const_storage_iterator;
     typedef typename Eigen::Map<Eigen::Matrix<data_type, Eigen::Dynamic, Eigen::Dynamic> > matrix_type;
@@ -266,16 +270,28 @@ public:
 
     }
 
-
-
-    data_iterator data_begin() const
+    data_iterator data_begin()
     {
 
 
         return derived().data_begin();
     }
 
-    data_iterator data_end() const
+    data_iterator data_end()
+    {
+
+
+        return derived().data_end();
+    }
+
+    const_data_iterator data_begin() const
+    {
+
+
+        return derived().data_begin();
+    }
+
+    const_data_iterator data_end() const
     {
 
 

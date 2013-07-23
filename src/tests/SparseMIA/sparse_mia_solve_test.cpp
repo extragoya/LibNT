@@ -92,6 +92,7 @@ void solve_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product Inverse 2 for ")+typeid(_data_type).name() );
 
     _prob=0.7;
+    random_mia(dense_a,_prob);
     flag=true;
     while(flag){
 
@@ -136,7 +137,7 @@ BOOST_AUTO_TEST_CASE( SparseMIASolveTests )
 
 
 
-    solve_work<double>(10,10);
+    //solve_work<double>(10,10);
     solve_work<float>(10,10);
 
 

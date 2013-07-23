@@ -45,7 +45,6 @@ void do_work(size_t dim1){
     sparse_a=dense_a;
     dense_c(i,j,k)=dense_a(i,j,k)+dense_b(i,j,k);
     dense_c2(i,j,k)=sparse_a(i,j,k)+dense_b(i,j,k);
-
     BOOST_CHECK_MESSAGE(dense_c==dense_c2,std::string("Non-destructive Add 1a for ")+typeid(data_type).name());
     //switch order of operands
     dense_c2(i,j,k)=dense_b(i,j,k)+sparse_a(i,j,k);

@@ -55,7 +55,14 @@ namespace LibMIA
 namespace internal
 {
 
-
+template<class array_type>
+bool check_ascending(const array_type& _from){
+    for(size_t i=0;i<_from.size();++i){
+        if (_from[i]!=(typename array_type::value_type)i)
+            return false;
+    }
+    return true;
+}
 
 template<class array_type1,class array_type2, class array_type3,class array_type4,size_t size1, size_t size2, size_t size3>
 void concat_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3,std::array<array_type4,size1+size2+size3>& to_array)
@@ -372,6 +379,35 @@ inline indexType sub2ind_function(const std::array<function_type,T> & indices_fu
         idx+=indices_function[i](original_idx)*multiplier;
         multiplier*=dims[i];
     }
+    return idx;
+
+}
+
+//!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
+template<typename itType, typename accessType2,typename dimType>
+typename dimType::value_type sub2ind(itType _begin, itType _end,const accessType2 &order, const dimType & dims)
+{
+
+
+
+    typename dimType::value_type idx=0;
+    typename dimType::value_type multiplier;
+    size_t i=0;
+    for (auto it=_begin; it< _end; ++it,++i)
+    {
+
+        multiplier=1;
+        for(size_t j=0; j<(size_t)order[i]; ++j)
+        {
+
+            multiplier*=dims[j];
+        }
+        idx+=(*it)*multiplier;
+
+
+
+    }
+
     return idx;
 
 }

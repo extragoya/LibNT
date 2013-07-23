@@ -170,6 +170,9 @@ class DenseMIA;
 template <class T,size_t _order>
 class SparseMIA;
 
+template <class T,size_t _order>
+class ImplicitMIA;
+
 template<class _MIA,class m_Seq,bool ownership=true,size_t inter_product_size=0>
 struct MIA_Atom;
 
@@ -182,6 +185,12 @@ using boost::mpl::_;
 
 template<class Derived>
 struct data_type;
+
+template<class Derived>
+struct data_type_ref;
+
+template<class Derived>
+struct const_data_type_ref;
 
 template<class Derived>
 struct order;
@@ -225,6 +234,10 @@ struct data_iterator;
 template<typename Derived>
 struct const_data_iterator;
 
+//only use for implicit MIAs
+template<typename Derived>
+struct function_type;
+
 template<typename Derived>
 struct FinalDerived;
 
@@ -244,6 +257,9 @@ template<class T, size_t _order>
 struct is_MIA<DenseMIA<T,_order > >: public boost::true_type {};
 
 template<class T, size_t _order>
+struct is_MIA<ImplicitMIA<T,_order > >: public boost::true_type {};
+
+template<class T, size_t _order>
 struct is_MIA<SparseMIA<T,_order > >: public boost::true_type {};
 
 template<class Derived>
@@ -257,6 +273,9 @@ struct is_DenseMIA<DenseMIA<T,_order > >: public boost::true_type {};
 
 template<class Derived>
 struct is_DenseMIA<DenseMIABase<Derived> >:public boost::true_type {};
+
+template<class T, size_t _order>
+struct is_DenseMIA<ImplicitMIA<T,_order > >: public boost::true_type {};
 
 template<class Derived>
 struct is_DenseMIA<MIA<Derived> >:public is_DenseMIA<Derived> {};
@@ -303,6 +322,8 @@ data_type convert(const from_data_type from){
     typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
     return to_mdata_type::convert(from);
 }
+
+
 
 
 //must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
@@ -626,7 +647,7 @@ struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     >::type
 >
 {
-    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+    typedef ImplicitMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 
@@ -672,9 +693,31 @@ template<typename Lhs, typename Rhs>
 struct MIAMergeReturnType<Lhs,Rhs,
     typename
         boost::enable_if<
-            boost::mpl::or_<
+            boost::mpl::and_<
                 internal::is_DenseMIA<Lhs>,
                 internal::is_DenseMIA<Rhs>
+            >
+        >::type
+    >
+{
+
+    typedef ImplicitMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+};
+
+
+template<typename Lhs, typename Rhs>
+struct MIAMergeReturnType<Lhs,Rhs,
+    typename
+        boost::enable_if<
+            boost::mpl::or_<
+                boost::mpl::and_<
+                    internal::is_DenseMIA<Lhs>,
+                    internal::is_SparseMIA<Rhs>
+                >,
+                boost::mpl::and_<
+                    internal::is_SparseMIA<Lhs>,
+                    internal::is_DenseMIA<Rhs>
+                >
             >
         >::type
     >
@@ -751,6 +794,8 @@ inline bool isEqualFuzzy(T a, T2 b, T3 prec = Tolerance<T>::tolerance)
     return std::abs(a - b) <= std::min(std::abs(a), std::abs(b)) * prec;
   }
 }
+
+
 
 
 /*! @} */

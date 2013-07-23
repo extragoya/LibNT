@@ -28,6 +28,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "Util.h"
+#include "FunctionUtil.h"
 #include "MIA.h"
 #include "DenseLattice.h"
 #include "MappedDenseLattice.h"
@@ -47,6 +48,12 @@ template<class Derived>
 struct data_type<DenseMIABase<Derived> >: public data_type<Derived> {};
 
 template<class Derived>
+struct data_type_ref<DenseMIABase<Derived>>: public data_type_ref<Derived> {};
+
+template<class Derived>
+struct const_data_type_ref<DenseMIABase<Derived>>: public const_data_type_ref<Derived> {};
+
+template<class Derived>
 struct index_type<DenseMIABase<Derived> >: public index_type<Derived> {};
 
 template<class Derived>
@@ -58,8 +65,7 @@ struct data_iterator<DenseMIABase<Derived> >: public data_iterator<Derived> {};
 template<class Derived>
 struct const_data_iterator<DenseMIABase<Derived> >: public const_data_iterator<Derived> {};
 
-template<class Derived>
-struct storage_iterator<DenseMIABase<Derived> >: public storage_iterator<Derived> {};
+
 
 template<class Derived>
 struct const_storage_iterator<DenseMIABase<Derived> >: public const_storage_iterator<Derived> {};
@@ -76,7 +82,8 @@ struct FinalDerived<DenseMIABase<Derived> >:public FinalDerived<Derived>{};
   This class acts as the base class for the parametric subclass pattern,
   which is more commonly known as the CTRP. It is the base class for all
   dense multi-index array types. Provides operations and functions common to all dense
-  multi-index arrays.
+  multi-index arrays. Due to the existence of ImplictMIA, which is read-only for the raw data, DenseMIABase
+  is only meant to define read-only functionality.
 
   \tparam Derived   should only be a dense multi-index array class.
 */
@@ -86,14 +93,15 @@ class DenseMIABase: public MIA<DenseMIABase<Derived > >
 public:
 
 
-    typedef typename internal::data_type<Derived>::type data_type;
-    typedef typename internal::index_type<Derived>::type index_type;
-    typedef typename internal::Data<Derived>::type Data;
-    typedef typename internal::data_iterator<Derived>::type data_iterator;
-    typedef typename internal::const_data_iterator<Derived>::type const_data_iterator;
-    typedef typename internal::storage_iterator<Derived>::type storage_iterator;
-    typedef typename internal::const_storage_iterator<Derived>::type const_storage_iterator;
-    constexpr static size_t mOrder=internal::order<Derived>::value;
+    typedef typename internal::data_type<DenseMIABase>::type data_type;
+    typedef typename internal::data_type_ref<DenseMIABase>::type data_type_ref;
+    typedef typename internal::const_data_type_ref<DenseMIABase>::type const_data_type_ref;
+    typedef typename internal::index_type<DenseMIABase>::type index_type;
+    typedef typename internal::data_iterator<DenseMIABase>::type data_iterator;
+    typedef typename internal::const_data_iterator<DenseMIABase>::type const_data_iterator;
+    typedef typename internal::FinalDerived<DenseMIABase>::type FinalDerived;
+
+    constexpr static size_t mOrder=internal::order<DenseMIABase>::value;
     Derived& derived()
     {
         return *static_cast<Derived*>(this);
@@ -102,6 +110,16 @@ public:
     const Derived& derived() const
     {
         return *static_cast<const Derived*>(this);
+    }
+
+    FinalDerived& final_derived()
+    {
+        return derived().final_derived();
+    }
+    /** \returns a const reference to the derived object */
+    const FinalDerived& final_derived() const
+    {
+        return derived().final_derived();
     }
 
     template<typename... Dims>
@@ -113,55 +131,26 @@ public:
 
     DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims),mSolveInfo(NoInfo) {}
 
-    template<class otherDerived>
-    bool operator==(const DenseMIABase<otherDerived>& otherMIA);
+    template<class otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    bool operator==(const MIA<otherDerived>& otherMIA) const;
 
-    template<class otherDerived>
-    bool fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision );
-
-
-
-    //!Assignment operator. Will call Derived's operator
-    template<class otherDerived>
-    DenseMIABase& operator=(const DenseMIABase<otherDerived>& otherMIA){
-        return derived()=otherMIA;
-    }
-
-
-    //!Assignment operator. Will call Derived's operator
-    DenseMIABase& operator=(const DenseMIABase& otherMIA){
-        return derived()=otherMIA.derived();
-    }
-
-    //!  Assignment based on given order. Will call Derived's operator
-    /*!
-
-        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
-        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
-
-        \param[in] otherMIA the other MIA
-        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {3,1,2} this->at(1,2,3)==otherMIA.at(2,3,1).
-                                Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,class index_param_type>
-    void assign(const MIA<otherDerived>& otherMIA,const std::array<index_param_type,internal::order<DenseMIABase>::value>& index_order){
-        derived().assign(otherMIA.derived(),index_order);
-    }
+    template<class otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    bool fuzzy_equals(const MIA<otherDerived> & otherMIA,data_type precision ) const;
 
 
 
     //! Returns scalar data at given linear index
-    const data_type& atIdx(index_type idx) const{
+    const_data_type_ref atIdx(index_type idx) const{
 
         //return lin index
-        return *(derived().data_begin()+idx);
+        return derived().atIdx(idx);
     }
 
     //! Returns scalar data at given linear index
-    data_type& atIdx(index_type idx) {
+    data_type_ref atIdx(index_type idx){
 
         //return lin index
-        return *(derived().data_begin()+idx);
+        return derived().atIdx(idx);
     }
 
     SolveInfo solveInfo() const{
@@ -172,39 +161,7 @@ public:
         mSolveInfo=_solveInfo;
     }
 
-    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
-    /*!
-        For DenseMIAs, this function calls toLatticeCopy
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const
-    {
-        return toLatticeCopy(row_indices, column_indices, tab_indices);
 
-    }
-
-
-    //! Flattens the MIA to a Lattice by permuting the data in-place.
-    /*!
-        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
-        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
-        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
-        \return MappedDenseLattice class that wraps this's raw data
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    MappedDenseLattice<data_type> toLatticePermute(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices);
-
-    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.
-    /*!
-        For DenseMIAs, this function calls toLatticePermute
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    auto toLatticeDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
-    ->decltype(this->toLatticePermute(row_indices, column_indices, tab_indices))
-    {
-        return this->toLatticePermute(row_indices, column_indices, tab_indices);
-
-    }
 
     //! Flattens the MIA to a Lattice by creating a copy of the data.
     /*!
@@ -219,18 +176,17 @@ public:
 
 
 
-    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
-    template<typename otherDerived, typename Op,typename index_param_type>
-    void  merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
 
-    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
-    template<typename otherDerived, typename Op,typename index_param_type>
-    void  merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order);
+
+    //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
+    template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIAMergeReturnType<Derived,otherDerived>::type
+    implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const;
 
     //! Routine for performing multiplication without the need for a lattice multiplication
-    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
+    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
-    noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+    noLatticeMult(const MIA<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
     //! Routine for performing multiplication without the need for a lattice multiplication
     template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
@@ -279,33 +235,7 @@ public:
     }
 
 
-    storage_iterator begin()
-    {
 
-
-        return derived().begin();
-    }
-
-    storage_iterator end()
-    {
-
-
-        return derived().end();
-    }
-
-    const_storage_iterator begin() const
-    {
-
-
-        return derived().begin();
-    }
-
-    const_storage_iterator end() const
-    {
-
-
-        return derived().end();
-    }
 
     template<class otherDerived>
     bool operator==(SparseMIABase<otherDerived>& otherMIA) const
@@ -319,14 +249,14 @@ public:
         return !(*this==otherMIA.derived());
     }
 
-    template<class otherDerived>
-    bool operator!=(const DenseMIABase<otherDerived>& otherMIA) const
+    template<class otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    bool operator!=(const MIA<otherDerived>& otherMIA) const
     {
         return !(*this==otherMIA.derived());
     }
 
     template<class otherDerived,typename index_param_type>
-    typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
+    typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const SparseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
 
         typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
         CType c(*this);
@@ -335,7 +265,7 @@ public:
     }
 
     template<class otherDerived,typename index_param_type>
-    typename MIAMergeReturnType<Derived,otherDerived>::type  minus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
+    typename MIAMergeReturnType<Derived,otherDerived>::type  minus_(const SparseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
 
         typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
         CType c(*this);
@@ -343,73 +273,34 @@ public:
         return c;
     }
 
-    //! Performs destructive add (+=).
-    /*!
-        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is added like: this->at(x,y,z)+=b.at(z,x,y).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,typename index_param_type>
-    DenseMIABase & plus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
-
+    template<class otherDerived,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
         std::plus<data_type> op;
-        merge(b.derived(),op,index_order);
-        return *this;
+        return implicit_merge(b.derived(),op,index_order);
     }
 
-
-    //! Performs destructive subtract (-=).
-    /*!
-        \param[in] index_order The assignment order, given for b. E.g., if order is {3,1,2}, then each data_value is subtracted like: this->at(x,y,z)-=b.at(z,x,y).
-        Will assert a compile failure is size of index_order is not the same as this->mOrder
-    */
-    template<class otherDerived,typename index_param_type>
-    DenseMIABase & minus_equal(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order){
+    template<class otherDerived,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIAMergeReturnType<Derived,otherDerived>::type  minus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
         std::minus<data_type> op;
-        merge(b.derived(),op,index_order);
-        return *this;
+        return implicit_merge(b.derived(),op,index_order);
     }
 
-    void print()
+
+
+
+
+    void print() const
     {
         std::cout << "Index\t Data" << std::endl;
-        for(auto it=this->data_begin();it<this->data_end();++it){
-            if(*it)
-                std::cout << it-this->data_begin() << "\t " << *it << std::endl;
+        for(size_t idx=0; idx<this->dimensionality();++idx){
+            if(this->atIdx(idx))
+                std::cout << idx << "\t " << this->atIdx(idx) << std::endl;
         }
         std::cout << std::endl;
     }
 
 
-    template<typename index_param_type>
-    void inplace_permute(const std::array<index_param_type,mOrder> & reshuffle_order);
-    void inplace_permute_new(const std::array<index_type,mOrder> & reshuffle_order);
 
-    //!
-    /*!
-        Based on An Optimal Index Reshuffle Algorithm for Multidimensional Arrays and Its Applications for Parallel Architectures by Chris H.Q. Ding and the modification
-        in Sec. III A by Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays
-    */
-    template<typename... Dims>
-    void inplace_permute(Dims... dims){
-        static_assert(internal::check_mia_constructor<DenseMIABase,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-
-        std::array<index_type, mOrder> reshuffle_order{{dims...}};
-        inplace_permute(reshuffle_order);
-
-    }
-
-    //!
-    /*!
-        An Idea tried to speed-up inplace_permutation, but ended up being slower
-    */
-    template<typename... Dims>
-    void inplace_permute_new(Dims... dims){
-        static_assert(internal::check_mia_constructor<DenseMIABase,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-
-        std::array<index_type, mOrder> reshuffle_order{{dims...}};
-        inplace_permute_new(reshuffle_order);
-
-    }
 
 protected:
 
@@ -423,59 +314,64 @@ private:
 };
 
 template<typename Derived>
-template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
-auto  DenseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
+auto  DenseMIABase<Derived>::noLatticeMult(const MIA<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
 ->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
 {
-    //statically check number of indices match up
-    static_assert(internal::check_index_compatibility<index_type,array_type>::type::value,"Must use an array convertable to index_type");
-    typedef typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type RetType; //get return type
-    typedef typename internal::index_type<otherDerived>::type b_index_type;
-
-    std::array<index_type, L_inter> l_inter_dims;
-    std::array<index_type, L_outer> l_outer_dims;
-    std::array<b_index_type, R_inter> r_inter_dims;
-    std::array<b_index_type, R_outer> r_outer_dims;
-    std::array<typename internal::index_type<RetType>::type,L_outer+R_outer+L_inter> return_dims;
 
 
-    //get inter and outer dimensionality and the individual dimensions that make up that number - should default to one if any of the arrays are empty
-    size_t l_inter_size=internal::reorder_from(this->dims(), l_inter_idx,l_inter_dims);
-    internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
-    if(l_inter_dims.size()!=r_inter_dims.size() || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
-        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
-    size_t l_outer_size=internal::reorder_from(this->dims(), l_outer_idx,l_outer_dims);
-    size_t r_outer_size=internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
 
 
-    //concatenate the pulled dimensions into a consolidated set of dimensions for the return mia
-
-    auto temp_end=std::copy(l_outer_dims.begin(),l_outer_dims.end(),return_dims.begin());
-    temp_end=std::copy(r_outer_dims.begin(),r_outer_dims.end(),temp_end);
-    temp_end=std::copy(l_inter_dims.begin(),l_inter_dims.end(),temp_end);
-    RetType C(return_dims);
-
-
-    index_type l_inter_linear_idx=0, l_outer_linear_idx=0;
-    b_index_type r_outer_linear_idx=0,r_inter_linear_idx=0;
-    for (index_type k=0;k<l_inter_size;++k){ //loop through every set of element-wise indices (in linearized form)
-        //compute the offset of the current elementwise index for both operands
-        l_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,l_inter_dims),l_inter_idx,this->dims());
-        r_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,r_inter_dims),r_inter_idx,b.dims());
-        //now loop through every possible set of outer-wise indices in both operands (these are not shared)
-        for (index_type j=0;j<l_outer_size;++j){
-            l_outer_linear_idx=l_inter_linear_idx+internal::sub2ind(internal::ind2sub(j,l_outer_dims),l_outer_idx,this->dims()); //compute offset
-            for (index_type i=0;i<r_outer_size;++i){
-                r_outer_linear_idx=r_inter_linear_idx+internal::sub2ind(internal::ind2sub(i,r_outer_dims),r_outer_idx,b.dims()); //compute offset
-                //set the element at the appropriate offset in C to the product of the two operand elements
-                C.atIdx(j+i*l_outer_size+k*r_outer_size*l_outer_size)=this->atIdx(l_outer_linear_idx)*b.atIdx(r_outer_linear_idx);
-
-            }
-        }
-
-
-    }
-    return C;
+    return internal::implicitNoLatticeMult(this->final_derived(),b.final_derived(),l_inter_idx,l_outer_idx,r_inter_idx,r_outer_idx);
+//    //statically check number of indices match up
+//    static_assert(internal::check_index_compatibility<index_type,array_type>::type::value,"Must use an array convertable to index_type");
+//    typedef typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type RetType; //get return type
+//    typedef typename internal::index_type<otherDerived>::type b_index_type;
+//
+//    std::array<index_type, L_inter> l_inter_dims;
+//    std::array<index_type, L_outer> l_outer_dims;
+//    std::array<b_index_type, R_inter> r_inter_dims;
+//    std::array<b_index_type, R_outer> r_outer_dims;
+//    std::array<typename internal::index_type<RetType>::type,L_outer+R_outer+L_inter> return_dims;
+//
+//
+//    //get inter and outer dimensionality and the individual dimensions that make up that number - should default to one if any of the arrays are empty
+//    size_t l_inter_size=internal::reorder_from(this->dims(), l_inter_idx,l_inter_dims);
+//    internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
+//    if(l_inter_dims.size()!=r_inter_dims.size() || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
+//        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
+//    size_t l_outer_size=internal::reorder_from(this->dims(), l_outer_idx,l_outer_dims);
+//    size_t r_outer_size=internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
+//
+//
+//    //concatenate the pulled dimensions into a consolidated set of dimensions for the return mia
+//
+//    auto temp_end=std::copy(l_outer_dims.begin(),l_outer_dims.end(),return_dims.begin());
+//    temp_end=std::copy(r_outer_dims.begin(),r_outer_dims.end(),temp_end);
+//    temp_end=std::copy(l_inter_dims.begin(),l_inter_dims.end(),temp_end);
+//    RetType C(return_dims);
+//
+//
+//    index_type l_inter_linear_idx=0, l_outer_linear_idx=0;
+//    b_index_type r_outer_linear_idx=0,r_inter_linear_idx=0;
+//    for (index_type k=0;k<l_inter_size;++k){ //loop through every set of element-wise indices (in linearized form)
+//        //compute the offset of the current elementwise index for both operands
+//        l_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,l_inter_dims),l_inter_idx,this->dims());
+//        r_inter_linear_idx=internal::sub2ind(internal::ind2sub(k,r_inter_dims),r_inter_idx,b.dims());
+//        //now loop through every possible set of outer-wise indices in both operands (these are not shared)
+//        for (index_type j=0;j<l_outer_size;++j){
+//            l_outer_linear_idx=l_inter_linear_idx+internal::sub2ind(internal::ind2sub(j,l_outer_dims),l_outer_idx,this->dims()); //compute offset
+//            for (index_type i=0;i<r_outer_size;++i){
+//                r_outer_linear_idx=r_inter_linear_idx+internal::sub2ind(internal::ind2sub(i,r_outer_dims),r_outer_idx,b.dims()); //compute offset
+//                //set the element at the appropriate offset in C to the product of the two operand elements
+//                C.atIdx(j+i*l_outer_size+k*r_outer_size*l_outer_size)=this->atIdx(l_outer_linear_idx)*b.atIdx(r_outer_linear_idx);
+//
+//            }
+//        }
+//
+//
+//    }
+//    return C;
 
 }
 
@@ -484,95 +380,64 @@ template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C,
 auto DenseMIABase<Derived>::toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const ->DenseLattice<data_type>
 {
 
-    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-    static_assert(R+C+T==mOrder,"Size of all three arrays must equal mOrder");
-    //statically check number of indices match up
-    size_t row_size=1, column_size=1, tab_size=1;
-    std::array<index_type, R> row_dims;
-    std::array<index_type, C> column_dims;
-    std::array<index_type, T> tab_dims;
+    return internal::latticeCopy(*this,row_indices,column_indices,tab_indices);
 
-    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
-    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
-
-    row_size=internal::reorder_from(this->dims(), row_indices,row_dims);
-    column_size=internal::reorder_from(this->dims(), column_indices,column_dims);
-    tab_size=internal::reorder_from(this->dims(), tab_indices,tab_dims);
-
-    //std::cout<< "Tab dims " << tab_dims[0] << "\n";
-    DenseLattice<data_type> lat(row_size, column_size, tab_size);
-
-
-
-    index_type row_idx=0, column_idx=0,tab_idx=0;
-    for (index_type k=0;k<tab_size;++k){
-        tab_idx=internal::sub2ind(internal::ind2sub(k,tab_dims),tab_indices,this->m_dims);
-        for (index_type j=0;j<column_size;++j){
-            column_idx=tab_idx+internal::sub2ind(internal::ind2sub(j,column_dims),column_indices,this->m_dims);
-            for (index_type i=0;i<row_size;++i){
-                row_idx=column_idx+internal::sub2ind(internal::ind2sub(i,row_dims),row_indices,this->m_dims);
-
-                lat(i,j,k)=this->atIdx(row_idx);
-
-            }
-        }
-
-
-    }
-
-    //lat.print();
-    return lat;
-
-
-}
-
-template<typename Derived>
-template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-auto DenseMIABase<Derived>::toLatticePermute(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) ->MappedDenseLattice<data_type>
-{
-
-    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-    static_assert(R+C+T==mOrder,"Size of all three arrays must equal mOrder");
-    //statically check number of indices match up
-    size_t row_size=1, column_size=1, tab_size=1;
-    std::array<index_type,R+C+T> permute_order;
-    internal::concat_arrays(row_indices,column_indices,tab_indices,permute_order);
-
-    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
-    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
-
-    this->inplace_permute(permute_order);
-    for(size_t i=0;i<R;++i)
-        row_size*=this->dim(i);
-    for(size_t i=R;i<C+R;++i)
-        column_size*=this->dim(i);
-    for(size_t i=C+R;i<mOrder;++i)
-        tab_size*=this->dim(i);
-
-
-
-    return MappedDenseLattice<data_type>(derived().raw_data_ptr(),row_size, column_size, tab_size);
-
-
-
-
+//    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+//    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+//    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
+//    static_assert(R+C+T==mOrder,"Size of all three arrays must equal mOrder");
+//    //statically check number of indices match up
+//    size_t row_size=1, column_size=1, tab_size=1;
+//    std::array<index_type, R> row_dims;
+//    std::array<index_type, C> column_dims;
+//    std::array<index_type, T> tab_dims;
+//
+//    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+//    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+//
+//    row_size=internal::reorder_from(this->dims(), row_indices,row_dims);
+//    column_size=internal::reorder_from(this->dims(), column_indices,column_dims);
+//    tab_size=internal::reorder_from(this->dims(), tab_indices,tab_dims);
+//
+//    //std::cout<< "Tab dims " << tab_dims[0] << "\n";
+//    DenseLattice<data_type> lat(row_size, column_size, tab_size);
+//
+//
+//
+//    index_type row_idx=0, column_idx=0,tab_idx=0;
+//    for (index_type k=0;k<tab_size;++k){
+//        tab_idx=internal::sub2ind(internal::ind2sub(k,tab_dims),tab_indices,this->m_dims);
+//        for (index_type j=0;j<column_size;++j){
+//            column_idx=tab_idx+internal::sub2ind(internal::ind2sub(j,column_dims),column_indices,this->m_dims);
+//            for (index_type i=0;i<row_size;++i){
+//                row_idx=column_idx+internal::sub2ind(internal::ind2sub(i,row_dims),row_indices,this->m_dims);
+//
+//                lat(i,j,k)=this->atIdx(row_idx);
+//
+//            }
+//        }
+//
+//
+//    }
+//
+//    //lat.print();
+//    return lat;
 
 
 }
 
+
+
 template<typename Derived>
-template<typename otherDerived>
-bool DenseMIABase<Derived>::operator==(const DenseMIABase<otherDerived> & otherMIA )
+template<typename otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type >
+bool DenseMIABase<Derived>::operator==(const MIA<otherDerived> & otherMIA ) const
 {
+
     if(this->m_dims!=otherMIA.dims())
         return false;
 
-    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        if(*it1!=*it2)
+    for(size_t idx=0;idx<this->dimensionality();++idx)
+        if(this->atIdx(idx)!=otherMIA.atIdx(idx))
             return false;
 
     return true;
@@ -581,14 +446,14 @@ bool DenseMIABase<Derived>::operator==(const DenseMIABase<otherDerived> & otherM
 
 
 template<typename Derived>
-template<typename otherDerived>
-bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & otherMIA,data_type precision )
+template<typename otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
+bool DenseMIABase<Derived>::fuzzy_equals(const MIA<otherDerived> & otherMIA,data_type precision ) const
 {
     if(this->m_dims!=otherMIA.dims())
         return false;
 
-    for(auto it1=this->data_begin(),it2=otherMIA.data_begin();it1<this->data_end();++it1,++it2)
-        if(!isEqualFuzzy(*it1,*it2,precision)){
+    for(size_t idx=0;idx<this->dimensionality();++idx)
+        if(!isEqualFuzzy(this->atIdx(idx),otherMIA.atIdx(idx),precision)){
             //std::cout << "Triggered " << *it1 << " " << *it2 << std::endl;
             return false;
         }
@@ -597,228 +462,50 @@ bool DenseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived> & othe
 
 }
 
+
 template<typename Derived>
-template<typename otherDerived, typename Op,typename index_param_type>
-void  DenseMIABase<Derived>::merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order)
+template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
+typename MIAMergeReturnType<Derived,otherDerived>::type
+DenseMIABase<Derived>::implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const
 {
 
+
+    //std::cout << "Implicit" << std::endl;
     this->check_merge_dims(b,index_order);
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
-
-
-
-
-    for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
-    {
-        this->atIdx(curIdx)=op(this->atIdx(curIdx),derived().convert(b.atIdx(internal::sub2ind(this->ind2sub(curIdx),index_order,b.dims()))));
-
-    }
-
-
-}
-
-template<typename Derived>
-template<typename otherDerived, typename Op,typename index_param_type>
-void  DenseMIABase<Derived>::merge(const SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order)
-{
-
-    this->check_merge_dims(b,index_order);
-    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
-
-    for(auto it=b.storage_begin();it<b.storage_end();++it){
-        //the index values of b may correspond to a shuffled version of the default linear index
-        auto default_order_idx=b.convert_to_default_linIdxSequence(b.index_val(*it));
-        //calculate the lhs_index based on how the MIA indices matched up
-        auto lhs_index=internal::sub2ind_reorder(b.ind2sub(default_order_idx),index_order,b.dims());
-        this->atIdx(lhs_index)=op(this->atIdx(lhs_index),derived().convert(b.data_val(*it)));
-
-    }
-
-}
-
-
-template<typename Derived>
-template<typename index_param_type>
-void DenseMIABase<Derived>::inplace_permute(const std::array<index_param_type,mOrder>& reshuffle_order){
-
-    //first check that the reshuffle_order array isn't just {0,1,...mOrder}
-    //if it is, we do nothing
-    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
-
-    size_t check;
-    for(check=0;check<reshuffle_order.size();++check){
-        if(reshuffle_order[check]!=(index_param_type)check)
-            break;
-    }
-    if (check==reshuffle_order.size())
-        return;
-
-    boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
-    std::array<index_type,mOrder> new_dims; //stores new dimensions
-    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
-    index_type ioffset_next,ioffset;
-
-    std::array<index_type,mOrder> dim_accumulator; //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    for(size_t i=0;i<mOrder;++i){
-        dim_accumulator[i]=std::accumulate(new_dims.begin(),new_dims.begin()+i,1,std::multiplies<index_type>());
-    }
-
-    dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
-    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
-    //EDIT - using the lambda slowed down the implementation, so it's just hard-coded now
-//    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
-//        index_type to_lin_idx=0;
-//        index_type multiplier=1;
-//        for(size_t i=0;i<mOrder;++i){
-//            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-//            multiplier*=this->dim(i);
-//        }
-//        return to_lin_idx;
-//    };
-    index_type touch_ctr=0;
-    //iterate through the entire bit array
-    for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
-        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
-        if(bit_array[start_idx]==0){
-
-            auto temp=this->atIdx(start_idx); //get the start of the cycle
-            ioffset=start_idx; //permuted array linIdx
-            while(true){
-
-                index_type ioffset_next=0;
-                index_type multiplier=1;
-                for(size_t i=0;i<mOrder;++i){
-                    ioffset_next+=(ioffset/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-                    multiplier*=this->dim(i);
-                }
-                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
-
-
-                bit_array[ioffset]=1; //touch the current data location
-                ++touch_ctr;
-                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
-                    if(ioffset_next!=ioffset)
-                        this->atIdx(ioffset)=temp;
-                    break;
-                }
-
-                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
-                ioffset=ioffset_next; //update the location in the current cycle
-
-            }
-            if (touch_ctr==this->dimensionality()){
-                break;
-            }
-
-        }
-
-
-    }
-    this->m_dims=new_dims;
+//    typedef typename MIAMergeReturnType<Derived,otherDerived>::type retMIAType;
+//    typedef typename internal::function_type<retMIAType>::type function_type;
+//    function_type _function;
+//
+//    if(internal::check_ascending(index_order)){ //if there is no index shuffle, the function is simpler and faster
+//
+//       _function=[this,&b,op](index_type idx){
+//            return op(this->atIdx(idx),this->derived().convert(b.atIdx(idx)));
+//            //return this->atIdx(idx)+b.atIdx(idx);
+//        };
+//    }
+//    else{
+//        _function=[this,&b,op,index_order](index_type idx){
+//            return op(this->atIdx(idx),this->derived().convert(b.atIdx(internal::sub2ind(this->ind2sub(idx),index_order,b.dims()))));
+//        };
+//    }
+////    function_type _function=[](index_type idx){
+////        return 0;
+////        //return op(this->atIdx(idx),b.atIdx(internal::sub2ind(this->ind2sub(idx),index_order,b.dims())));
+////    };
+//
+//    return retMIAType(_function,this->dims());
+    return internal::perform_implicit_merge(*this, b,op,index_order);
 
 
 }
 
 
-template<typename Derived>
-void DenseMIABase<Derived>::inplace_permute_new(const std::array<index_type,mOrder>& reshuffle_order){
-    //boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
-    std::array<index_type,mOrder> new_dims; //stores new dimensions
-    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
-    index_type ioffset_next,ioffset;
-    std::string dummy;
-    std::array<index_type,mOrder> dim_accumulator; //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    for(size_t i=0;i<mOrder;++i){
-        dim_accumulator[i]=std::accumulate(new_dims.begin(),new_dims.begin()+i,1,std::multiplies<index_type>());
-    }
-
-    dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
-    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
-    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
-        index_type to_lin_idx=0;
-        index_type multiplier=1;
-        for(size_t i=0;i<mOrder;++i){
-            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-            multiplier*=this->dim(i);
-        }
-        return to_lin_idx;
-    };
-    index_type touch_ctr=0;
-    //iterate through the entire bit array
-    index_type bottom_idx=-1;
-    index_type start_idx;
-    bool do_bottom=true;
-    index_type top_idx=this->dimensionality();
-    while(true){
-    //for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
-        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
 
 
-        if (do_bottom){
-            bottom_idx++;
-            start_idx=bottom_idx;
-
-        }
-        else{
-            top_idx--;
-            start_idx=top_idx;
-        }
-        //std::cout <<"Start idx " << start_idx << std::endl;
-        ioffset_next=func(start_idx); //get the location of ioffset in the old array
-        //std::cout <<"ioffset_next " << ioffset_next << std::endl;
-        while(ioffset_next>bottom_idx&& ioffset_next<top_idx){
-            index_type old_one=ioffset_next;
-            ioffset_next=0;
-            index_type multiplier=1;
-            for(size_t i=0;i<mOrder;++i){
-                ioffset_next+=(old_one/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-                multiplier*=this->dim(i);
-            }
-            //ioffset_next=func(ioffset_next);
-            //std::cout <<"ioffset_next " << ioffset_next << std::endl;
-        }
-        //std::cin >> dummy;
-
-        do_bottom=!do_bottom;
-        //std::cout <<"Past" << std::endl;
-        if(ioffset_next==start_idx){ //found a new cycle
-            //std::cout <<"In" << std::endl;
-            auto temp=this->atIdx(start_idx); //get the start of the cycle
-            ioffset=start_idx; //permuted array linIdx
-            while(true){
-                //std::cout << "ioffset " << ioffset << std::endl;
-                index_type ioffset_next=0;
-                index_type multiplier=1;
-                for(size_t i=0;i<mOrder;++i){
-                    ioffset_next+=(ioffset/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-                    multiplier*=this->dim(i);
-                }
-
-                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
-                //std::cout << "ioffset next" << ioffset_next << std::endl;
-                //std::cin >> dummy;
-                ++touch_ctr;
-                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
-                    if(ioffset_next!=ioffset)
-                        this->atIdx(ioffset)=temp;
-                    break;
-                }
-
-                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
-                ioffset=ioffset_next; //update the location in the current cycle
-            }
-            if (touch_ctr==this->dimensionality()){
-                break;
-            }
-
-        }
 
 
-    }
-    this->m_dims=new_dims;
-
-}
 
 //template<typename Derived>
 //template<class otherDerived,typename index_param_type>

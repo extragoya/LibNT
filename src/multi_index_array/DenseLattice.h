@@ -80,6 +80,11 @@ struct data_iterator<DenseLattice<T> >
     typedef T* type;
 };
 
+template<typename T>
+struct const_data_iterator<DenseLattice<T> >
+{
+    typedef const T* type;
+};
 
 }
 
@@ -105,6 +110,7 @@ public:
     typedef typename internal::storage_iterator<DenseLattice>::type storage_iterator;
     typedef typename internal::const_storage_iterator<DenseLattice>::type const_storage_iterator;
     typedef typename internal::data_iterator<DenseLattice>::type data_iterator;
+    typedef typename internal::const_data_iterator<DenseLattice>::type const_data_iterator;
     typedef T* raw_pointer;
     typedef typename DenseLatticeBase<DenseLattice<T> >::index_type index_type;
 
@@ -255,13 +261,25 @@ public:
 
 
 
-    data_iterator data_begin() const
+    data_iterator data_begin()
     {
         return (*m_Data).data();
 
     }
 
-    data_iterator data_end() const
+    data_iterator data_end()
+    {
+        return (*m_Data).data()+size();
+
+    }
+
+    const_data_iterator data_begin() const
+    {
+        return (*m_Data).data();
+
+    }
+
+    const_data_iterator data_end() const
     {
         return (*m_Data).data()+size();
 

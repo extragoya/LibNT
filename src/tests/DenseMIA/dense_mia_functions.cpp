@@ -64,6 +64,10 @@ void functions_work(){
     c2.inplace_permute(1,3,0,2);
     BOOST_CHECK_MESSAGE(d==c2,std::string("Fourth-order in place permutation 2 for ")+typeid(_data_type).name());
 
+    auto lat1=d.toLatticeCopy(std::array<size_t, 1>{3},std::array<size_t, 2>{2,1},std::array<size_t, 1>{0});
+    auto lat2=d.toLatticePermute(std::array<size_t, 1>{3},std::array<size_t, 2>{2,1},std::array<size_t, 1>{0});
+    BOOST_CHECK_MESSAGE(lat1==lat2,std::string("Lattice Mapping test for ")+typeid(_data_type).name());
+
 }
 
 BOOST_AUTO_TEST_CASE( DenseMIAFunctionTests )

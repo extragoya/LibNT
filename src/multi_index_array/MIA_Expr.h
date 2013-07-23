@@ -601,6 +601,7 @@ private:
     {
 
 
+        //std::cout << "Pure outer/inter started " << std::endl;
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
@@ -610,6 +611,7 @@ private:
                                                                        helper::right_inter_product_order(),
                                                                        helper::right_outer_product_order())));
         constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+
         //std::cout << "Pure outer/inter finished " << std::endl;
         //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);

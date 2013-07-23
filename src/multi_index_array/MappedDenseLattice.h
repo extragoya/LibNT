@@ -70,6 +70,12 @@ struct data_iterator<MappedDenseLattice<T> >
 };
 
 template<typename T>
+struct const_data_iterator<MappedDenseLattice<T> >
+{
+    typedef const T* type;
+};
+
+template<typename T>
 struct index_type<MappedDenseLattice<T> >
 {
     typedef typename Eigen::Matrix<typename data_type<MappedDenseLattice<T>>::type,Eigen::Dynamic,Eigen::Dynamic>::Index type;
@@ -102,6 +108,7 @@ public:
     typedef typename internal::storage_iterator<MappedDenseLattice>::type storage_iterator;
     typedef typename internal::const_storage_iterator<MappedDenseLattice>::type const_storage_iterator;
     typedef typename internal::data_iterator<MappedDenseLattice>::type data_iterator;
+    typedef typename internal::const_data_iterator<MappedDenseLattice>::type const_data_iterator;
     typedef T* raw_pointer;
 
 
@@ -149,6 +156,18 @@ public:
     }
 
     data_iterator data_end()
+    {
+        return m_data.data()+size();
+
+    }
+
+    const_data_iterator data_begin() const
+    {
+        return m_data.data();
+
+    }
+
+    const_data_iterator data_end() const
     {
         return m_data.data()+size();
 

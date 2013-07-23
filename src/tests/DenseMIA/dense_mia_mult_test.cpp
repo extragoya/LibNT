@@ -118,6 +118,8 @@ void mult_work(size_t dim1, size_t dim2){
         }
     }
     c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
+
+
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
     c(i,j,k,l)=a(k,!j,i,!l)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==c_result3,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
@@ -196,6 +198,8 @@ void mult_work(size_t dim1, size_t dim2){
 
 BOOST_AUTO_TEST_CASE( DenseMIAMultTests )
 {
+
+       // mult_work<double>(2,2);
 
     mult_work<double>(3,3);
     mult_work<float>(3,3);

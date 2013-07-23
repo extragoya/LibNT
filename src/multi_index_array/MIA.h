@@ -37,6 +37,12 @@ template<class Derived>
 struct data_type<MIA<Derived> >: public data_type<Derived> {};
 
 template<class Derived>
+struct data_type_ref<MIA<Derived> >: public data_type_ref<Derived> {};
+
+template<class Derived>
+struct const_data_type_ref<MIA<Derived> >: public const_data_type_ref<Derived> {};
+
+template<class Derived>
 struct index_type<MIA<Derived> >: public index_type<Derived> {};
 
 template<class Derived>
@@ -81,6 +87,8 @@ public:
 
     typedef typename internal::index_type<MIA>::type index_type;
     typedef typename internal::data_type<MIA>::type data_type;
+    typedef typename internal::data_type_ref<MIA>::type data_type_ref;
+    typedef typename internal::const_data_type_ref<MIA>::type const_data_type_ref;
     typedef typename internal::FinalDerived<MIA>::type FinalDerived;
     constexpr static size_t mOrder=internal::order<Derived>::value;
     Derived& derived() { return *static_cast<Derived*>(this); }
@@ -98,9 +106,9 @@ public:
     }
 
     template<class...Ts>
-    auto operator()(Ts...ts)->MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence,false> {
+    auto operator()(Ts...ts)->MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false> {
         static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
-        return MIA_Atom<Derived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&derived());
+        return MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&final_derived());
 
     }
 
@@ -201,6 +209,13 @@ public:
         return internal::convert<data_type,from_data_type>(from);
     }
 
+
+
+    static const_data_type_ref convert(const_data_type_ref from){
+
+        return from;
+    }
+
     const std::array<index_type,internal::order<MIA>::value>& dims() const{
         return m_dims;
     }
@@ -224,7 +239,7 @@ public:
         \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
     */
     template<typename... Indices>
-    const data_type& at(Indices... indices) const {
+    const data_type_ref at(Indices... indices) const {
         static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
         std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
         return at(temp);
@@ -235,7 +250,7 @@ public:
         \param[in] indices variadic parameter. Will assert a compile error if size of indices!=mOrder or if Indices datatype are not convertible to index_type
     */
     template<typename... Indices>
-    data_type& at(Indices... indices) {
+    data_type_ref at(Indices... indices) {
         static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
         std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
         return at(temp);
@@ -243,18 +258,30 @@ public:
 
 
     //! Returns scalar data at given indices
-    const data_type& at(const std::array<index_type, mOrder>& indices) const{
+    const_data_type_ref at(const std::array<index_type, mOrder>& indices) const{
 
         return derived().atIdx(this->sub2ind(indices));
 
     }
 
     //! Returns scalar data at given indices
-    data_type& at(const std::array<index_type, mOrder> & indices) {
+    data_type_ref at(const std::array<index_type, mOrder> & indices) {
 
         return derived().atIdx(this->sub2ind(indices));
     }
 
+    //! Returns scalar data at given indices
+    const_data_type_ref atIdx(index_type idx) const{
+
+        return derived().atIdx(idx);
+
+    }
+
+    //! Returns scalar data at given indices
+    data_type_ref atIdx(index_type idx) {
+
+        return derived().atIdx(idx);
+    }
 
 
 
@@ -280,7 +307,7 @@ protected:
     index_type m_dimensionality;
 
     template<class otherDerived,class index_param_type>
-    void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order)
+    void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const
     {
         for(size_t i=0;i<index_order.size();++i)
             if(b.dim(index_order[i])!=m_dims[i])

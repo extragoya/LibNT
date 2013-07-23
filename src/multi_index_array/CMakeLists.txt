@@ -4,10 +4,12 @@ set(LibMIA_headers
      DenseLatticeBase.h
      DenseMIA.h
      DenseMIABase.h
-	 ExprUtil.h
-     Lattice.h
+	 ExprUtil.h     
+	 FunctionUtil.h
+	 ImplicitMIA.h
      Index.h
 	 IndexUtil.h
+	 Lattice.h
      LibMIAAlgorithm.h
 	 LibMIAException.h
      MappedDenseLattice.h

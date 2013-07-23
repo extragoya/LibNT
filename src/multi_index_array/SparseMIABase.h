@@ -46,6 +46,12 @@ template<class Derived>
 struct data_type<SparseMIABase<Derived> >: public data_type<Derived> {};
 
 template<class Derived>
+struct data_type_ref<SparseMIABase<Derived> >: public data_type_ref<Derived> {};
+
+template<class Derived>
+struct const_data_type_ref<SparseMIABase<Derived> >: public const_data_type_ref<Derived> {};
+
+template<class Derived>
 struct index_type<SparseMIABase<Derived> >: public index_type<Derived> {};
 
 template<class Derived>

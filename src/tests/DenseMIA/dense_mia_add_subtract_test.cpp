@@ -36,7 +36,7 @@ void do_work(size_t dim1,size_t dim2){
 
     a.ones();
     b.ones();
-
+    //c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     c2.init(2);
