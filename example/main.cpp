@@ -6,12 +6,12 @@
 
 #include "DenseMIA.h"
 #include "Index.h"
-#include "MIAConfig.h"
+
 
 
 int main(){
 
-    
+
 	//declare a set of indices
     LibMIA::MIAINDEX i;
     LibMIA::MIAINDEX j;
@@ -21,17 +21,17 @@ int main(){
     LibMIA::MIAINDEX n;
 
     //declare our operands
-	LibMIA::DenseMIA<float,4> a(5,4,5,4);    
-	LibMIA::DenseMIA<float,4> b(4,4,5,5);
+	LibMIA::DenseMIA<double,4> a(5,4,5,4);
+	LibMIA::DenseMIA<double,4> b(4,4,5,5);
     //and our resulting MIA
-	LibMIA::DenseMIA<_data_type,5> c;
-    
+	LibMIA::DenseMIA<double,5> c;
+
 
     //initialize DenseMIAs with ones
 	a.ones();
-    b.ones();    
+    b.ones();
 
-	//calculate a mixed product of inner, outer, and element-wise products 
+	//calculate a mixed product of inner, outer, and element-wise products
     c(i,k,m,n,l)=a(i,j,k,!l)*b(j,!l,m,n);
 
 }
