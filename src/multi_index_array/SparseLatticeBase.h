@@ -40,11 +40,7 @@
 
 #include "MIAConfig.h"
 #include <Eigen/Sparse>
-//if we're using sparse_solve then we must include SuperLU support
-//#define LIBMIA_USE_SPARSE_SOLVE 1
-#ifdef LIBMIA_USE_SPARSE_SOLVE
-#include <Eigen/SuperLUSupport>
-#endif
+
 
 
 #include "Lattice.h"
@@ -1483,7 +1479,7 @@ inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<ind
 
 }
 
-#ifdef LIBMIA_USE_SPARSE_SOLVE
+
 template <class Derived>
 template <class otherDerived>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b)
@@ -1528,7 +1524,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-    typedef Eigen::SuperLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
+    typedef Eigen::SparseLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
     std::vector<typename MappedSparseMatrix_cm::Index> a_rows; //we make it MappedSparseMatrix_cm::Index, incase index_type differs from MappedSparseMatrix_cm::Index
 
 
@@ -1596,7 +1592,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_rows.size(),&a_columns[0],&a_rows[0],&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
 
             //compute LU decomposition
-            LU_decomp lu_of_A(A);
+            LU_decomp lu_of_A;
+            lu_of_A.analyzePattern(A);
+            lu_of_A.factorize(A);
             if(lu_of_A.info()!=Eigen::Success)
             {
                 std::stringstream t;
@@ -1672,7 +1670,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef const typename  Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-    typedef Eigen::SuperLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
+    typedef Eigen::SparseLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
 
@@ -1718,7 +1716,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
 
             //compute LU decomposition
-            LU_decomp lu_of_A(A);
+            LU_decomp lu_of_A;
+            lu_of_A.analyzePattern(A);
+            lu_of_A.factorize(A);
             if(lu_of_A.info()!=Eigen::Success)
             {
                 std::stringstream t;
@@ -1759,22 +1759,22 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     return c;
 }
 
-#else
-template <class Derived>
-template <class otherDerived>
-typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b){
-    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
-    struct fake : std::false_type{};
-    static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");
-}
-template <class Derived>
-template <class otherDerived>
-typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b){
-    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
-    struct fake : std::false_type{};
-    static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");
-}
-#endif
+
+//template <class Derived>
+//template <class otherDerived>
+//typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b){
+//    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
+//    struct fake : std::false_type{};
+//    static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");
+//}
+//template <class Derived>
+//template <class otherDerived>
+//typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b){
+//    //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
+//    struct fake : std::false_type{};
+//    static_assert(fake::value,"You must define LIBMIA_USE_SPARSE_SOLVE (or turn it on if using CMake) and build and link to SuperLU to perform sparse solution of equations.");
+//}
+
 
 
 
