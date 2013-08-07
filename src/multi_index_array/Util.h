@@ -174,7 +174,7 @@ template <class T,size_t _order>
 class ImplicitMIA;
 
 template<class _MIA,class m_Seq,bool ownership=true,size_t inter_product_size=0>
-struct MIA_Atom;
+class MIA_Atom;
 
 
 

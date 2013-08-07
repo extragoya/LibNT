@@ -331,12 +331,12 @@ public:
 
 
         typedef typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t inter_product_number=MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        constexpr size_t _inter_product_number=MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
 
 
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
+        return MIA_Atom<MIA_return_type,typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
 
 
 
@@ -578,12 +578,12 @@ private:
 
 
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
         //std::cout << "Lattice product finished " << std::endl;
 
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
 
 
 
@@ -610,11 +610,11 @@ private:
                                                                        helper::left_outer_product_order(),
                                                                        helper::right_inter_product_order(),
                                                                        helper::right_outer_product_order())));
-        constexpr size_t inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
 
         //std::cout << "Pure outer/inter finished " << std::endl;
         //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,inter_product_number>(cMIA);
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
 
 
 

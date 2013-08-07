@@ -40,6 +40,8 @@ perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const O
 
     typedef typename internal::function_type<retMIAType>::type function_type;
     typedef typename internal::index_type<retMIAType>::type index_type;
+    typedef typename internal::index_type<otherDerived>::type b_index_type;
+    typedef std::array<index_param_type,internal::order<Derived>::value> arrayType;;
     function_type _function;
 
     if(internal::check_ascending(index_order)){ //if there is no index shuffle, the function is simpler and faster
@@ -50,8 +52,14 @@ perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const O
         };
     }
     else{
-        _function=[&a,&b,op,index_order](index_type idx){
-            return op(a.atIdx(idx),a.convert(b.atIdx(internal::sub2ind(a.ind2sub(idx),index_order,b.dims()))));
+        auto dim_accumulator=internal::createDimAccumulator(a.dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+
+
+        _function=[&a,&b,op,index_order,dim_accumulator](index_type idx){
+
+            return op(a.atIdx(idx),a.convert(b.atIdx(internal::getShuffleLinearIndex(idx,b.dims(),dim_accumulator))));
+            //return op(a.atIdx(idx),a.convert(b.atIdx(idx)));
+
         };
     }
     return retMIAType(_function,a.dims());

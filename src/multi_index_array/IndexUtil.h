@@ -299,6 +299,24 @@ struct check_index_compatibility:
 
 //check, probably std::array second parameter templated by size_t
 template<typename indexType,size_t T>
+inline void ind2sub(indexType idx, const std::array<indexType,T> & dims,std::array<indexType,T> & full_indices)
+{
+
+
+
+    for(size_t i=0; i<T; ++i)
+    {
+
+        full_indices[i]=idx%dims[i];
+        idx/=dims[i];
+
+    }
+
+
+}
+
+//check, probably std::array second parameter templated by size_t
+template<typename indexType,size_t T>
 std::array<indexType,T> ind2sub(indexType idx, const std::array<indexType,T> & dims)
 {
 
@@ -313,6 +331,14 @@ std::array<indexType,T> ind2sub(indexType idx, const std::array<indexType,T> & d
     }
 
     return indices;
+}
+
+//check, probably std::array second parameter templated by size_t
+template<typename indexType>
+std::array<indexType,0> ind2sub(indexType idx, const std::array<indexType,0> & dims)
+{
+
+    return std::array<indexType,0>();
 }
 
 //!order is given in the order of dims used to calculate linear index idx and also the order that we assign the entries in the index array
@@ -338,7 +364,7 @@ template<typename idxType, typename orderType,typename dimType>
 dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
 {
 
-    orderType indices;
+    dimType indices;
 
     for(size_t i=0; i<_order.size(); ++i)
     {
@@ -349,6 +375,36 @@ dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
     }
 
     return indices;
+}
+
+template<class indexType1,class indexType2,size_t _size>
+std::array<indexType1,_size> createDimAccumulator(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
+{
+
+    std::array<indexType1,_size> dim_accumulator;
+
+    for(size_t i=0;i<_size;++i){
+        dim_accumulator[i]=std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>());
+    }
+
+    dim_accumulator=internal::reorder_to(dim_accumulator,index_order); //reorder the denominators based on the reshuffle order
+    return dim_accumulator;
+
+}
+
+template<class indexType1,class indexType2,size_t _size>
+indexType1 getShuffleLinearIndex(indexType1 idx,const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& dim_accumulator)
+{
+
+    indexType1 ioffset_next=0;
+    indexType1 multiplier=1;
+    for(size_t i=0;i<_size;++i){
+        ioffset_next+=(idx/dim_accumulator[i])%dims[i]*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+        multiplier*=dims[i];
+    }
+
+    return ioffset_next;
+
 }
 
 template<typename indexType,size_t T>
@@ -414,13 +470,13 @@ typename dimType::value_type sub2ind(itType _begin, itType _end,const accessType
 
 //!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
 template<typename accessType, typename accessType2,typename dimType>
-typename dimType::value_type sub2ind(const accessType & indices, const accessType2 &order, const dimType & dims)
+inline typename dimType::value_type sub2ind(const accessType & indices, const accessType2 &order, const dimType & dims)
 {
 
 
 
     typename dimType::value_type idx=0;
-    typename dimType::value_type multiplier;
+    typename dimType::value_type multiplier=1;
 
     for (size_t i=0; i< indices.size(); ++i)
     {

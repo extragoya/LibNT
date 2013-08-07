@@ -305,6 +305,7 @@ public:
     DenseMIA<other_data_type,mOrder> make_explicit() const{
         DenseMIA<other_data_type,mOrder> temp(this->dims());
         //get the explicit values
+        //#pragma omp parallel for ordered
         for(size_t idx=0;idx<this->dimensionality();++idx){
 
             temp.atIdx(idx)=temp.convert(this->atIdx(idx));
@@ -315,17 +316,21 @@ public:
 
     template<class other_data_type,class index_param_type>
     DenseMIA<other_data_type,mOrder> make_explicit(const std::array<index_param_type,_order>& index_order) const{
-        auto new_dims=this->dims();
-        internal::reorder_from(this->dims(),index_order,new_dims);
-        DenseMIA<other_data_type,mOrder> temp(new_dims);
+        auto temp_storage=this->dims();
+        internal::reorder_from(this->dims(),index_order,temp_storage);
+        DenseMIA<other_data_type,mOrder> temp(temp_storage);
 
 
-        index_type curIdx=0;
 
 
+
+        auto dim_accumulator=internal::createDimAccumulator(temp_storage,index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+
+        //#pragma omp parallel for
         for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
         {
-            *temp_it=temp.convert(this->atIdx(internal::sub2ind(temp.ind2sub(curIdx++),index_order,this->dims())));
+
+            *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex(static_cast<index_type>(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
 
         }
         return temp;

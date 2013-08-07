@@ -45,7 +45,8 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     *(test1.index_begin())=2;
     *(test1.index_begin()+1)=1;
     test1.setSorted(false);
-    for(auto i=test1.index_begin()+2,data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
+    auto i=test1.index_begin()+2;
+    for(auto data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
         if (*data_it>=1){
             *data_it=2;
             *i=2;
@@ -70,7 +71,8 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     *(test1.index_begin()+1)=1;
     test1.setSorted(false);
     size_t counter1=1,counter2=1;
-    for(auto i=test1.index_begin()+2,data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
+    i=test1.index_begin()+2;
+    for(auto data_it=test1.data_begin()+2;i<test1.index_end();++i,++data_it)
         if (*data_it>=1){
             *data_it=1;
             *i=1;

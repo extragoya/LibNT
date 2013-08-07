@@ -521,23 +521,7 @@ public:
     }
 
 
-    template<typename index_param_type>
-    void inplace_permute(const std::array<index_param_type,mOrder> & reshuffle_order);
 
-
-    //!
-    /*!
-        Based on An Optimal Index Reshuffle Algorithm for Multidimensional Arrays and Its Applications for Parallel Architectures by Chris H.Q. Ding and the modification
-        in Sec. III A by Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays
-    */
-    template<typename... Dims>
-    void inplace_permute(Dims... dims){
-        static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-
-        std::array<index_type, mOrder> reshuffle_order{{dims...}};
-        inplace_permute(reshuffle_order);
-
-    }
 
     //! Performs destructive add (+=).
     /*!
@@ -638,87 +622,7 @@ auto DenseMIA<T,_order>::toLatticePermute(const std::array<idx_typeR,R_size> & r
 
 }
 
-template<class T, size_t _order>
-template<typename index_param_type>
-void DenseMIA<T,_order>::inplace_permute(const std::array<index_param_type,mOrder>& reshuffle_order){
 
-    //first check that the reshuffle_order array isn't just {0,1,...mOrder}
-    //if it is, we do nothing
-    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
-
-    size_t check;
-    for(check=0;check<reshuffle_order.size();++check){
-        if(reshuffle_order[check]!=(index_param_type)check)
-            break;
-    }
-    if (check==reshuffle_order.size())
-        return;
-
-    boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
-    std::array<index_type,mOrder> new_dims; //stores new dimensions
-    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
-    index_type ioffset_next,ioffset;
-
-    std::array<index_type,mOrder> dim_accumulator; //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    for(size_t i=0;i<mOrder;++i){
-        dim_accumulator[i]=std::accumulate(new_dims.begin(),new_dims.begin()+i,1,std::multiplies<index_type>());
-    }
-
-    dim_accumulator=internal::reorder_to(dim_accumulator,reshuffle_order); //reorder the denominators based on the reshuffle order
-    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
-    //EDIT - using the lambda slowed down the implementation, so it's just hard-coded now
-//    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
-//        index_type to_lin_idx=0;
-//        index_type multiplier=1;
-//        for(size_t i=0;i<mOrder;++i){
-//            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-//            multiplier*=this->dim(i);
-//        }
-//        return to_lin_idx;
-//    };
-    index_type touch_ctr=0;
-    //iterate through the entire bit array
-    for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
-        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
-        if(bit_array[start_idx]==0){
-
-            auto temp=this->atIdx(start_idx); //get the start of the cycle
-            ioffset=start_idx; //permuted array linIdx
-            while(true){
-
-                index_type ioffset_next=0;
-                index_type multiplier=1;
-                for(size_t i=0;i<mOrder;++i){
-                    ioffset_next+=(ioffset/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-                    multiplier*=this->dim(i);
-                }
-                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
-
-
-                bit_array[ioffset]=1; //touch the current data location
-                ++touch_ctr;
-                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
-                    if(ioffset_next!=ioffset)
-                        this->atIdx(ioffset)=temp;
-                    break;
-                }
-
-                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
-                ioffset=ioffset_next; //update the location in the current cycle
-
-            }
-            if (touch_ctr==this->dimensionality()){
-                break;
-            }
-
-        }
-
-
-    }
-    this->m_dims=new_dims;
-
-
-}
 
 
 //template<typename Derived>
@@ -895,7 +799,7 @@ void DenseMIA<T,_order>::assign(const ImplicitMIA<other_data_type,mOrder>& other
     if(!hasOwnership && this->m_dimensionality!=otherMIA.dimensionality()){
         throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
-    auto temp=otherMIA.template make_explicit<data_type>(index_order);
+    *this=otherMIA.template make_explicit<data_type>(index_order);
 
 
 //    print_array(otherMIA.dims(),"otherMIA.dims()");
@@ -903,7 +807,7 @@ void DenseMIA<T,_order>::assign(const ImplicitMIA<other_data_type,mOrder>& other
 //    print_array(this->m_dims,"this->m_dims");
 
 
-    *this=std::move(temp);
+
 
 }
 
@@ -913,6 +817,7 @@ template<class T, size_t _order>
 template<typename otherDerived,typename index_param_type>
 void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
+
 
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
@@ -929,7 +834,7 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
             smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
             m_smart_raw_ptr.swap(temp_ptr);
             temp_ptr.release();
-            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->dims(),boost::fortran_storage_order()));
         }
         else
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
@@ -940,10 +845,13 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
     this->mSolveInfo=otherMIA.solveInfo();
     index_type curIdx=0;
 
-
+    auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    //print_array(dim_accumulator,"dim_accumulator");
+    //print_array(index_order,"index_order");
     for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
     {
-        *this_it=this->convert(otherMIA.atIdx(internal::sub2ind(this->ind2sub(curIdx++),index_order,otherMIA.dims())));
+
+        *this_it=this->convert(otherMIA.atIdx(internal::getShuffleLinearIndex(curIdx++,otherMIA.dims(),dim_accumulator)));
 
     }
 
@@ -989,10 +897,10 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived> &b,const Op& op,const st
 
 
 
-
+    auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order);
     for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
     {
-        this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::sub2ind(this->ind2sub(curIdx),index_order,b.dims()))));
+        this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),dim_accumulator))));
 
     }
 

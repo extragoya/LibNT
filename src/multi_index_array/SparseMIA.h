@@ -661,7 +661,7 @@ protected:
 
 
         //set m_data and m_indices
-        index_type idx=0;
+
         nnz=0;
         for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it){
             if(std::abs(*it)>SparseTolerance<data_type>::tolerance){

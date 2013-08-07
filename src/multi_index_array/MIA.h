@@ -204,14 +204,17 @@ public:
         \tparam from_data_type the data_type you are converting from
     */
     template<class from_data_type>
-    static data_type convert(const from_data_type from){
+    inline static data_type convert(const from_data_type from){
 
         return internal::convert<data_type,from_data_type>(from);
     }
 
+    inline static data_type& convert(data_type& from){
 
+        return from;
+    }
 
-    static const_data_type_ref convert(const_data_type_ref from){
+    inline static const data_type& convert(const data_type& from){
 
         return from;
     }

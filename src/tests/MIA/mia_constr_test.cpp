@@ -103,7 +103,8 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
     BOOST_CHECK_MESSAGE(test3.data_end()-test3.data_begin()==(int)(dim1*dim2*dim3),std::string("Dimensionality-size data test for DenseMIA with no zeros copy constructor ")+typeid(MIAType).name());
     //now check that the contents match that of the denseMIA
     bool passed=true;
-    for(auto it=denseTest.data_begin(),it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
+    auto it=denseTest.data_begin();
+    for(auto it2=test3.data_begin();it<denseTest.data_end();++it,++it2)
         passed=(passed&&*it==*it2);
     BOOST_CHECK_MESSAGE(passed,std::string("Data content test for DenseMIA with no zeros copy constructor for ")+typeid(MIAType).name());
     //now test that the index is a sequence of integers going from 0 to dimensionality-1
@@ -114,7 +115,7 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
 
 
     denseTest.randu(-1,1);
-    for(auto it=denseTest.data_begin();it<denseTest.data_end();++it)
+    for(it=denseTest.data_begin();it<denseTest.data_end();++it)
         if(*it<0)
             *it=0;
     MIAType test4(denseTest);
@@ -137,13 +138,13 @@ void sparse_constructor_work(size_t dim1, size_t dim2, size_t dim3){
     passed=passed&&test5.data_end()-test5.data_begin()==test6.data_end()-test6.data_begin();
     passed=passed&&test5.size()==test6.size();
     auto it5=test5.data_begin();
-    for(auto it=test6.data_begin();it<test6.data_end();++it){
-        passed=passed&&*it==*it5;
+    for(auto it6=test6.data_begin();it6<test6.data_end();++it6){
+        passed=passed&&*it6==*it5;
         it5++;
     }
     auto it5_2=test5.index_begin();
-    for(auto it=test6.index_begin();it<test6.index_end();++it){
-        passed=passed&&*it==*it5_2;
+    for(auto it6=test6.index_begin();it6<test6.index_end();++it6){
+        passed=passed&&*it6==*it5_2;
         it5_2++;
     }
     BOOST_CHECK_MESSAGE(passed,std::string("Sparse copy constructor for SparseMIA for ")+typeid(MIAType).name());

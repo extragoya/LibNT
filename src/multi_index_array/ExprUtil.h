@@ -519,7 +519,7 @@ struct decrement_back_indices
 
     typedef typename boost::mpl::advance<
         typename boost::mpl::end<Seq>::type,
-        boost::mpl::int_<-1*range_to_decrement>
+        boost::mpl::int_<-1*static_cast<int>(range_to_decrement)>
     >::type erase_iterator;
 
     typedef typename boost::mpl::erase<
