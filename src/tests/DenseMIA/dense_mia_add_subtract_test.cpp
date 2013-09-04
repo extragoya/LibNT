@@ -79,6 +79,19 @@ void do_work(size_t dim1,size_t dim2){
     b(i,j,k,l)-=a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==c2,std::string("Destructive Subtract 2 for ")+typeid(_data_type).name());
 
+    LibMIA::DenseMIA<_data_type,2> x(dim1,dim1);
+    LibMIA::DenseMIA<_data_type,2> y(dim1,dim1);
+    LibMIA::DenseMIA<_data_type,2> n(dim1,dim1);
+    LibMIA::DenseMIA<_data_type,2> n_final;
+    n.ones();
+    y.ones();
+    n.ones();
+    n_final=n;
+    n(i,j)=n(i,j)+y(i,j)-x(i,j)-(y(i,j)-x(j,i))+(y(j,i)-x(i,j))-(y(j,i)-x(j,i));
+
+
+    BOOST_CHECK_MESSAGE(n==n_final,std::string("Complicated expression 1 for ")+typeid(_data_type).name());
+
 
 
 }

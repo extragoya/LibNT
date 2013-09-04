@@ -285,6 +285,8 @@ void do_work(size_t dim1,size_t dim2){
     dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 2a for ")+typeid(_data_type).name());
 
+
+
     a.reset_linIdx_sequence();
     a.sort();
     b.reset_linIdx_sequence();
@@ -319,6 +321,16 @@ void do_work(size_t dim1,size_t dim2){
     a.change_linIdx_sequence(new_linIdxSequence);
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Sort) 2b for ")+typeid(_data_type).name());
+
+
+    a.reset_linIdx_sequence();
+    a.sort();
+    b.reset_linIdx_sequence();
+    b.sort();
+    a.change_linIdx_sequence(new_linIdxSequence);
+    c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k)+b(k,l,i,j)+a(l,j,i,k);
+    dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_a(j,l,i,k)+dense_b(k,l,i,j)+dense_a(l,j,i,k);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Chained Non-destructive Add (Sort) 2a for ")+typeid(_data_type).name());
 
 
     a.reset_linIdx_sequence();

@@ -69,13 +69,14 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,k,m,n)=a(i,j,k,l)*b(j,l,m,n);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
 
+
     c(i,k,m,n)=a(i,l,k,j)*b(l,j,m,n);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Inner/Outer Product 2 for ")+typeid(_data_type).name());
 
     c(i,k,m,n)=a(i,j,k,l)*b(l,j,m,n);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Inner/Outer Product 3 for ")+typeid(_data_type).name());
 
-    //test inner and element-wise product. Have b be assigned a scalar value that increases while traversing i
+//    test inner and element-wise product. Have b be assigned a scalar value that increases while traversing i
     val=0;
     for(size_t _i=0;_i<dim1;++_i){
         val++;
@@ -91,6 +92,8 @@ void mult_work(size_t dim1, size_t dim2){
 
     c2(i,j)=a(!i,k,!j,l)*b(k,l,!i,!j);
     BOOST_CHECK_MESSAGE(c2==c_result2,std::string("Inner/Element-Wise Product 1 for ")+typeid(_data_type).name());
+
+
     c2(i,j)=a(!i,l,!j,k)*b(k,l,!i,!j);
     BOOST_CHECK_MESSAGE(c2==c_result2,std::string("Inner/Element-Wise Product 2 for ")+typeid(_data_type).name());
     c2(j,i)=a(!j,l,!i,k)*b(k,l,!j,!i);

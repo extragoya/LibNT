@@ -258,6 +258,7 @@ public:
 
 
         this->mLinIdxSequence=otherMIA.linIdxSequence();
+        this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
 
@@ -444,7 +445,7 @@ public:
         this->m_dims=otherMIA.dims();
         this->m_dimensionality=otherMIA.dimensionality();
         this->mLinIdxSequence=otherMIA.linIdxSequence();
-
+        this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
         return *this;
@@ -539,20 +540,24 @@ public:
     {
         m_indices.push_back(_index);
         m_data.push_back(_data);
+        if(this->is_sorted()&& this->size()>1){
+            if(m_indices.back()<*(m_indices.end()-2))
+                this->setSorted(false);
+        }
     }
 
 
 
-    //! Converts a scalar value to data_type
-    /*!
-        \tparam from_data_type the data_type you are converting from
-    */
-    template<class from_data_type>
-    data_type convert(const from_data_type from) const{
-        using namespace boost::numeric;
-        typedef converter<data_type,from_data_type> to_mdata_type;
-        return to_mdata_type::convert(from);
-    }
+//    //! Converts a scalar value to data_type
+//    /*!
+//        \tparam from_data_type the data_type you are converting from
+//    */
+//    template<class from_data_type>
+//    data_type convert(const from_data_type from) const{
+//        using namespace boost::numeric;
+//        typedef converter<data_type,from_data_type> to_mdata_type;
+//        return to_mdata_type::convert(from);
+//    }
 
     //! Returns size of raw data or the number of nonzeros
     std::size_t size() const
@@ -622,6 +627,19 @@ public:
     }
 
 
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    void merge(DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+
+
+    template<typename otherDerived, typename Op>
+    void merge(SparseMIABase<otherDerived> &b,const Op& op);
+
+    template<typename otherDerived, typename Op>
+    void merge(DenseMIABase<otherDerived> &b,const Op& op);
+
 protected:
 
     template<class otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
@@ -674,11 +692,8 @@ protected:
     }
 
 
-    template<typename otherDerived, typename Op,typename index_param_type>
-    void merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
 
-    template<typename otherDerived, typename Op,typename index_param_type>
-    void merge(DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order);
+
 
     //! Method to perform scanning type merge operations, eg add.
     template<typename otherDerived, typename Op,typename index_param_type>
@@ -887,6 +902,14 @@ void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,cons
 }
 
 template<class T, size_t _order>
+template<typename otherDerived, typename Op>
+void  SparseMIA<T,_order>::merge(DenseMIABase<otherDerived> &b,const Op& op){
+    return this->merge(b,op,internal::createAscendingIndex<mOrder>());
+
+}
+
+
+template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void SparseMIA<T,_order>::merge(DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
@@ -932,9 +955,19 @@ void SparseMIA<T,_order>::merge(DenseMIABase<otherDerived> &b,const Op& op,const
 }
 
 template<class T, size_t _order>
+template<typename otherDerived, typename Op>
+void  SparseMIA<T,_order>::merge(SparseMIABase<otherDerived> &b,const Op& op){
+    //std::cout << "Should have got here I think " << std::endl;
+    return this->merge(b,op,internal::createAscendingIndex<mOrder>());
+
+}
+
+template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type>
 void  SparseMIA<T,_order>::merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIA>::value>& index_order)
 {
+
+    //std::cout << "destructive merge " << std::endl;
 
     this->check_merge_dims(b,index_order);
     std::array<size_t,mOrder> converted_index_order=array_converter<size_t>::convert(index_order);

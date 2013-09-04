@@ -39,6 +39,7 @@
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/begin_end.hpp>
 
+#include "libdivide/libdivide.h"
 #include "Index.h"
 
 namespace LibMIA
@@ -201,6 +202,21 @@ typename array_type3::value_type reorder_from(const array_type1& from_array, con
     size_t curIdx=0;
     return reorder_from(from_array,from_sequence_order,to_array,curIdx);
 }
+
+//! get total dimensionality
+template<class array_type1,class array_type2>
+typename array_type1::value_type dimensionality_from(const array_type1& from_array, const array_type2& from_sequence_order)
+{
+
+    typename array_type1::value_type _dimensionality=1;
+    for(auto _order: from_sequence_order)
+    {
+        _dimensionality*=(unsigned)from_array[(size_t)_order];
+    }
+    return _dimensionality;
+
+}
+
 
 //should be undefined
 template<typename...Args>
@@ -378,13 +394,13 @@ dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
 }
 
 template<class indexType1,class indexType2,size_t _size>
-std::array<indexType1,_size> createDimAccumulator(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
+inline std::array<libdivide::divider<size_t>,_size> createDimAccumulatorLibDivide(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
 {
 
-    std::array<indexType1,_size> dim_accumulator;
+    std::array<libdivide::divider<size_t>,_size> dim_accumulator;
 
     for(size_t i=0;i<_size;++i){
-        dim_accumulator[i]=std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>());
+        dim_accumulator[i]=libdivide::divider<size_t>((size_t)std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>()));
     }
 
     dim_accumulator=internal::reorder_to(dim_accumulator,index_order); //reorder the denominators based on the reshuffle order
@@ -393,17 +409,82 @@ std::array<indexType1,_size> createDimAccumulator(const std::array<indexType1,_s
 }
 
 template<class indexType1,class indexType2,size_t _size>
-indexType1 getShuffleLinearIndex(indexType1 idx,const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& dim_accumulator)
+inline std::array<size_t,_size> createDimAccumulator(const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict index_order)
 {
 
-    indexType1 ioffset_next=0;
-    indexType1 multiplier=1;
-    for(size_t i=0;i<_size;++i){
-        ioffset_next+=(idx/dim_accumulator[i])%dims[i]*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
-        multiplier*=dims[i];
-    }
+    std::array<size_t,_size> dim_accumulator;
+    size_t current_accumulator=1;
+    dim_accumulator[index_order[0]]=1;
+    static_for<1, _size>::_do([&](int i)
+    {
+        current_accumulator*=(size_t)dims[i-1];
+        dim_accumulator[index_order[i]]=current_accumulator;
+    });
 
-    return ioffset_next;
+
+    return dim_accumulator;
+
+}
+
+template<class indexType1,size_t _size>
+inline std::array<size_t,_size> createMultiplier(const std::array<indexType1,_size>& dims)
+{
+
+    std::array<size_t,_size> multiplier;
+    multiplier[0]=1;
+    static_for<1, _size>::_do([&](int i)
+    {
+        multiplier[i]= (size_t)(multiplier[i-1]*dims[i-1]);
+    });
+
+
+    return multiplier;
+
+}
+
+template<class indexType1,class indexType2,size_t _size>
+inline indexType1 getShuffleLinearIndex(indexType1 idx,const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict dim_accumulator)
+{
+
+    size_t ioffset_next=0;
+    size_t multiplier=1;
+
+    static_for<0, _size>::_do([&](int i){
+        //ioffset_next+=(dim_accumulator[i].perform_divide(idx))%((unsigned)dims[i])*multiplier;
+        auto &divisor=dim_accumulator[i];
+        ioffset_next+=((size_t)idx/divisor)%((size_t)dims[i])*(size_t)multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+        multiplier*=(size_t)dims[i];
+    });
+
+    return (indexType1)ioffset_next;
+
+}
+
+template<class indexType1,class indexType2,size_t _size>
+inline indexType1 getShuffleLinearIndex(const indexType1 &idx,const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict multiplier,const std::array<indexType2,_size>& restrict dim_accumulator)
+{
+
+//    size_t ioffset_next=0;
+//    for(size_t i=0;i<_size;++i){
+//        //ioffset_next+=(dim_accumulator[i].perform_divide(idx))%((unsigned)dims[i])*multiplier;
+//
+//        ioffset_next+=((size_t)idx/(size_t)dim_accumulator[i])%((size_t)dims[i])*(size_t)multiplier[i]; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+//
+//    }
+//
+//    return (indexType1)ioffset_next;
+
+
+    size_t ioffset_next=0;
+    static_for<0, _size>::_do([&](int i)
+    {
+
+        //ioffset_next+=(dim_accumulator[i].perform_divide(idx))%((unsigned)dims[i])*multiplier;
+
+        ioffset_next+=((size_t)idx/(size_t)dim_accumulator[i])%((size_t)dims[i])*(size_t)multiplier[i]; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+
+    });
+    return (indexType1)ioffset_next;
 
 }
 

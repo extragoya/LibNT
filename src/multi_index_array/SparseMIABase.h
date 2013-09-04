@@ -19,6 +19,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
+#include <boost/utility/enable_if.hpp>
 
 #include "PermuteIterator.h"
 #include "LibMiaException.h"
@@ -377,8 +378,10 @@ public:
     }
 
     //!Prints non-zero values and indices
-    void print() const
+    void print()
     {
+
+        this->sort(mDefaultLinIdxSequence);
         std::cout << "Index\t Data" << std::endl;
         for(auto it=this->storage_begin();it<this->storage_end();++it){
             std::cout << index_val(*it) << "\t " << data_val(*it) << std::endl;
@@ -581,14 +584,79 @@ public:
     template<class otherDerived,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type minus_(const DenseMIABase<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order)const{
 
-        typename MIAMergeReturnType<Derived,otherDerived>::type c;
+        typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
+        typedef typename internal::data_type<CType>::type c_data_type;
+
+        //do the inverse subtraction operation;
+
+        CType c;
         c.assign(b,index_order);
-        c.minus_equal(*this,internal::createAscendingIndex<mOrder>());
-        auto negator=std::negate<typename std::remove_reference<decltype(*(c.data_begin()))>::type>();
         for(auto it=c.data_begin();it<c.data_end();++it)
-            *it=negator(*it);
+            *it=-1*(*it);
+
+        auto lambda=[](const c_data_type & a, const c_data_type & b){
+            return a+b;
+        };
+
+
+
+        c.merge(*this,lambda,internal::createAscendingIndex<mOrder>());
 
         return c;
+
+    }
+
+    //statically delegates to different method is Op is std::minus
+    template<typename otherDerived, typename Op,typename index_param_type,
+        typename boost::disable_if<
+            boost::is_same<
+                Op,
+                std::minus<
+                    typename internal::data_type<
+                        typename MIAMergeReturnType<
+                            Derived,
+                            otherDerived
+                        >::type
+                    >::type
+                >
+            >,
+            int
+        >::type=0
+    >
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order) const{
+        typename MIAMergeReturnType<Derived,otherDerived>::type c;
+
+        c.assign(b,index_order);
+        c.merge(*this,op,internal::createAscendingIndex<mOrder>());
+        return c;
+
+    }
+
+    template<typename otherDerived, typename Op,typename index_param_type,
+        typename boost::enable_if<
+            boost::is_same<
+                Op,
+                std::minus<
+                    typename internal::data_type<
+                        typename MIAMergeReturnType<
+                            Derived,
+                            otherDerived
+                        >::type
+                    >::type
+                >
+            >,
+            int
+        >::type=0
+    >
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(const DenseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order) const{
+
+        return this->minus_(b,index_order);
+
+    }
+
+    template<typename otherDerived, typename Op>
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(const DenseMIABase<otherDerived> &b,const Op& op) const{
+        return this->outside_merge(b,op,internal::createAscendingIndex<mOrder>());
 
     }
 
@@ -626,6 +694,7 @@ public:
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder);
 
+    MappedSparseLattice<data_type> toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices,bool columnMajor=false);
 
     template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
@@ -679,6 +748,12 @@ public:
     void set_linIdxSequence(const std::array<size_t,mOrder> & _linIdxSequence){
         mLinIdxSequence=_linIdxSequence;
     }
+
+    template<typename otherDerived, typename Op,typename index_param_type>
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+
+    template<typename otherDerived, typename Op>
+    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op);
 
 protected:
 
@@ -737,8 +812,7 @@ protected:
 
 
 
-    template<typename otherDerived, typename Op,typename index_param_type>
-    typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
+
 
     template<typename otherDerived, typename Op,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type outside_scanMerge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
@@ -755,7 +829,15 @@ private:
 
 
 
+template<typename Derived>
+template<typename otherDerived, typename Op>
+typename MIAMergeReturnType<Derived,otherDerived>::type
+SparseMIABase<Derived>::outside_merge(SparseMIABase<otherDerived> &b,const Op& op)
+{
 
+    return outside_merge(b,op,internal::createAscendingIndex<mOrder>());
+
+}
 
 
 
@@ -828,6 +910,76 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
 
     return C;
 }
+
+template<typename Derived>
+auto SparseMIABase<Derived>::toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices,bool columnMajor) ->MappedSparseLattice<data_type>
+{
+
+
+
+
+
+
+
+    if(columnMajor){
+        this->sort(mDefaultLinIdxSequence);
+    }
+    else{
+        auto _linIdxSequence=mDefaultLinIdxSequence;
+        for(size_t i=0;i<number_of_column_indices;++i){
+            _linIdxSequence[i]=number_of_row_indices+i;
+        }
+        for(size_t i=number_of_column_indices;i<number_of_column_indices+number_of_row_indices;++i){
+            _linIdxSequence[i]=i-number_of_column_indices;
+        }
+        sort(_linIdxSequence);
+        //for now lattices don't actually change index values when doing column vs. row major - they just change the sort criteria, so we change it back to column major
+        //but sorted row major
+        change_linIdx_sequence(mDefaultLinIdxSequence);
+    }
+
+
+
+
+    index_type row_size=1, column_size=1, tab_size=1;
+
+
+    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
+    for(size_t i=0;i<number_of_row_indices;++i)
+    {
+
+        row_size*=this->m_dims[i];
+    }
+
+
+
+    for(size_t i=number_of_row_indices;i<number_of_row_indices+number_of_column_indices;++i)
+    {
+
+        column_size*=this->m_dims[i];
+
+    }
+
+
+    for(size_t i=number_of_row_indices+number_of_column_indices;i<mOrder;++i)
+    {
+
+        tab_size*=this->m_dims[i];
+
+    }
+
+    //MappedSparseLattice<data_type> test=MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
+    return MappedSparseLattice<data_type>(derived().raw_data_ptr(),derived().raw_index_ptr(),this->size(),row_size,column_size,tab_size,columnMajor);
+
+
+
+
+
+
+}
+
 
 template<typename Derived>
 template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
@@ -1003,26 +1155,26 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
     if(Inter){
         change_linIdx_sequence(internal::concat_index_arrays(l_inter_idx,l_outer_idx)); //change order of linIdx calculation to inter then outer
         b.change_linIdx_sequence(internal::concat_index_arrays(r_inter_idx,r_outer_idx));
-        std::function<bool(const index_type &idx_1, const index_type &idx_2)> lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
+        auto lhs_compare=[&l_inter_size,this](const index_type &idx1, const index_type &idx2){
             return idx1%l_inter_size<idx2%l_inter_size;
         };
         this->sort(lhs_compare);
-        std::function<bool(const index_type &idx_1, const index_type &idx_2)> rhs_compare=[&r_inter_size](const index_type &idx1, const index_type &idx2){
+        auto rhs_compare=[&r_inter_size](const index_type &idx1, const index_type &idx2){
             return idx1%r_inter_size<idx2%r_inter_size;
         };
         b.sort(rhs_compare);
     }
 
-    std::function<bool(const index_type &, const index_type &)> a_start_pred=[&](const index_type& idx, const index_type &val){
+    auto a_start_pred=[&](const index_type& idx, const index_type &val){
                 return idx%l_inter_size<val;
     };
-    std::function<bool(const index_type &, const index_type &)> a_end_pred=[&](const index_type& val, const index_type &idx){
+    auto a_end_pred=[&](const index_type& val, const index_type &idx){
                 return val<idx%l_inter_size;
     };
-    std::function<bool(const b_index_type &, const b_index_type &)> b_start_pred=[&](const b_index_type& idx, const b_index_type &val){
+    auto b_start_pred=[&](const b_index_type& idx, const b_index_type &val){
                 return idx%r_inter_size<val;
     };
-    std::function<bool(const b_index_type &, const b_index_type &)> b_end_pred=[&](const b_index_type& val, const b_index_type &idx){
+    auto b_end_pred=[&](const b_index_type& val, const b_index_type &idx){
                 return val<idx%r_inter_size;
     };
 
@@ -1044,7 +1196,7 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
         a_search_flag=true;
     if(r_inter_size*log2(b.size())<b.size())
         b_search_flag=true;
-
+    C.setSorted(true);
     while(cur_a_idx<a_idx_end && cur_b_idx<b_idx_end)
     {
         //if we're at the same tab, no work
@@ -1096,6 +1248,7 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
         cur_b_idx=cur_b_end;
 
     }
+
     return C;
 
 }
@@ -1145,7 +1298,7 @@ auto  SparseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,
     auto a_idx_end=this->index_end();
     auto cur_a_idx=this->index_begin();
 
-
+    C.setSorted(true);
     while(cur_a_idx<a_idx_end)
     {
 
@@ -1170,6 +1323,7 @@ auto  SparseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,
         cur_a_idx++;
 
     }
+
     return C;
 
 }

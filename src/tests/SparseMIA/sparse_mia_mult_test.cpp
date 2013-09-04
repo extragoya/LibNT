@@ -103,6 +103,8 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
     c(i,j,k,l)=b2(i,j)*d2(k,l);
+    //dense_c.print();
+    //c.print();
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
 
     dense_c(i,k,l,j)=dense_b2(k,j)*dense_d2(l,i);
@@ -147,7 +149,7 @@ void mult_work(size_t dim1, size_t dim2){
 BOOST_AUTO_TEST_CASE( SparseMIAMultTests )
 {
 
-   // mult_work<double>(3,3);
+    //mult_work<double>(3,4);
 //    mult_work<float>(3,3);
 //    mult_work<int>(3,3);
 //    mult_work<long>(3,3);

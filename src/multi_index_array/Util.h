@@ -48,6 +48,8 @@
 
 #include "PermuteIterator.h"
 #include "Index.h"
+#define PARALLEL_TOL 8192
+//#define LIBMIA_CHECK_DIMS 1
 
 namespace LibMIA
 {
@@ -77,7 +79,27 @@ struct select_first
     }
 };
 
+template <int First, int Last>
+struct static_for
+{
+    template <typename Fn>
+    inline static void _do(Fn const& fn)
+    {
 
+        static_assert(First<Last,"Must create static_for loop with First < Last ");
+        fn(First);
+        static_for<First+1, Last>::_do(fn);
+
+    }
+};
+
+template <int N>
+struct static_for<N, N>
+{
+    template <typename Fn>
+    inline static void _do(Fn const& fn)
+    { }
+};
 
 enum SolveInfo{
     FullyRanked,
@@ -317,7 +339,7 @@ template<class T> struct incomplete;
     \tparam from_data_type the data_type you are converting from
 */
 template<class data_type,class from_data_type,typename boost::enable_if< boost::is_pod< from_data_type >, int >::type = 0>
-data_type convert(const from_data_type from){
+inline data_type convert(const from_data_type from){
     using namespace boost::numeric;
     typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
     return to_mdata_type::convert(from);
@@ -701,7 +723,7 @@ struct MIAMergeReturnType<Lhs,Rhs,
     >
 {
 
-    typedef ImplicitMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
 };
 
 

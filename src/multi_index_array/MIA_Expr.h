@@ -29,6 +29,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/comparison.hpp>
+#include <boost/mpl/equal.hpp>
 
 #include "kennytm/vtmp.hpp"
 #include "Util.h"
@@ -74,25 +75,27 @@ public:
 /*end of taken from KennyTM's answer to this question:
 http://stackoverflow.com/questions/10830406/copy-an-mplvector-c-to-a-static-array-at-compile-time*/
 
-template< typename Sequence >
-class sequence_array : public std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>
-{
-    typedef typename std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>::iterator iterator;
-    struct copier_
-    {
-        copier_(iterator it) : it_(it) {}
-        template<typename U> void operator()(U u)
-        {
-            *(it_++) = u;
-        }
-        iterator it_;
-    };
-public:
-    sequence_array()
-    {
-        boost::mpl::for_each<Sequence>(copier_(this->begin()));
-    }
-};
+
+//should be depreciated, as the above converter from mpl::vector to array is likely faster
+//template< typename Sequence >
+//class sequence_array : public std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>
+//{
+//    typedef typename std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>::iterator iterator;
+//    struct copier_
+//    {
+//        copier_(iterator it) : it_(it) {}
+//        template<typename U> void operator()(U u)
+//        {
+//            *(it_++) = u;
+//        }
+//        iterator it_;
+//    };
+//public:
+//    sequence_array()
+//    {
+//        boost::mpl::for_each<Sequence>(copier_(this->begin()));
+//    }
+//};
 
 
 
@@ -102,7 +105,9 @@ public:
 
 
 
-
+//helper class to perform cartesian check on two mpl::vector sequences of indices. An optional Pred template parameter allows the specification of different
+//equality prediacates (ie, just check that the integer ID in the indices match, and ignore the ElemWise counter. You must also specify how many matches are allowed.
+//For instance, if an MIA product is performed, only one match is allowed between two indices specifying an inner or element-wise product.
 template<class l_Seq,class r_Seq,int rule,typename Pred=boost::mpl::quote2<boost::is_same> >
 struct perform_cartesian_check
 {
@@ -116,6 +121,8 @@ struct perform_cartesian_check
 
 };
 
+//helper class to perform an auto check on a mpl::vector sequence of indices. An optional Pred template parameter allows the specification of different
+//equality prediacates (ie, just check that the integer ID in the indices match, and ignore the ElemWise counter)
 template<class Seq, int rule,typename Pred=boost::mpl::quote2<internal::same_product_index_id> >
 struct perform_auto_check
 {
@@ -128,6 +135,175 @@ struct perform_auto_check
 };
 
 
+//helper class to perform merge operations (addition or subtraction). If the indices between the two MIAs match completely, the class will delegate to a
+//simpler merge operation that doesn't perform any index shuffle calculations
+template<class l_Seq,class r_Seq,class Enable = void>
+struct perform_merge
+{
+};
+template<class l_Seq,class r_Seq>
+struct perform_merge<l_Seq,r_Seq,typename boost::enable_if< boost::mpl::equal<l_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>> >::type>
+{
+
+
+    //if the two sequences match
+    template<class lMIAType,class rMIAType,class Op>
+    static auto run( lMIAType & lMIA,  rMIAType & rMIA, const Op & op)->
+            typename MIAMergeReturnType<lMIAType,rMIAType>::type *
+    {
+        typedef typename MIAMergeReturnType<lMIAType,rMIAType>::type cType;
+
+        cType* cMIA(new cType(lMIA.outside_merge(rMIA,op)));
+
+
+        return cMIA;
+
+    }
+
+};
+template<class l_Seq,class r_Seq>
+struct perform_merge<l_Seq,r_Seq,typename boost::disable_if< boost::mpl::equal<l_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>>>::type>
+{
+    //if the two sequences don't match
+    template<class lMIAType,class rMIAType,class Op>
+    static auto run( lMIAType & lMIA,  rMIAType & rMIA,const Op & op)->
+            typename MIAMergeReturnType<lMIAType,rMIAType>::type *
+
+    {
+
+
+        static_assert(internal::order<lMIAType>::value==internal::order<rMIAType>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        //statically verify MIA indices match correctly
+        typedef perform_cartesian_check<l_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated *EDIT - when unary operations are implemented, we can operate under the assumption that any repeated indices are dealt with
+        //perform_auto_check<l_Seq,internal::binary_rule>::run();
+
+        typedef typename MIAMergeReturnType<lMIAType,rMIAType>::type cType;
+        //from the mpl::vector of indices, create an mpl::vector of integers specifying how B's indices are shuffled based on A's
+        typedef internal::pull_match_order<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
+
+
+
+        cType* cMIA(new cType(lMIA.outside_merge(rMIA,op,internal::to_std_array<typename pulling_index_order::match_order>::make())));
+        return cMIA;
+
+
+    }
+
+
+};
+
+
+//same as the above structure, except specialized for destructive mergers (e.g., +=)
+template<class l_Seq,class r_Seq,class Enable = void>
+struct perform_destructive_merge
+{
+};
+template<class l_Seq,class r_Seq>
+struct perform_destructive_merge<l_Seq,r_Seq,typename boost::enable_if< boost::mpl::equal<l_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>>>::type>
+{
+
+    //if the two sequences match
+    template<class lMIAType,class rMIAType,class Op>
+    static void run(lMIAType & lMIA,  rMIAType & rMIA,const Op& op)
+
+    {
+
+
+
+        lMIA.merge(rMIA,op);
+
+
+
+    }
+
+};
+template<class l_Seq,class r_Seq>
+struct perform_destructive_merge<l_Seq,r_Seq,typename boost::disable_if< boost::mpl::equal<l_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>> >::type>
+{
+    //if the two sequences don't match
+    template<class lMIAType,class rMIAType,class Op>
+    static void run(lMIAType & lMIA,  rMIAType & rMIA,const Op& op)
+    {
+
+
+        static_assert(internal::order<lMIAType>::value==internal::order<rMIAType>::value,"Orders of two MIAs must be the same to perform addition.");
+
+        typedef perform_cartesian_check<l_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
+        cartesian_check::run();
+
+        //check to makes sure no left-hand indice is repeated
+        perform_auto_check<l_Seq,internal::binary_rule>::run();
+
+        typedef internal::pull_match_order<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
+
+
+
+        lMIA.merge(rMIA,op,internal::to_std_array<typename pulling_index_order::match_order>::make());
+
+
+    }
+
+
+};
+
+//helper structure to perform index decrements. ie, turn an index sequence (i,!j,!!k) to (i,j,!k). In LibMIA, this operation is performed using ~a(i,!j,!!k).
+//the inter_product_number parameter, specifies where the indices that need to be decermented start (from the back). This is valid, because the ~ operation should
+//only be performed after an MIA multiplication or solve, which places any interproduct indices at the back after the operation. If inter_product_number is zero,
+//this structure delegates to a method that does nothing
+struct index_decrementer
+{
+
+    //decrement indices method
+    template<
+        class _MIA,
+        class Seq,
+        bool hasownership,
+        size_t inter_product_number,
+        typename boost::enable_if<
+            boost::mpl::greater<
+                boost::mpl::size_t<inter_product_number>
+                ,boost::mpl::size_t<0>
+            >,
+            int
+        >::type=0
+    >
+    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>
+    {
+        _MIA * _mia=mia_atom.m_mia;
+        mia_atom.m_mia=nullptr;
+        return MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>(_mia);
+    }
+
+    //do nothing method
+    template<
+        class _MIA,
+        class Seq,
+        bool hasownership,
+        size_t inter_product_number,
+        typename boost::enable_if<
+            boost::mpl::equal_to<
+                boost::mpl::size_t<inter_product_number>
+                ,boost::mpl::size_t<0>
+            >,
+        int >::type=0
+    >
+    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,Seq,hasownership,inter_product_number>
+    {
+        _MIA * _mia=mia_atom.m_mia;
+        mia_atom.m_mia=nullptr;
+        return MIA_Atom<_MIA,Seq,hasownership,inter_product_number>(_mia);
+    }
+
+};
+
+
+//delegates to the MIA's toLatticeDiscard or toLatticeExpression method. They are used when the MIA is a temporary or permanent value respectively,
+//the former occurs if the MIA is a temporary created as part of an expression. In this case the MIA_Atom has ownership of the MIA. For DenseMIAs,
+//the lattice creation method can use an in-place permute instead of a copy
 template<typename _MIA, typename array1Type,typename array2Type, typename array3Type, bool hasOwnership>
 struct lattice_maker
 {
@@ -154,63 +330,144 @@ struct lattice_maker<_MIA,array1Type,array2Type,array3Type,false>
     }
 };
 
-struct index_decrementer
+
+//main job of this class is to either call lattice making functions that require a permute or if the MIA data is already arrayed correctly for the lattice,
+//then just lattice making method that wraps MIA data directly (choice performed at compile time, hence its ugliness)
+struct lattice_permutation_delegator
 {
-    template<
-        class _MIA,
-        class Seq,
-        bool hasownership,
-        size_t inter_product_number,
-        typename boost::enable_if<
-            boost::mpl::greater<
-                boost::mpl::size_t<inter_product_number>
-                ,boost::mpl::size_t<0>
-            >,
-            int
-        >::type=0
+
+    //if the left MIA is mapped to a lattice using a non-consecutive set of indices, we need to permute
+    template<typename _MIA, typename helper,bool hasOwnership,
+        typename boost::disable_if<typename helper::is_left_consecutive,int>::type=0
     >
-    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>
+    static auto left_lattice_apply(_MIA & _mia)
+    ->decltype(lattice_maker<_MIA,decltype(helper::left_row_order()),decltype(helper::left_column_order()),decltype(helper::left_tab_order()),hasOwnership>
+            ::apply(_mia,helper::left_row_order(),helper::left_column_order(),helper::left_tab_order()))
     {
-        _MIA * _mia=mia_atom.m_mia;
-        mia_atom.m_mia=nullptr;
-        return MIA_Atom<_MIA,typename internal::decrement_back_indices<Seq,inter_product_number>::newSeq,hasownership>(_mia);
+
+
+        return lattice_maker<_MIA,decltype(helper::left_row_order()),decltype(helper::left_column_order()),decltype(helper::left_tab_order()),hasOwnership>
+            ::apply(_mia,helper::left_row_order(),helper::left_column_order(),helper::left_tab_order());
     }
 
-    template<
-        class _MIA,
-        class Seq,
-        bool hasownership,
-        size_t inter_product_number,
-        typename boost::enable_if<
-            boost::mpl::equal_to<
-                boost::mpl::size_t<inter_product_number>
-                ,boost::mpl::size_t<0>
-            >,
-        int >::type=0
+    //if the left MIA is mapped to a lattice using a consecutive set of indices, no permute
+    template<typename _MIA, typename helper,bool hasOwnership,
+        typename boost::enable_if<typename helper::is_left_consecutive,int>::type=0
     >
-    static auto apply(MIA_Atom<_MIA,Seq,hasownership,inter_product_number>& mia_atom)->MIA_Atom<_MIA,Seq,hasownership,inter_product_number>
+    static auto left_lattice_apply(_MIA & _mia)
+    ->decltype(_mia.toStraightLattice(  boost::mpl::size<
+                                            typename helper::left_row_inds
+                                        >::value,
+                                        boost::mpl::size<
+                                            typename helper::left_column_inds
+                                        >::value
+                                    )
+               )
     {
-        _MIA * _mia=mia_atom.m_mia;
-        mia_atom.m_mia=nullptr;
-        return MIA_Atom<_MIA,Seq,hasownership,inter_product_number>(_mia);
+
+
+
+        return _mia.toStraightLattice(  boost::mpl::size<
+                                            typename helper::left_row_inds
+                                        >::value,
+                                        boost::mpl::size<
+                                            typename helper::left_column_inds
+                                        >::value
+                                        );
     }
+    //right lattice
+
+    //if the right MIA is mapped to a lattice using a non-consecutive set of indices, we need to permute
+    template<typename _MIA, typename helper,bool hasOwnership,
+        typename boost::disable_if<typename helper::is_right_consecutive,int>::type=0
+    >
+    static auto right_lattice_apply(_MIA & _mia)
+    ->decltype(lattice_maker<_MIA,decltype(helper::right_row_order()),decltype(helper::right_column_order()),decltype(helper::right_tab_order()),hasOwnership>
+            ::apply(_mia,helper::right_row_order(),helper::right_column_order(),helper::right_tab_order()))
+    {
+
+
+        return lattice_maker<_MIA,decltype(helper::right_row_order()),decltype(helper::right_column_order()),decltype(helper::right_tab_order()),hasOwnership>
+            ::apply(_mia,helper::right_row_order(),helper::right_column_order(),helper::right_tab_order());
+    }
+
+    //if the right MIA is mapped to a lattice using a consecutive set of indices, no permute
+    template<typename _MIA, typename helper,bool hasOwnership,
+        typename boost::enable_if<typename helper::is_right_consecutive,int>::type=0
+    >
+    static auto right_lattice_apply(_MIA & _mia)
+    ->decltype(_mia.toStraightLattice(  boost::mpl::size<
+                                            typename helper::right_row_inds
+                                        >::value,
+                                        boost::mpl::size<
+                                            typename helper::right_column_inds
+                                        >::value
+                                    )
+               )
+    {
+        return _mia.toStraightLattice(  boost::mpl::size<
+                                            typename helper::right_row_inds
+                                        >::value,
+                                        boost::mpl::size<
+                                            typename helper::right_column_inds
+                                        >::value
+                                        );
+    }
+};
+
+
+
+
+
+
+
+//given three boost::mpl::vectors of integer sequences, checks whether they express a consecutive sequences of integers starting from 0.
+template<class first,class second,class third>
+struct consecutive_sequence_checker{
+
+
+
+    //the total consequetive order of outer product, inner product, and inter product indices
+    typedef typename boost::mpl::insert_range<first,typename boost::mpl::end<first>::type, second>::type first_concat;
+    typedef typename boost::mpl::insert_range<first_concat,typename boost::mpl::end<first_concat>::type,third>::type final_sequence;
+    //is the order of the lattice indices consequetive? If so, we can skip permutation of data elements
+    typedef typename boost::mpl::equal<
+        boost::mpl::range_c<
+            int,0,boost::mpl::size<final_sequence>::value
+        >,
+        final_sequence,
+        boost::mpl::equal_to<_1,_2>
+    >::type is_consecutive;
 
 };
 
+
+//give two boost::mpl::vectors of ProdInds, pulls the integer order of how each sequence matches with the other
 template<class l_Seq,class r_Seq>
-struct product_solve_expr_helper
+struct solve_product_expr_helper
 {
+
 
     typedef typename internal::pull_left_operand_index_sequence<l_Seq,r_Seq,boost::mpl::empty<l_Seq>::value,0> left_index_order;
     typedef typename internal::pull_left_operand_index_sequence<r_Seq,l_Seq,boost::mpl::empty<r_Seq>::value,0> right_outer_index_order;
-    typedef internal::pull_right_index_order<l_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
+    typedef typename internal::pull_right_index_order<l_Seq,r_Seq,boost::mpl::empty<r_Seq>::value> pulling_index_order;
 
+    //Assume the following two indices are given l_Seq=(!i,j,k,!n,l) r_Seq=(l,!n,j,m,!i)
 
+    typedef typename left_index_order::no_match_order_sequence left_outer_product_idx; //consecutive list of outer product indices of the left MIA {2}
+    typedef typename left_index_order::match_order_sequence left_inner_product_idx; //consecutive list of inner product indices of the left MIA {1,4}
+    typedef typename left_index_order::inter_match_order_sequence left_inter_product_idx; //consecutive list of inter product indices of the left MIA {0,3}
+
+    typedef typename right_outer_index_order::no_match_order_sequence right_outer_product_idx; //consecutive list of outer product indices of the right MIA {3}
+    typedef typename pulling_index_order::match_order right_inner_product_idx; //the order of right's inner product indices when matched with left's consecutive list of inner product indices {2,0}
+    typedef typename pulling_index_order::inter_match_order right_inter_product_idx; //the order of right's inter product indices when matched with left's consecutive list of inter product indices {4,1}
+
+    //return the runtime dimensions of the new MIA
     template<class l_MIA_type, class r_MIA_type>
     static std::array<typename l_MIA_type::index_type,
-                boost::mpl::size<typename left_index_order::no_match_order_sequence>::value +
-                boost::mpl::size<typename right_outer_index_order::no_match_order_sequence>::value+
-                boost::mpl::size<typename left_index_order::inter_match_order_sequence>::value>
+                boost::mpl::size<left_outer_product_idx>::value +
+                boost::mpl::size<right_outer_product_idx>::value+
+                boost::mpl::size<left_inter_product_idx>::value>
         run(const l_MIA_type& l_MIA, const r_MIA_type& r_MIA)
     {
         //check to makes sure no left-hand indice is repeated
@@ -227,49 +484,117 @@ struct product_solve_expr_helper
         //        print_array(right_inner_product_order,"right_inner");
         //        print_array(right_inter_product_order,"right_inter");
         std::array<typename l_MIA_type::index_type,
-                boost::mpl::size<typename left_index_order::no_match_order_sequence>::value +
-                boost::mpl::size<typename right_outer_index_order::no_match_order_sequence>::value+
-                boost::mpl::size<typename left_index_order::inter_match_order_sequence>::value> cMIA_dims;
+               boost::mpl::size<left_outer_product_idx>::value +
+                boost::mpl::size<right_outer_product_idx>::value+
+                boost::mpl::size<left_inter_product_idx>::value> cMIA_dims;
         size_t curIdx=0;
         internal::reorder_from(l_MIA.dims(),left_outer_product_order(),cMIA_dims,curIdx);
         internal::reorder_from(r_MIA.dims(),right_outer_product_order(),cMIA_dims,curIdx);
-        internal::reorder_from(l_MIA.dims(),internal::to_std_array<typename left_index_order::inter_match_order_sequence>::make(),cMIA_dims,curIdx);
+        internal::reorder_from(l_MIA.dims(),left_inter_product_order(),cMIA_dims,curIdx);
         return cMIA_dims;
 
     }
-    static constexpr auto left_outer_product_order()->decltype(internal::to_std_array<typename left_index_order::no_match_order_sequence>::make())
+    //following methods create a runtime std::array object from the static boost::mpl::vectors of index matching orders
+    static constexpr auto left_outer_product_order()->decltype(internal::to_std_array<left_outer_product_idx>::make())
     {
-        return internal::to_std_array<typename left_index_order::no_match_order_sequence>::make();
+        return internal::to_std_array<left_outer_product_idx>::make();
     }
-    static constexpr auto right_outer_product_order()->decltype(internal::to_std_array<typename right_outer_index_order::no_match_order_sequence>::make())
+    static constexpr auto right_outer_product_order()->decltype(internal::to_std_array<right_outer_product_idx>::make())
     {
-        return internal::to_std_array<typename right_outer_index_order::no_match_order_sequence>::make();
+        return internal::to_std_array<right_outer_product_idx>::make();
     }
-    static constexpr auto left_inner_product_order()->decltype(internal::to_std_array<typename left_index_order::match_order_sequence>::make())
+    static constexpr auto left_inner_product_order()->decltype(internal::to_std_array<left_inner_product_idx>::make())
     {
-        return internal::to_std_array<typename left_index_order::match_order_sequence>::make();
+        return internal::to_std_array<left_inner_product_idx>::make();
     }
-    static constexpr auto right_inner_product_order()->decltype(internal::to_std_array<typename pulling_index_order::match_order>::make())
+    static constexpr auto right_inner_product_order()->decltype(internal::to_std_array<right_inner_product_idx>::make())
     {
-        return internal::to_std_array<typename pulling_index_order::match_order>::make();
+        return internal::to_std_array<right_inner_product_idx>::make();
     }
-    static constexpr auto left_inter_product_order()->decltype(internal::to_std_array<typename left_index_order::inter_match_order_sequence>::make())
+    static constexpr auto left_inter_product_order()->decltype(internal::to_std_array<left_inter_product_idx>::make())
     {
-        return internal::to_std_array<typename left_index_order::inter_match_order_sequence>::make();
+        return internal::to_std_array<left_inter_product_idx>::make();
     }
-    static constexpr auto right_inter_product_order()->decltype(internal::to_std_array<typename pulling_index_order::inter_match_order>::make())
+    static constexpr auto right_inter_product_order()->decltype(internal::to_std_array<right_inter_product_idx>::make())
     {
-        return internal::to_std_array<typename pulling_index_order::inter_match_order>::make();
+        return internal::to_std_array<right_inter_product_idx>::make();
     }
+};
+
+//chooses which indices map to rows/columns/tabs (for solving left outerproduct are mapped to columns and inner product to rows)
+template<class mia_expr_helper>
+struct solve_lattice_expr_helper
+{
+    typedef typename mia_expr_helper::left_inner_product_idx left_row_inds;
+    typedef typename mia_expr_helper::left_outer_product_idx left_column_inds;
+    typedef typename mia_expr_helper::left_inter_product_idx left_tab_inds;
+    typedef typename consecutive_sequence_checker<left_row_inds,left_column_inds,left_tab_inds>::is_consecutive is_left_consecutive;
+
+    typedef typename mia_expr_helper::right_inner_product_idx right_row_inds;
+    typedef typename mia_expr_helper::right_outer_product_idx right_column_inds;
+    typedef typename mia_expr_helper::right_inter_product_idx right_tab_inds;
+    typedef typename consecutive_sequence_checker<right_row_inds,right_column_inds,right_tab_inds>::is_consecutive is_right_consecutive;
+
+};
+
+//chooses which indices map to rows/columns/tabs (for solving left outerproduct are mapped to rows and inner product to columns)
+template<class mia_expr_helper>
+struct product_lattice_expr_helper
+{
+    typedef typename mia_expr_helper::left_outer_product_idx left_row_inds;
+    typedef typename mia_expr_helper::left_inner_product_idx left_column_inds;
+    typedef typename mia_expr_helper::left_inter_product_idx left_tab_inds;
+    typedef typename consecutive_sequence_checker<left_row_inds,left_column_inds,left_tab_inds>::is_consecutive is_left_consecutive;
+
+    typedef typename mia_expr_helper::right_inner_product_idx right_row_inds;
+    typedef typename mia_expr_helper::right_outer_product_idx right_column_inds;
+    typedef typename mia_expr_helper::right_inter_product_idx right_tab_inds;
+    typedef typename consecutive_sequence_checker<right_row_inds,right_column_inds,right_tab_inds>::is_consecutive is_right_consecutive;
+
+};
+
+
+
+//helper class to return the row, column, and tab index orders (similar to what solve_product_expr_helper does for inner, outer, and inter products).
+//However, the class is paramterized by super_lattice_expr_helper, which delegates indices to rows or columns differently depending on whether a solve
+//or product is being performed.
+//superclass should be product_lattice_expr_helper or solve_lattice_expr_helper
+template<class super_lattice_expr_helper>
+struct lattice_expr_helper : public super_lattice_expr_helper
+{
+
+    static constexpr auto left_row_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::left_row_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::left_row_inds>::make();
+    }
+    static constexpr auto right_row_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::right_row_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::right_row_inds>::make();
+    }
+    static constexpr auto left_column_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::left_column_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::left_column_inds>::make();
+    }
+    static constexpr auto right_column_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::right_column_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::right_column_inds>::make();
+    }
+    static constexpr auto left_tab_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::left_tab_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::left_tab_inds>::make();
+    }
+    static constexpr auto right_tab_order()->decltype(internal::to_std_array<typename super_lattice_expr_helper::right_tab_inds>::make())
+    {
+        return internal::to_std_array<typename super_lattice_expr_helper::right_tab_inds>::make();
+    }
+
+
 };
 
 
 
 
-
-
-
-
+//!Expression class created whenever an MIA is index by ProdInds. Reponsible for all compile-time delegation of operations
 template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number>
 class MIA_Atom
 {
@@ -315,16 +640,24 @@ public:
         >
     {
 
-        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
-
-        auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
-
-
-        auto aLat=m_mia->toLatticeExpression(helper::left_inner_product_order(),helper::left_outer_product_order(),helper::left_inter_product_order());
 
 
 
-        auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        //std::cout << "ALat done" << std::endl;
+        //aLat.print();
+
+
+
+        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+
+        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
+        typedef lattice_expr_helper<solve_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
+
+        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+
+
+
+        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,other_ownership>(*(Rhs.m_mia));
 
         auto cLat=aLat.solve(bLat);
 
@@ -350,6 +683,7 @@ public:
     {
 
 
+        //std::cout << "Idential Stuff here " << std::endl;
         if(Rhs.mHasOwnership)
             *m_mia=std::move(*(Rhs.m_mia));
         else
@@ -357,16 +691,21 @@ public:
         return *this;
     }
 
-    template<class otherMIA,bool other_ownership,size_t other_inter_number>
-    MIA_Atom& operator=(const MIA_Atom<otherMIA,m_Seq,other_ownership,other_inter_number> & Rhs)
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+     typename boost::enable_if< boost::mpl::equal<m_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>>, int >::type = 0
+     >
+    MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)
     {
+
 
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
 
-        if(other_ownership)
+        if(other_ownership){
+
             *m_mia=std::move(*(Rhs.m_mia));
+        }
         else
             *m_mia=*(Rhs.m_mia);
         return *this;
@@ -375,9 +714,12 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+     typename boost::disable_if< boost::mpl::equal<m_Seq,r_Seq,boost::mpl::quote2<internal::same_product_index_id>>, int >::type = 0
+    >
     MIA_Atom& operator=(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)
     {
+
 
 
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
@@ -412,21 +754,23 @@ public:
     {
 
 
+
         static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
-        cartesian_check::run();
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
 
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<m_Seq,internal::binary_rule>::run();
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<r_Seq,internal::binary_rule>::run();
+        typedef typename internal::data_type<_MIA>::type a_data_type;
+        typedef typename internal::data_type<otherMIA>::type b_data_type;
+//        auto lambda=[](const a_data_type & _a, const  b_data_type & _b){
+//            return _a+_b;
+//        };
+
+        //perform_destructive_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),lambda);
+        perform_destructive_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),std::plus<typename internal::data_type<cType>::type>());
 
 
-        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
 
-        m_mia->plus_equal(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
 
         return *this;
 
@@ -434,7 +778,18 @@ public:
     }
 
 
-    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+        typename boost::disable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<mHasOwnership>,
+                boost::is_same<
+                    _MIA,
+                    typename MIAMergeReturnType<_MIA,otherMIA>::type
+                >
+            >,
+            int
+        >::type = 0
+    >
     auto operator+(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAMergeReturnType<_MIA,otherMIA>::type,
@@ -446,26 +801,50 @@ public:
 
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
-        cartesian_check::run();
 
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<m_Seq,internal::binary_rule>::run();
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<r_Seq,internal::binary_rule>::run();
+
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
+        typedef typename internal::data_type<_MIA>::type a_data_type;
+        typedef typename internal::data_type<otherMIA>::type b_data_type;
+//        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
+//            return _a+_b;
+//        };
+
+        //cType* cMIA=perform_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),lambda);
+
+        cType* cMIA=perform_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),std::plus<typename internal::data_type<cType>::type>());
 
 
-
-        cType* cMIA(new cType(m_mia->plus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make())));
 
         MIA_Atom<cType,m_Seq,true,inter_product_number> C(cMIA);
         return C;
 
+    }
 
+    //if the MIA_Atom owns its MIA and its datatype is the same as the return, then it's temporary, so we can do destructive merge
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+        typename boost::enable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<mHasOwnership>,
+                boost::is_same<
+                    _MIA,
+                    typename MIAMergeReturnType<_MIA,otherMIA>::type
+                >
+            >,
+            int
+        >::type = 0
+    >
+    auto operator+(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
+        MIA_Atom
+    {
+
+
+
+        (*this)+=Rhs;
+        MIA_Atom C(this->m_mia);
+        this->m_mia=nullptr;
+        return C;
     }
 
 
@@ -474,21 +853,24 @@ public:
     {
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
 
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
-        cartesian_check::run();
+        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform subtraction.");
 
         //check to makes sure no left-hand indice is repeated
-        perform_auto_check<m_Seq,internal::binary_rule>::run();
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<r_Seq,internal::binary_rule>::run();
+        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
+        typedef typename internal::data_type<_MIA>::type a_data_type;
+        typedef typename internal::data_type<otherMIA>::type b_data_type;
+//        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
+//            return _a-_b;
+//        };
 
-        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
+        //perform_destructive_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),lambda);
+        perform_destructive_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),std::minus<typename internal::data_type<cType>::type>());
 
 
 
-        m_mia->minus_equal(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make());
+
+
 
         return *this;
 
@@ -496,7 +878,18 @@ public:
     }
 
 
-    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+        typename boost::disable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<mHasOwnership>,
+                boost::is_same<
+                    _MIA,
+                    typename MIAMergeReturnType<_MIA,otherMIA>::type
+                >
+            >,
+            int
+        >::type = 0
+    >
     auto operator-(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAMergeReturnType<_MIA,otherMIA>::type,
@@ -507,24 +900,48 @@ public:
     {
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
-
-        typedef perform_cartesian_check<m_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
-        cartesian_check::run();
-
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<m_Seq,internal::binary_rule>::run();
-        //check to makes sure no left-hand indice is repeated
-        perform_auto_check<r_Seq,internal::binary_rule>::run();
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef internal::pull_match_order<m_Seq,r_Seq,boost::mpl::empty<m_Seq>::value,boost::mpl::quote2<internal::same_product_index_id>> pulling_index_order;
 
-        typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        cType* cMIA=new cType(m_mia->minus_(*(Rhs.m_mia),internal::to_std_array<typename pulling_index_order::match_order>::make()));
+        typedef typename internal::data_type<_MIA>::type a_data_type;
+        typedef typename internal::data_type<otherMIA>::type b_data_type;
+//        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
+//            return _a-_b;
+//        };
+
+        //cType* cMIA=perform_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),lambda);
+        cType* cMIA=perform_merge<m_Seq,r_Seq>::template run(*m_mia,*(Rhs.m_mia),std::minus<typename internal::data_type<cType>::type>());
+
+
+
+
         MIA_Atom<cType,m_Seq,true,inter_product_number> C(cMIA);
         return C;
 
+    }
 
+    //if the MIA_Atom owns its MIA and its datatype is the same as the return, then it's temporary, so we can do destructive merge
+    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number,
+        typename boost::enable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<mHasOwnership>,
+                boost::is_same<
+                    _MIA,
+                    typename MIAMergeReturnType<_MIA,otherMIA>::type
+                >
+            >,
+            int
+        >::type = 0
+    >
+    auto operator-(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
+        MIA_Atom
+    {
+
+
+
+        (*this)-=Rhs;
+        MIA_Atom C(this->m_mia);
+        this->m_mia=nullptr;
+        return C;
     }
 
 
@@ -556,21 +973,21 @@ private:
 
 
 
-        //std::cout << "Entered MIA Expr*" << std::endl;
-        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
 
-        auto cMIA_dims=helper::run(*m_mia,*(Rhs.m_mia));
+        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
 
+        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
 
-        auto aLat=lattice_maker<_MIA,decltype(helper::left_outer_product_order()),decltype(helper::left_inner_product_order()),decltype(helper::left_inter_product_order()),mHasOwnership>
-            ::apply(*m_mia,helper::left_outer_product_order(),helper::left_inner_product_order(),helper::left_inter_product_order());
+        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
-        auto bLat=lattice_maker<otherMIA,decltype(helper::right_inner_product_order()),decltype(helper::right_outer_product_order()),decltype(helper::right_inter_product_order()),otherOwnership>
-            ::apply(*(Rhs.m_mia),helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
-
-       // std::cout << "ALat done" << std::endl;
-        //auto bLat=Rhs.m_mia->toLatticeExpression(helper::right_inner_product_order(),helper::right_outer_product_order(),helper::right_inter_product_order());
+        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+        //std::cout << "ALat done" << std::endl;
+        //aLat.print();
+        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
         //std::cout << "BLat done" << std::endl;
+        //bLat.print();
+
+
         auto cLat=aLat*bLat;
         //std::cout << "CLat done" << std::endl;
         //cLat.print();
@@ -581,6 +998,7 @@ private:
         constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
         MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
         //std::cout << "Lattice product finished " << std::endl;
+
 
         //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
@@ -603,7 +1021,7 @@ private:
 
         //std::cout << "Pure outer/inter started " << std::endl;
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        typedef product_solve_expr_helper<m_Seq,r_Seq> helper;
+        typedef solve_product_expr_helper<m_Seq,r_Seq> helper;
 
 
         MIA_return_type* cMIA(new MIA_return_type(m_mia->noLatticeMult(*Rhs.m_mia,helper::left_inter_product_order(),

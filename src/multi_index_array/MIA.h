@@ -274,14 +274,14 @@ public:
     }
 
     //! Returns scalar data at given indices
-    const_data_type_ref atIdx(index_type idx) const{
+    inline const_data_type_ref atIdx(index_type idx) const{
 
         return derived().atIdx(idx);
 
     }
 
     //! Returns scalar data at given indices
-    data_type_ref atIdx(index_type idx) {
+    inline data_type_ref atIdx(index_type idx) {
 
         return derived().atIdx(idx);
     }
@@ -309,12 +309,25 @@ protected:
     std::array<index_type,mOrder> m_dims;
     index_type m_dimensionality;
 
+
+
     template<class otherDerived,class index_param_type>
     void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const
     {
+
         for(size_t i=0;i<index_order.size();++i)
             if(b.dim(index_order[i])!=m_dims[i])
                 throw MIAParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
+
+    }
+
+    template<class otherDerived>
+    void check_merge_dims(const MIA<otherDerived> &b) const
+    {
+
+        if(this->dims()!=b.dims())
+            throw MIAParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
+
 
     }
 

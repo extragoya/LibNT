@@ -93,13 +93,13 @@ struct const_storage_iterator<DenseMIA<T,_order> >
 template<typename T,size_t _order>
 struct data_iterator<DenseMIA<T,_order> >
 {
-    typedef T* type;
+    typedef T* restrict type;
 };
 
 template<typename T,size_t _order>
 struct const_data_iterator<DenseMIA<T,_order> >
 {
-    typedef const T* type;
+    typedef const T* restrict type;
 };
 
 template<typename T,size_t _order>
@@ -153,7 +153,7 @@ public:
     //! order of the MIA
     constexpr static size_t mOrder=_order;
     //! smart pointer type used to reference raw data
-    typedef std::unique_ptr<T []> smart_raw_pointer;
+    typedef std::unique_ptr<T restrict [] > smart_raw_pointer;
     //! smart pointer type used to reference raw data container
     typedef std::unique_ptr<data_container_type> smart_data_pointer;
 
@@ -223,13 +223,27 @@ public:
 
 
     */
-    DenseMIA(const DenseMIA& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims())
+    DenseMIA(const DenseMIA& restrict otherMIA)  :DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
         this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
         m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
-        std::copy(otherMIA.data_begin(),otherMIA.data_end(),this->data_begin());
+
+        if(this->dimensionality()>=PARALLEL_TOL){
+            #pragma omp parallel for
+            for(size_t idx=0;idx<this->dimensionality();++idx)
+            {
+                this->atIdx(idx)=otherMIA.atIdx(idx);
+            }
+        }
+        else
+        {
+            for(size_t idx=0;idx<this->dimensionality();++idx)
+            {
+                this->atIdx(idx)=otherMIA.atIdx(idx);
+            }
+        }
 
 
     }
@@ -239,10 +253,11 @@ public:
 
 
     */
-    DenseMIA(DenseMIA&& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),m_smart_raw_ptr(nullptr),m_Data(nullptr),hasOwnership(otherMIA.ownsData())
+    DenseMIA(DenseMIA&& otherMIA):DenseMIABase<DenseMIA<T,_order> >(),m_smart_raw_ptr(nullptr),m_Data(nullptr),hasOwnership(otherMIA.ownsData())
     {
 
 
+        std::swap(this->m_dims,otherMIA.m_dims);
 
         this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
@@ -258,7 +273,7 @@ public:
 
     */
     template<class otherDerived>
-    DenseMIA(const DenseMIABase<otherDerived>& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims())
+    DenseMIA(const DenseMIABase<otherDerived>& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
 
@@ -267,9 +282,19 @@ public:
         m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
         m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
 
-        for(size_t idx=0;idx<this->dimensionality();++idx)
+        if(this->dimensionality()>=PARALLEL_TOL){
+        #pragma omp parallel for
+            for(size_t idx=0;idx<this->dimensionality();++idx)
+            {
+                this->atIdx(idx)=this->convert(otherMIA.atIdx(idx));
+            }
+        }
+        else
         {
-            this->atIdx(idx)=this->convert(otherMIA.atIdx(idx));
+            for(size_t idx=0;idx<this->dimensionality();++idx)
+            {
+                this->atIdx(idx)=this->convert(otherMIA.atIdx(idx));
+            }
         }
 
 
@@ -346,7 +371,6 @@ public:
 
     }
 
-
     //! Flattens the MIA to a Lattice by permuting the data in-place.
     /*!
         \param[in] row_indices indices to map to the lattice rows - will perserve ordering
@@ -356,6 +380,7 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
     MappedDenseLattice<data_type> toLatticePermute(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices);
+
 
     //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.
     /*!
@@ -368,6 +393,10 @@ public:
         return this->toLatticePermute(row_indices, column_indices, tab_indices);
 
     }
+
+    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) ->MappedDenseLattice<data_type>;
+
+
 
     //!  Assignment based on given order.
     /*!
@@ -383,7 +412,7 @@ public:
     void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
     template<typename other_data_type,typename index_param_type>
-    void assign(const ImplicitMIA<other_data_type,mOrder>& otherMIA,const std::array<index_param_type,_order>& index_order);
+    void assign(const ImplicitMIA<other_data_type,mOrder>& restrict otherMIA,const std::array<index_param_type,_order>& index_order);
 
     //!  Assignment based on given order using an rvalue reference.
     /*!
@@ -409,7 +438,7 @@ public:
     DenseMIA& operator=(const DenseMIA<other_data_type,mOrder>& otherMIA);
 
     template<typename other_data_type>
-    DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& otherMIA);
+    DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& restrict otherMIA);
 
 
     DenseMIA& operator=(const DenseMIA& otherMIA);
@@ -422,24 +451,34 @@ public:
 //            return *this;
 //    }
     //!Move assignment
-    DenseMIA& operator=(DenseMIA&& otherMIA)
+    DenseMIA& operator=(DenseMIA&& restrict otherMIA) restrict
     {
+
+
 
         if(this==&otherMIA)
             return *this;
 
         if (this->ownsData()){ //we can only swap if data is owned by *this
+
+
+            //std::cout << "Better be here " << std::endl;
             m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
+
             m_Data.swap(otherMIA.m_Data);
-            this->hasOwnership=otherMIA.ownsData();
+
+            std::swap(this->hasOwnership,otherMIA.hasOwnership);
             this->m_dimensionality=otherMIA.dimensionality();
-            this->m_dims=otherMIA.dims();
+            std::swap(this->m_dims,otherMIA.m_dims);
             this->mSolveInfo=otherMIA.solveInfo();
+
             return *this;
         }
         else{ //perform copy assignment
+
             return *this=static_cast<DenseMIA&>(otherMIA);
         }
+
     }
 
     //! Returns a smart pointer to the data container used
@@ -447,60 +486,60 @@ public:
         return m_Data;
     }
 
-    bool ownsData(){
+    bool ownsData() const{
         return hasOwnership;
     }
 
     //! Returns a raw pointer to the scalar data
-    T* raw_data_ptr() const{
+    inline T* restrict raw_data_ptr() const{
         return m_smart_raw_ptr.get();
     }
 
     //! Returns a raw pointer to the scalar data and releases ownership - caller must deallocate data using delete[]
-    T* release_raw_data() {
+    inline T* restrict release_raw_data() {
         hasOwnership=false;
         return raw_data_ptr();
     }
 
     //! Iterator to the beginning of the raw data
-    data_iterator data_begin()
+    inline data_iterator data_begin()
     {
-        return (*m_Data).data();
+        return raw_data_ptr();
 
     }
 
     //! Iterator to the end of the raw data
-    data_iterator data_end()
+    inline data_iterator data_end()
     {
-        return (*m_Data).data()+size();
+        return raw_data_ptr()+size();
 
     }
 
         //! Returns scalar data at given linear index
-    const_data_type_ref atIdx(index_type idx) const{
+    inline const_data_type_ref atIdx(index_type idx) const{
 
         //return lin index
         return *(data_begin()+idx);
     }
 
     //! Returns scalar data at given linear index
-    data_type_ref atIdx(index_type idx){
+    inline data_type_ref atIdx(index_type idx){
 
         //return lin index
         return *(data_begin()+idx);
     }
 
     //! Iterator to the beginning of the raw data
-    const_data_iterator data_begin() const
+    inline const_data_iterator data_begin() const
     {
-        return (*m_Data).data();
+        return raw_data_ptr();
 
     }
 
     //! Iterator to the end of the raw data
-    const_data_iterator data_end() const
+    inline const_data_iterator data_end() const
     {
-        return (*m_Data).data()+size();
+        return raw_data_ptr()+size();
 
     }
 
@@ -549,6 +588,29 @@ public:
         return *this;
     }
 
+    template<typename index_param_type>
+    void inplace_permute(const std::array<index_param_type,internal::order<DenseMIA>::value> & reshuffle_order);
+
+
+
+
+    //!
+    /*!
+        Based on An Optimal Index Reshuffle Algorithm for Multidimensional Arrays and Its Applications for Parallel Architectures by Chris H.Q. Ding and the modification
+        in Sec. III A by Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays
+    */
+    template<typename... Dims>
+    void inplace_permute(Dims... dims){
+        static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+
+        std::array<index_type, mOrder> reshuffle_order{{dims...}};
+        inplace_permute(reshuffle_order);
+
+    }
+
+
+
+
 //    //!
 //    /*!
 //        An Idea tried to speed-up inplace_permutation, but ended up being slower
@@ -563,7 +625,7 @@ public:
 //    }
 //  void inplace_permute_new(const std::array<index_type,mOrder> & reshuffle_order);
 
-protected:
+
 
     //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
     template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
@@ -572,7 +634,14 @@ protected:
     template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type = 0>
     void  merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,_order>& index_order);
 
+    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
+    template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    void    merge(const MIA<otherDerived> &b,const Op& op);
+    //! Common routine for merge operations, such as add or subtract. Templated on the Op binary operator.
+    template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type = 0>
+    void  merge(const MIA<otherDerived> &b,const Op& op);
 
+protected:
     template<typename other_data_type>
     DenseMIA& straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA);
 
@@ -586,42 +655,85 @@ private:
 };
 
 
+
 template<class T, size_t _order>
-template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
-auto DenseMIA<T,_order>::toLatticePermute(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices) ->MappedDenseLattice<data_type>
-{
+template<typename index_param_type>
+void DenseMIA<T,_order>::inplace_permute(const std::array<index_param_type,internal::order<DenseMIA>::value>& reshuffle_order){
 
-    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-    static_assert(R_size+C_size+T_size==mOrder,"Size of all three arrays must equal mOrder");
-    //statically check number of indices match up
-    size_t row_size=1, column_size=1, tab_size=1;
-    std::array<index_type,R_size+C_size+T_size> permute_order;
-    internal::concat_arrays(row_indices,column_indices,tab_indices,permute_order);
+    //first check that the reshuffle_order array isn't just {0,1,...mOrder}
+    //if it is, we do nothing
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
-    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
-    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+    size_t check;
+    for(check=0;check<reshuffle_order.size();++check){
+        if(reshuffle_order[check]!=(index_param_type)check)
+            break;
+    }
+    if (check==reshuffle_order.size())
+        return;
 
-    this->inplace_permute(permute_order);
-    for(size_t i=0;i<R_size;++i)
-        row_size*=this->dim(i);
-    for(size_t i=R_size;i<C_size+R_size;++i)
-        column_size*=this->dim(i);
-    for(size_t i=C_size+R_size;i<mOrder;++i)
-        tab_size*=this->dim(i);
+    boost::dynamic_bitset<> bit_array(this->dimensionality()); // all 0's by default
+    std::array<index_type,mOrder> new_dims; //stores new dimensions
+    internal::reorder_from(this->dims(),reshuffle_order,new_dims); //get new dims
+    index_type ioffset;
+
+    const auto dim_accumulator=internal::createDimAccumulator(new_dims,reshuffle_order);
+    const auto multiplier=internal::createMultiplier(this->dims());
+
+    //create a function that converts from a linIdx of the permuted array to a linIdx of the old array (see Jie et al.'s article: A High Efficient In-place Transposition Scheme for Multidimensional Arrays)
+    //EDIT - using the lambda slowed down the implementation, so it's just hard-coded now
+//    auto func=[this,&dim_accumulator](const index_type from_lin_idx){
+//        index_type to_lin_idx=0;
+//        index_type multiplier=1;
+//        for(size_t i=0;i<mOrder;++i){
+//            to_lin_idx+=(from_lin_idx/dim_accumulator[i])%this->dim(i)*multiplier; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+//            multiplier*=this->dim(i);
+//        }
+//        return to_lin_idx;
+//    };
+    index_type touch_ctr=0;
+    //iterate through the entire bit array
+    for(index_type start_idx=0;start_idx<this->dimensionality();++start_idx){
+        //if we've found a location that hasn't been touched, we've found a new vacancy cycle
+        if(bit_array[start_idx]==0){
+
+            auto temp=this->atIdx(start_idx); //get the start of the cycle
+            ioffset=start_idx; //permuted array linIdx
+            while(true){
+
+                size_t ioffset_next=0;
+
+                for(size_t i=0;i<mOrder;++i){
+                    ioffset_next+=((size_t)ioffset/dim_accumulator[i])%(size_t)this->dim(i)*multiplier[i]; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+
+                }
+                //ioffset_next=func(ioffset); //get the location of ioffset in the old array
 
 
+                bit_array[ioffset]=1; //touch the current data location
+                ++touch_ctr;
+                if(ioffset_next==start_idx){ //if we've cycled to the start, then finish the cycle and break
+                    if(ioffset_next!=ioffset)
+                        this->atIdx(ioffset)=temp;
+                    break;
+                }
 
-    return MappedDenseLattice<data_type>(raw_data_ptr(),row_size, column_size, tab_size);
+                this->atIdx(ioffset)=this->atIdx(ioffset_next); //set the data element in the permuted array to its location in the old array
+                ioffset=ioffset_next; //update the location in the current cycle
+
+            }
+            if (touch_ctr==this->dimensionality()){
+                break;
+            }
+
+        }
 
 
-
-
+    }
+    this->m_dims=new_dims;
 
 
 }
-
 
 
 
@@ -729,6 +841,8 @@ template<class T, size_t _order>
 template<typename other_data_type>
 DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const ImplicitMIA<other_data_type,mOrder>& otherMIA){
     //if the otherMIA is implicit, we need to get its explicit values in case it's part of an expression that includes *this
+
+
     if(!hasOwnership && this->m_dimensionality!=otherMIA.dimensionality()){
         throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
@@ -749,6 +863,7 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<other_data_type
 template<class T, size_t _order>
 DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<T,_order>& otherMIA)
 {
+
     return this->straight_assign(otherMIA);
 
 }
@@ -756,6 +871,7 @@ template<class T, size_t _order>
 template<typename other_data_type>
 DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA)
 {
+
 
 
 
@@ -846,12 +962,14 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
     index_type curIdx=0;
 
     auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    auto multiplier=internal::createMultiplier(otherMIA.dims());
     //print_array(dim_accumulator,"dim_accumulator");
     //print_array(index_order,"index_order");
+
     for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
     {
 
-        *this_it=this->convert(otherMIA.atIdx(internal::getShuffleLinearIndex(curIdx++,otherMIA.dims(),dim_accumulator)));
+        *this_it=this->convert(otherMIA.atIdx(internal::getShuffleLinearIndex(curIdx++,otherMIA.dims(),multiplier,dim_accumulator)));
 
     }
 
@@ -888,32 +1006,148 @@ void DenseMIA<T,_order>::assign(DenseMIA<T,_order>&& otherMIA,const std::array<i
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,_order>& index_order)
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op,const std::array<index_param_type,_order>& index_order) restrict
 {
 
+    #ifdef LIBMIA_CHECK_DIMS
     this->check_merge_dims(b,index_order);
+    #endif
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
 
 
 
 
     auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order);
-    for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
-    {
-        this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),dim_accumulator))));
+    auto multiplier=internal::createMultiplier(b.dims());
+
+    if(this->dimensionality()>=PARALLEL_TOL){
+        #pragma omp parallel for
+        for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        {
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
+
+
+        }
+    }
+    else{
+       for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        {
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
+
+        }
+
 
     }
+
+
+
+}
+
+template<class T, size_t _order>
+template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op) restrict
+{
+
+    #ifdef LIBMIA_CHECK_DIMS
+    this->check_merge_dims(b);
+    #endif
+
+
+
+
+
+
+
+    if(this->dimensionality()>=PARALLEL_TOL){
+        #pragma omp parallel for
+        for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        {
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(curIdx)));
+
+
+        }
+    }
+    else{
+       for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        {
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(curIdx)));
+
+        }
+
+
+    }
+
+
+
+}
+
+
+template<class T, size_t _order>
+auto DenseMIA<T,_order>::toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) ->MappedDenseLattice<data_type>
+{
+
+
+
+
+    index_type row_size=std::accumulate(this->dims().begin(),this->dims().begin()+number_of_row_indices,1,std::multiplies<index_type>());
+    index_type column_size=std::accumulate(this->dims().begin()+number_of_row_indices,this->dims().begin()+number_of_row_indices+number_of_column_indices,1,std::multiplies<index_type>());
+    index_type tab_size=std::accumulate(this->dims().begin()+number_of_row_indices+number_of_column_indices,this->dims().end(),1,std::multiplies<index_type>());
+
+    return MappedDenseLattice<data_type>(raw_data_ptr(),row_size, column_size, tab_size);
+
+
+
+
+
+
+}
+
+template<class T, size_t _order>
+template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
+auto DenseMIA<T,_order>::toLatticePermute(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices) ->MappedDenseLattice<data_type>
+{
+
+    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
+    static_assert(R_size+C_size+T_size==mOrder,"Size of all three arrays must equal mOrder");
+    //statically check number of indices match up
+    size_t row_size=1, column_size=1, tab_size=1;
+    std::array<index_type,R_size+C_size+T_size> permute_order;
+    internal::concat_arrays(row_indices,column_indices,tab_indices,permute_order);
+
+    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
+    this->inplace_permute(permute_order);
+    for(size_t i=0;i<R_size;++i)
+        row_size*=this->dim(i);
+    for(size_t i=R_size;i<C_size+R_size;++i)
+        column_size*=this->dim(i);
+    for(size_t i=C_size+R_size;i<mOrder;++i)
+        tab_size*=this->dim(i);
+
+
+
+    return MappedDenseLattice<data_type>(this->raw_data_ptr(),row_size, column_size, tab_size);
+
+
+
+
 
 
 }
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,_order>& index_order)
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op,const std::array<index_param_type,_order>& index_order)
 {
 
 
+    #ifdef LIBMIA_CHECK_DIMS
     this->check_merge_dims(b,index_order);
+    #endif
+
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
     auto & b_derived=b.final_derived();
     for(auto it=b_derived.storage_begin();it<b_derived.storage_end();++it){
@@ -922,6 +1156,29 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived> &b,const Op& op,const st
         //calculate the lhs_index based on how the MIA indices matched up
         auto lhs_index=internal::sub2ind_reorder(b_derived.ind2sub(default_order_idx),index_order,b_derived.dims());
         this->atIdx(lhs_index)=op(this->atIdx(lhs_index),this->convert(b_derived.data_val(*it)));
+
+    }
+
+
+}
+
+template<class T, size_t _order>
+template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type>
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op)
+{
+
+
+    #ifdef LIBMIA_CHECK_DIMS
+    this->check_merge_dims(b);
+    #endif
+
+    auto & b_derived=b.final_derived();
+    for(auto it=b_derived.storage_begin();it<b_derived.storage_end();++it){
+        //the index values of b may correspond to a shuffled version of the default linear index
+        auto default_order_idx=b_derived.convert_to_default_linIdxSequence(b_derived.index_val(*it));
+        //calculate the lhs_index based on how the MIA indices matched up
+
+        this->atIdx(default_order_idx)=op(this->atIdx(default_order_idx),this->convert(b_derived.data_val(*it)));
 
     }
 

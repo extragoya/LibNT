@@ -409,7 +409,7 @@ template <class Derived>
 template<class otherDerived>
 inline
 typename DenseProductReturnType<Derived,otherDerived>::type
-DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b) const
+DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & restrict b) const restrict
 {
 
 
@@ -437,7 +437,7 @@ template <class Derived>
 template<class otherDerived>
 inline
 typename DenseProductReturnType<Derived,otherDerived>::type
-DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> &b) const
+DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict b) const restrict
 {
 
 

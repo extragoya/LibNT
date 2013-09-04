@@ -89,7 +89,7 @@ struct function_type<ImplicitMIA<T,_order> >
 {
     typedef typename data_type<ImplicitMIA<T,_order>>::type data_type;
     typedef typename index_type<ImplicitMIA<T,_order>>::type index_type;
-    typedef std::function<data_type(index_type)> type;
+    typedef std::function<data_type(const index_type &)> type;
 };
 
 
@@ -207,7 +207,7 @@ public:
 
     */
     template<class array_index_type>
-    ImplicitMIA(function_type _function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order> >(_dims)
+    ImplicitMIA(function_type &_function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order> >(_dims)
     {
 
 
@@ -249,7 +249,7 @@ public:
     }
 
     //! Returns scalar data at given linear index
-    const data_type atIdx(index_type idx) const{
+    inline const data_type atIdx(index_type idx) const{
 
         //return lin index
         return mFunction(idx);
@@ -275,9 +275,18 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     auto toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
-    ->decltype(internal::latticeCopy(*this,row_indices,column_indices,tab_indices))
+    ->decltype(this->toLatticeCopy(row_indices,column_indices,tab_indices)) const
     {
         return this->toLatticeCopy(row_indices,column_indices,tab_indices);
+
+    }
+
+
+    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices)
+    ->decltype(this->toStraightLatticeCopy(number_of_row_indices,number_of_column_indices)) const
+    {
+
+        return this->toStraightLatticeCopy(number_of_row_indices,number_of_column_indices);
 
     }
 
@@ -305,14 +314,26 @@ public:
     DenseMIA<other_data_type,mOrder> make_explicit() const{
         DenseMIA<other_data_type,mOrder> temp(this->dims());
         //get the explicit values
-        //#pragma omp parallel for ordered
-        for(size_t idx=0;idx<this->dimensionality();++idx){
+        //get faster execution if I make different code structures instead of using opemmp's if statement
+        if(this->dimensionality()>=PARALLEL_TOL){
+            #pragma omp parallel for
+            for(size_t idx=0;idx<this->dimensionality();++idx){
 
-            temp.atIdx(idx)=temp.convert(this->atIdx(idx));
+                temp.atIdx(idx)=temp.convert(this->atIdx(idx));
+            }
+        }
+        else
+        {
+            for(size_t idx=0;idx<this->dimensionality();++idx){
+
+                temp.atIdx(idx)=temp.convert(this->atIdx(idx));
+            }
         }
         return temp;
 
     }
+
+
 
     template<class other_data_type,class index_param_type>
     DenseMIA<other_data_type,mOrder> make_explicit(const std::array<index_param_type,_order>& index_order) const{
@@ -325,14 +346,26 @@ public:
 
 
         auto dim_accumulator=internal::createDimAccumulator(temp_storage,index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+        //get faster execution if I make different code structures instead of using opemmp's if statement
+        if(this->dimensionality()>=PARALLEL_TOL){
+            #pragma omp parallel for
+            for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
+            {
 
-        //#pragma omp parallel for
-        for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
-        {
+                *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
 
-            *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex(static_cast<index_type>(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
-
+            }
         }
+        else
+        {
+            for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
+            {
+
+                *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
+
+            }
+        }
+
         return temp;
 
     }
