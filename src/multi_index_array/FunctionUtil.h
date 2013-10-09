@@ -105,6 +105,38 @@ perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const O
 
 
 
+
+//Base Case
+template<size_t cur_partition,class MIAType2,class index_it,size_t no_con_partition,
+    typename boost::enable_if_c< cur_partition == 0, int >::type = 0
+    >
+typename internal::data_type<MIAType2>::type collect_contract_partitions(const MIAType2 & source,typename internal::index_type<MIAType2>::type cur_index,const std::array<size_t, no_con_partition>& contract_ranges,const index_it contract_idx_end,const std::array<int,no_con_partition> & contract_partition)
+{
+
+
+    return source.atIdx(cur_index);
+
+
+}
+
+template<size_t cur_partition,class MIAType2,class index_it,size_t no_con_partition,
+    typename boost::disable_if_c< cur_partition == 0, int >::type = 0
+    >
+typename internal::data_type<MIAType2>::type collect_contract_partitions(const MIAType2 & source,typename internal::index_type<MIAType2>::type cur_index,const std::array<size_t, no_con_partition>& contract_ranges,const index_it contract_idx_end,const std::array<int,no_con_partition> & contract_partition)
+{
+
+    typedef typename internal::data_type<MIAType2>::type data_type;
+    data_type sum=0;
+    for(int j=0;j<(int)contract_ranges[cur_partition-1];++j){
+        auto j_contract_idx=internal::get_contract_idx(j, contract_idx_end-contract_partition[cur_partition-1],contract_idx_end, source.dims());
+        sum+=collect_contract_partitions<cur_partition-1,MIAType2,index_it,no_con_partition>(source,cur_index+j_contract_idx,contract_ranges,contract_idx_end-contract_partition[cur_partition-1],contract_partition);
+
+    }
+    return sum;
+
+
+}
+
 template<typename Derived, class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
 auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
 ->DenseLattice<typename internal::data_type<Derived>::type>

@@ -475,6 +475,10 @@ struct solve_product_expr_helper
         //check to makes sure no right-hand indice is repeated
         perform_auto_check<r_Seq,internal::binary_rule>::run();
         perform_cartesian_check<l_Seq,r_Seq,internal::product_rule>::run();
+        //make sure indices that share the same id don't have different elemwise counters
+        perform_cartesian_check<l_Seq,r_Seq,internal::product_rule_different_elem_wise,boost::mpl::quote2<internal::same_product_index_id_different_elem_counters>>::run();
+
+
 
         //        print_array(left_outer_product_order, "left_outer");
         //        print_array(left_inner_product_order,"left_inner");
@@ -592,6 +596,139 @@ struct lattice_expr_helper : public super_lattice_expr_helper
 };
 
 
+template<class Seq>
+struct contraction_helper
+{
+    typedef internal::pull_contract_indices<Seq,boost::mpl::empty<Seq>::value> contraction_index_helper;
+    typedef internal::pull_sequence_from_list<Seq,typename contraction_index_helper::contract_indices,boost::mpl::empty<typename contraction_index_helper::contract_indices>::value> index_sequences;
+    typedef typename contraction_index_helper::remaining_indices remaining_indices;
+    typedef typename boost::mpl::size<remaining_indices>::type remaining_indices_size;
+    typedef typename contraction_index_helper::contract_indices contract_indices;
+    typedef typename boost::mpl::size<contract_indices>::type contract_indices_size;
+    typedef typename index_sequences::sequence contraction_index_sequence;
+    typedef typename boost::mpl::size<contraction_index_sequence>::type contraction_index_sequence_size;
+    typedef typename index_sequences::partition_sequence contraction_partition_sequence;
+
+};
+
+template<class Seq>
+struct attraction_helper
+{
+    typedef internal::pull_attract_indices<Seq,boost::mpl::empty<Seq>::value> attraction_index_helper;
+    typedef internal::pull_sequence_from_list<Seq,typename attraction_index_helper::attract_indices,boost::mpl::empty<typename attraction_index_helper::attract_indices>::value> index_sequences;
+
+    typedef typename attraction_index_helper::attract_indices attract_indices;
+    typedef typename boost::mpl::size<attract_indices>::type attract_indices_size;
+    typedef typename index_sequences::sequence attraction_index_sequence;
+    typedef typename boost::mpl::size<attraction_index_sequence>::type attraction_index_sequence_size;
+    typedef typename index_sequences::partition_sequence attraction_partition_sequence;
+
+};
+
+template<class Seq>
+struct unary_helper
+{
+
+    typedef internal::pull_contract_indices<Seq,boost::mpl::empty<Seq>::value> contraction_index_helper;
+    typedef typename contraction_index_helper::remaining_indices remaining_indices_after_contraction; //mpl::vector of MIA indices not undergoing contraction
+    //get mpl::vector of indices undergoing contraction
+    typedef internal::pull_sequence_from_list<Seq,typename contraction_index_helper::contract_indices,boost::mpl::empty<typename contraction_index_helper::contract_indices>::value> contract_index_puller;
+    typedef typename contract_index_puller::sequence contraction_index_sequence;
+    typedef typename boost::mpl::size<contraction_index_sequence>::type contraction_index_sequence_size;
+    //get mpl::vector of partitions of the possibly more than one contraction set
+    typedef typename contract_index_puller::partition_sequence contraction_partition_sequence;
+    //pull the attraction indices from the indices remaining after contraction
+    typedef internal::pull_attract_indices<remaining_indices_after_contraction,boost::mpl::empty<remaining_indices_after_contraction>::value> attraction_index_helper;
+    typedef typename attraction_index_helper::remaining_indices remaining_indices_after_attraction_and_contraction; //mpl::vector of MIA indices not undergoing contraction or attraction
+
+    //get the location of these attraction indices and their partitions
+    typedef internal::pull_sequence_from_list<Seq,typename attraction_index_helper::attract_indices,boost::mpl::empty<typename attraction_index_helper::attract_indices>::value> attract_index_puller;
+    typedef typename attract_index_puller::sequence attraction_index_sequence;
+    typedef typename boost::mpl::size<attraction_index_sequence>::type attraction_index_sequence_size;
+    typedef typename attract_index_puller::partition_sequence attraction_partition_sequence;
+
+    //add the attraction indices to the end of the list of indices remaining after contraction to get a combined list of remaining indices
+    typedef typename boost::mpl::insert_range<remaining_indices_after_attraction_and_contraction,
+                                                    typename boost::mpl::end<remaining_indices_after_attraction_and_contraction>::type,
+                                                    typename attraction_index_helper::attract_indices
+                                                >::type remaining_indices;
+    typedef typename boost::mpl::size<remaining_indices>::type remaining_indices_size;
+
+};
+
+
+//!Only enabled when no contraction or attraction is taking place (known by examining Seq template parameter). Will just return the given MIA with the same Seq, doing nothing else.
+template<class _MIA,class Seq,typename boost::disable_if<
+                                boost::mpl::less<
+                                    typename unary_helper<Seq>::remaining_indices_size,
+                                    typename boost::mpl::size<Seq>::type
+                                >,
+                                int
+                            >::type=0
+>
+MIA_Atom<
+    _MIA,
+    Seq,
+    false
+>
+perform_unary(_MIA & mia)
+{
+
+
+
+    return MIA_Atom<
+                _MIA,
+                Seq,
+                false
+            >(&mia);
+
+
+}
+
+
+
+//!Only enabled when a contraction or attraction is actually taking place (known by examining Seq template parameter). Will return a new MIA (of smaller order) with a new index sequence.
+template<class _MIA,class Seq,typename boost::enable_if<
+                                boost::mpl::less<
+                                    typename unary_helper<Seq>::remaining_indices_size,
+                                    typename boost::mpl::size<Seq>::type
+                                >,
+                                int
+                            >::type=0
+>
+MIA_Atom<
+    typename MIAUnaryType<_MIA,unary_helper<Seq>::remaining_indices_size::value>::type,
+    typename unary_helper<Seq>::remaining_indices,
+    true
+>
+perform_unary(_MIA & mia)
+{
+
+
+//    print_array(internal::to_std_array<typename unary_helper<Seq>::contraction_index_sequence>::make(),"contraction_index_sequence");
+//    print_array(internal::to_std_array<typename unary_helper<Seq>::contraction_partition_sequence>::make(),"contraction_partition_sequence");
+//    print_array(internal::to_std_array<typename unary_helper<Seq>::attraction_index_sequence>::make(),"attraction_index_sequence");
+//    print_array(internal::to_std_array<typename unary_helper<Seq>::attraction_partition_sequence>::make(),"attraction_partition_sequence");
+
+
+    //print_array(internal::to_std_array<typename contraction_index_helper::contract_sequence>::make(),"contract indices");
+
+    typedef typename MIAUnaryType<_MIA,unary_helper<Seq>::remaining_indices_size::value>::type retType;
+    retType * ret(new retType());
+
+
+    *ret=mia.contract_attract(internal::to_std_array<typename contraction_helper<Seq>::contraction_index_sequence>::make(),
+                              internal::to_std_array<typename contraction_helper<Seq>::contraction_partition_sequence>::make(),
+                              internal::to_std_array<typename attraction_helper<Seq>::attraction_index_sequence>::make(),
+                              internal::to_std_array<typename attraction_helper<Seq>::attraction_partition_sequence>::make());
+    return MIA_Atom<
+                retType,
+                typename unary_helper<Seq>::remaining_indices,
+                true
+            >(ret);
+
+
+}
 
 
 //!Expression class created whenever an MIA is index by ProdInds. Reponsible for all compile-time delegation of operations
@@ -625,6 +762,12 @@ public:
 
 
 
+//        std::cout << "Left seq " << std::endl;
+//        boost::mpl::for_each< m_Seq >(print_class_name());
+//        std::cout << "Right seq " << std::endl;
+//        boost::mpl::for_each< r_Seq >(print_class_name());
+//        std::cout << "Result seq " << std::endl;
+//        boost::mpl::for_each< typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence >(print_class_name());
         return perform_product<otherMIA,r_Seq,other_ownership,other_inter_number>(Rhs);
 
 

@@ -106,9 +106,11 @@ public:
     }
 
     template<class...Ts>
-    auto operator()(Ts...ts)->MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false> {
+    auto operator()(Ts...ts)->decltype(perform_unary<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(this->final_derived())) {
         static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
-        return MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&final_derived());
+        return perform_unary<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(final_derived());
+
+        //return MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&final_derived());
 
     }
 
@@ -116,6 +118,14 @@ public:
         for(auto & i:m_dims)
             i=0;
         m_dimensionality=0;
+    }
+
+
+    template<typename index_param_type>
+    MIA(const std::array<index_param_type,mOrder > &_dims){
+        static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Dimensions must be given in a data type convertable to index_type");
+        std::copy(_dims.begin(),_dims.end(),m_dims.begin());
+        m_dimensionality=compute_dimensionality();
     }
 
     MIA(const std::array<index_type,mOrder > &_dims): m_dims(_dims),m_dimensionality(compute_dimensionality()) {}
@@ -286,6 +296,20 @@ public:
         return derived().atIdx(idx);
     }
 
+
+
+
+    template<size_t no_indices, size_t no_partitions>
+    typename MIAUnaryType<Derived,no_indices>::type contract(const std::array<int,no_indices> & contract_indices,const std::array<int,no_partitions> & contract_partitions){
+
+        return derived().contract_attract(contract_indices,contract_partitions,std::array<int,0>(),std::array<int,0>());
+    }
+
+//    template<size_t no_indices>
+//    typename MIAUnaryType<Derived,no_indices>::type attract(const std::array<int,no_indices> & attract_indices){
+//
+//        return derived().contract_attract(std::array<int,0>(),attract_indices);
+//    }
 
 
 protected:

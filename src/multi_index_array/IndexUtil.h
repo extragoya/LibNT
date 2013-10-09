@@ -332,8 +332,8 @@ inline void ind2sub(indexType idx, const std::array<indexType,T> & dims,std::arr
 }
 
 //check, probably std::array second parameter templated by size_t
-template<typename indexType,size_t T>
-std::array<indexType,T> ind2sub(indexType idx, const std::array<indexType,T> & dims)
+template<typename indexType1,typename indexType,size_t T>
+std::array<indexType,T> ind2sub(indexType1 idx, const std::array<indexType,T> & dims)
 {
 
     std::array<indexType,T> indices;
@@ -393,20 +393,20 @@ dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
     return indices;
 }
 
-template<class indexType1,class indexType2,size_t _size>
-inline std::array<libdivide::divider<size_t>,_size> createDimAccumulatorLibDivide(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
-{
-
-    std::array<libdivide::divider<size_t>,_size> dim_accumulator;
-
-    for(size_t i=0;i<_size;++i){
-        dim_accumulator[i]=libdivide::divider<size_t>((size_t)std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>()));
-    }
-
-    dim_accumulator=internal::reorder_to(dim_accumulator,index_order); //reorder the denominators based on the reshuffle order
-    return dim_accumulator;
-
-}
+//template<class indexType1,class indexType2,size_t _size>
+//inline std::array<libdivide::divider<size_t>,_size> createDimAccumulatorLibDivide(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
+//{
+//
+//    std::array<libdivide::divider<size_t>,_size> dim_accumulator;
+//
+//    for(size_t i=0;i<_size;++i){
+//        dim_accumulator[i]=libdivide::divider<size_t>((size_t)std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>()));
+//    }
+//
+//    dim_accumulator=internal::reorder_to(dim_accumulator,index_order); //reorder the denominators based on the reshuffle order
+//    return dim_accumulator;
+//
+//}
 
 template<class indexType1,class indexType2,size_t _size>
 inline std::array<size_t,_size> createDimAccumulator(const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict index_order)
@@ -487,6 +487,44 @@ inline indexType1 getShuffleLinearIndex(const indexType1 &idx,const std::array<i
     return (indexType1)ioffset_next;
 
 }
+
+
+//!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
+template<typename index_type, typename order_it,typename dimType>
+inline index_type get_contract_idx(const index_type index, const order_it order_begin, const order_it order_end, const dimType & dims)
+{
+
+    typename dimType::value_type idx=0;
+    typename dimType::value_type multiplier=1;
+
+    for (auto it=order_begin; it< order_end; ++it)
+    {
+        multiplier=1;
+        for(size_t j=0; j<(size_t)(*it); ++j)
+        {
+
+            multiplier*=dims[j];
+        }
+        idx+=index*multiplier;
+
+
+    }
+
+    return idx;
+
+}
+
+
+//!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
+template<typename index_type, typename accessType2,typename dimType>
+inline index_type get_contract_idx(const index_type index, const accessType2 &order, const dimType & dims)
+{
+
+
+
+    return get_contract_idx(index,order.begin(),order.end(),dims);
+}
+
 
 template<typename indexType,size_t T>
 indexType sub2ind(const std::array<indexType,T> & indices, const std::array<indexType,T> & dims)
@@ -576,6 +614,10 @@ inline typename dimType::value_type sub2ind(const accessType & indices, const ac
 
 }
 
+
+
+
+
 //!order is given in the order we collect dims and indices are also reordered
 template<typename accessType, typename accessType2,typename dimType>
 typename dimType::value_type sub2ind_reorder(const accessType & indices, const accessType2 &order, const dimType & dims)
@@ -642,6 +684,29 @@ void reverseOrder(const std::array<index_param_type1,_size> & init_order,std::ar
         }
 
     }
+
+}
+
+
+template<class index_param_type1,size_t _size1,size_t total_size>
+std::array<index_param_type1,total_size-_size1> get_remaining_indices(const std::array<index_param_type1,_size1> & flagged_indices)
+{
+
+    std::array<index_param_type1,total_size-_size1> ret;
+    size_t ctr=0;
+    size_t ret_ctr=0;
+    index_param_type1 cur_index=flagged_indices[ctr];
+    for(index_param_type1 i=0;i<(index_param_type1)total_size;++i)
+    {
+        if(i<cur_index)
+            ret[ret_ctr++]=i;
+        else{
+            ctr++;
+            cur_index=(ctr==_size1)?total_size:flagged_indices[ctr];
+        }
+
+    }
+    return ret;
 
 }
 

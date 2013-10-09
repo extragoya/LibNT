@@ -63,6 +63,7 @@ namespace internal
 {
 
 constexpr int product_rule=0;
+constexpr int product_rule_different_elem_wise=3;
 constexpr int assign_rule=1;
 constexpr int merge_rule=2;
 constexpr int binary_rule=0;
@@ -80,7 +81,7 @@ struct match_rule;
 template<size_t id,int elemval>
 struct match_rule<ProdInd<id,elemval>,product_rule>
 {
-    typedef boost::mpl::vector_c<int,1> allowed_matches;
+    typedef boost::mpl::vector_c<int,0,1> allowed_matches;
 
 };
 
@@ -92,7 +93,13 @@ struct match_rule<ProdInd<id,0>,product_rule>
 
 };
 
+//number of matches allowed during a product when an index shares the same id but has a different elemWise counter (should be 0 allowed matches)
+template<size_t id,int elemval>
+struct match_rule<ProdInd<id,elemval>,product_rule_different_elem_wise>
+{
+    typedef boost::mpl::vector_c<int,0> allowed_matches;
 
+};
 
 //number of matches allowed with an index during an MIA assignment
 template<size_t id,int elemval>
@@ -174,6 +181,19 @@ struct same_product_index_id<ProdInd<id1,elem_val1>,ProdInd<id2,elem_val2>> {
     BOOST_STATIC_CONSTANT(bool, value = id1==id2);
     typedef boost::mpl::integral_c_tag tag;
     typedef same_product_index_id type;
+    typedef bool value_type;
+    operator bool() const { return this->value; }
+};
+
+template<typename T1, typename T2>
+struct same_product_index_id_different_elem_counters: public boost::false_type {};
+
+template<size_t id1, int elem_val1,size_t id2, int elem_val2>
+struct same_product_index_id_different_elem_counters<ProdInd<id1,elem_val1>,ProdInd<id2,elem_val2>> {
+
+    BOOST_STATIC_CONSTANT(bool, value = (id1==id2&&elem_val1!=elem_val2));
+    typedef boost::mpl::integral_c_tag tag;
+    typedef same_product_index_id_different_elem_counters type;
     typedef bool value_type;
     operator bool() const { return this->value; }
 };

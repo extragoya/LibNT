@@ -148,7 +148,12 @@ template <> struct SparseTolerance<double>
 
 };
 
-
+struct print_class_name {
+    template <typename T>
+    void operator()( T t ) const {
+       std::cout << typeid(t).name() << " ";
+    }
+};
 
 inline long double log2(const long double x){
     return  std::log(x) * M_LOG2E;
@@ -704,6 +709,20 @@ struct MIASolveReturnType<L_MIA,R_MIA,order,
 {
     typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
+};
+
+
+template<typename MIA,size_t remaining_indices_size,class Enable = void>
+struct MIAUnaryType
+{
+
+};
+
+
+template<typename MIA,size_t remaining_indices_size>
+struct MIAUnaryType<MIA,remaining_indices_size,typename boost::enable_if<internal::is_DenseMIA<MIA>>::type>
+{
+    typedef DenseMIA<typename internal::data_type<MIA>::type,remaining_indices_size> type;
 };
 
 template<typename Lhs, typename Rhs,class Enable = void>

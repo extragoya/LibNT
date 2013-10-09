@@ -299,6 +299,23 @@ public:
     }
 
 
+    //! Function for performing contraction and attraction. Best not to call directly, instead use the MIA algebra unary operation functionality, e.g., a(i,i)
+    /*!
+        \param[in] contract_indices list of indices undergoing a contraction
+        \param[in] contract_partitions if more than one set of contractions is taking place, specifies how to partition contract_indices into corresponding sets of contractions
+        \param[in] attract_indices list of indices undergoing an attraction
+        \param[in] attract_partitions if more than one set of attractions is taking place, specifies how to partition attract_indices into corresponding sets of attractions
+    */
+    template<size_t no_con_indices,size_t no_con_partitions,size_t no_attract_indices,size_t no_attract_partitions>
+    typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
+
+
+    //DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partition> & contract_partition,const std::array<int,no_attract_indices> & attract_indices, const std::array<int,no_attract_partition> & attract_partition) const
+
+
+//
+
+
 
 //    template<class otherDerived,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
 //    typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
@@ -480,6 +497,94 @@ DenseMIABase<Derived>::implicit_merge(const MIA<otherDerived> &b,const Op& op) c
 }
 
 
+template<typename Derived>
+template<size_t no_con_indices,size_t no_con_partition,size_t no_attract_indices, size_t no_attract_partition>
+typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partition>::type
+DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partition> & contract_partition,const std::array<int,no_attract_indices> & attract_indices, const std::array<int,no_attract_partition> & attract_partition) const
+{
+
+    static_assert(no_con_indices+no_attract_indices<=mOrder,"Number of indices specified for contraction and/or attraction must not exceed mOrder");
+    #ifdef LIBMIA_CHECK_DIMS
+    //this->check_contract_indices(contract_indices,attract_indices);
+    #endif
+    typedef typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partition>::type retType;
+
+    //extract indices not undergoing a contraction or attraction
+    auto copy_contract=internal::concat_index_arrays(contract_indices,attract_indices);
+    std::sort(copy_contract.begin(),copy_contract.end());
+    auto other_indices=internal::get_remaining_indices<size_t,no_con_indices+no_attract_indices,mOrder>(copy_contract);
+    //get their dimensionality
+    std::array<index_type,other_indices.size()> otherDims;
+    internal::reorder_from(this->dims(), other_indices,otherDims);
+
+
+    //print_array(contract_indices,"contract_indices");
+    //print_array(contract_partition,"contract_partition");
+
+//    print_array(attract_indices,"attract_indices");
+//    print_array(attract_partition,"attract_partition");
+
+    //print_array(other_indices,"other_indices");
+    //
+
+    //get size of contraction indices in each set of contractions (each range within the same partition or set should be all identical)
+    std::array<size_t,no_con_partition> contract_index_ranges;
+    size_t cur_idx=0;
+    for(size_t i=0;i<no_con_partition;++i)
+    {
+       contract_index_ranges[i]= this->dim(contract_indices[cur_idx]);
+       cur_idx+=contract_partition[i];
+
+    }
+    //get size of attracion index ranges in each set of attractions (each range within the same partition or set should be all identical)
+    std::array<size_t,no_attract_partition> attract_index_ranges;
+    cur_idx=0;
+    size_t attract_dimensionality=1;
+    for(size_t i=0;i<no_attract_partition;++i)
+    {
+       attract_index_ranges[i]= this->dim(attract_indices[cur_idx]);
+       attract_dimensionality*=attract_index_ranges[i];
+       cur_idx+=attract_partition[i];
+
+    }
+    //add the attraction index ranges to the otherDims to get the returning dimensionality
+    auto retDims=internal::concat_index_arrays(otherDims,attract_index_ranges);
+
+    //print_array(other_indices,"other_indices");
+    //print_array(retDims,"retDims");
+
+    retType ret(retDims);
+
+    //loop through all index locations of the returning MIA not undergoing an attraction or contraction
+    size_t other_dimensionality=ret.dimensionality()/attract_dimensionality;
+    for(size_t i=0;i<other_dimensionality;++i){
+        //calculate the current index location in the original MIA
+        auto other_i_idx=internal::sub2ind(internal::ind2sub(i,otherDims), other_indices, this->dims()); //get location of current index in the original MIA
+
+        //for each attraction index location (if none, attract_dimensionality will be 1), calculate the corresponding element value
+        for(size_t j=0;j<attract_dimensionality;++j)
+        {
+
+            size_t other_j_idx=0;
+            //get current attract index values in returning MIA (could be more than one index value if there is more than one set of attractions)
+            auto attract_idx=internal::ind2sub(j,attract_index_ranges);
+            auto cur_partition_begin=attract_indices.begin();
+            for(size_t k=0;k<no_attract_partition;++k){
+                //get the index location of current attraction index in original MIA. E.g., if n, will be {n,n} or {n,n,} for some set of indices in original MIA
+                other_j_idx+=internal::get_contract_idx(attract_idx[k], cur_partition_begin,cur_partition_begin+attract_partition[k], this->dims());
+                cur_partition_begin+=attract_partition[k];
+            }
+            //caculate returing MIAs data value. If a contraction is taking place, a contraction will be performed. Otherwise, it just returns the appropriate data value in the original MIA
+            ret.atIdx(i+j*other_dimensionality)=internal::collect_contract_partitions<no_con_partition,FinalDerived,decltype(contract_indices.end()),no_con_partition>(this->final_derived(),other_i_idx+other_j_idx,contract_index_ranges,contract_indices.end(),contract_partition);
+        }
+
+
+    }
+
+
+    return ret;
+
+}
 
 
 

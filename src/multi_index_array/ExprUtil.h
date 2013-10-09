@@ -51,6 +51,7 @@
 #include <boost/mpl/quote.hpp>
 #include <boost/mpl/apply.hpp>
 #include <boost/utility/enable_if.hpp>
+#include <boost/mpl/reverse_iter_fold.hpp>
 
 #include "Index.h"
 #include "Util.h"
@@ -73,6 +74,237 @@ namespace LibMIA
 
 namespace internal
 {
+
+
+
+template<typename Seq,bool empty_LSeq,int recursive_depth=0,typename Pred=boost::mpl::quote2<boost::is_same> >
+struct pull_attract_indices
+{
+
+    typedef boost::mpl::vector_c<int> attract_indices;
+    typedef boost::mpl::vector<> remaining_indices;
+};
+
+//!Pulls the MIA indices involved in attract, e.g., a(!i,!j,!i,!j,k) would pull {i,j}
+template<typename Seq,int recursive_depth,typename Pred >
+struct pull_attract_indices<Seq,false,recursive_depth,Pred>
+{
+    //Pull first index type off of left sequence
+    typedef typename boost::mpl::at<Seq,boost::mpl::int_<recursive_depth>>::type first_LSeq;
+
+
+    //obtain index sequence in the reverse order (next recursive depth)
+    typedef  pull_attract_indices<Seq,boost::mpl::equal_to<boost::mpl::int_<recursive_depth+1>,boost::mpl::size<Seq>>::value,recursive_depth+1,Pred> next_pull_attract_indices;
+
+
+    //count its occurences in the sequence
+    typedef typename boost::mpl::count_if<
+        Seq,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            boost::mpl::_1,
+            first_LSeq
+        >
+    >::type n;
+
+    //also see if the current index has already been found in next_pull_contract_indices
+    typedef typename boost::mpl::count_if<
+        typename next_pull_attract_indices::attract_indices,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            boost::mpl::_1,
+            first_LSeq
+        >
+    >::type n_found;
+
+    //detects whether the first_LSeq has already been observed as an attraction
+    typedef typename boost::mpl::greater<n_found,boost::mpl::int_<0>>::type already_found;
+
+    //detects whether first_LSeq is part of a attraction
+    typedef typename boost::mpl::and_<
+            boost::mpl::greater<
+                n,
+                boost::mpl::int_<1>
+            >,
+            boost::mpl::greater<
+                boost::mpl::int_<first_LSeq::elemval>,
+                boost::mpl::int_<0>
+            >
+    >::type should_add_curIndex;
+
+    //if first_LSeq is part of a attraction and its index has not been seen yet, add its index to the list of contract indices
+     typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            should_add_curIndex,
+            boost::mpl::not_<already_found>
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_attract_indices::attract_indices,
+            first_LSeq
+        >::type,
+        typename next_pull_attract_indices::attract_indices
+    >::type attract_indices;
+
+
+    //if first_LSeq is not part of a contraction, add its index to the list of remaining indices
+    typedef typename boost::mpl::if_<
+        boost::mpl::not_<
+            should_add_curIndex
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_attract_indices::remaining_indices,
+            first_LSeq
+        >::type,
+        typename next_pull_attract_indices::remaining_indices
+    >::type remaining_indices;
+
+
+};
+
+
+template<typename Seq,bool empty_LSeq,int recursive_depth=0,typename Pred=boost::mpl::quote2<boost::is_same> >
+struct pull_contract_indices
+{
+
+    typedef boost::mpl::vector_c<int> contract_indices;
+    typedef boost::mpl::vector<> remaining_indices;
+};
+
+//!Pulls the MIA indices involved in contraction, e.g., a(i,j,i,j,k) would pull {i,j}
+template<typename Seq,int recursive_depth,typename Pred >
+struct pull_contract_indices<Seq,false,recursive_depth,Pred>
+{
+    //Pull first index type off of left sequence
+    typedef typename boost::mpl::at<Seq,boost::mpl::int_<recursive_depth>>::type first_LSeq;
+
+
+    //obtain index sequence in the reverse order (next recursive depth)
+    typedef  pull_contract_indices<Seq,boost::mpl::equal_to<boost::mpl::int_<recursive_depth+1>,boost::mpl::size<Seq>>::value,recursive_depth+1,Pred> next_pull_contract_indices;
+
+
+    //count its occurences in the sequence
+    typedef typename boost::mpl::count_if<
+        Seq,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            boost::mpl::_1,
+            first_LSeq
+        >
+    >::type n;
+
+    //also see if the current index has already been found in next_pull_contract_indices
+    typedef typename boost::mpl::count_if<
+        typename next_pull_contract_indices::contract_indices,
+        typename boost::mpl::apply_wrap2<
+            Pred,
+            boost::mpl::_1,
+            first_LSeq
+        >
+    >::type n_found;
+
+    //detects whether the first_LSeq has already been observed as a contraction
+    typedef typename boost::mpl::greater<n_found,boost::mpl::int_<0>>::type already_found;
+
+    //detects whether first_LSeq is part of a contraction
+    typedef typename boost::mpl::and_<
+            boost::mpl::greater<
+                n,
+                boost::mpl::int_<1>
+            >,
+            boost::mpl::equal_to<
+                boost::mpl::int_<first_LSeq::elemval>,
+                boost::mpl::int_<0>
+            >
+    >::type should_add_curIndex;
+
+    //if first_LSeq is part of a contraction and its index has not been seen yet, add its index to the list of contract indices
+     typedef typename boost::mpl::if_<
+        boost::mpl::and_<
+            should_add_curIndex,
+            boost::mpl::not_<already_found>
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_contract_indices::contract_indices,
+            first_LSeq
+        >::type,
+        typename next_pull_contract_indices::contract_indices
+    >::type contract_indices;
+
+    //if first_LSeq is not part of a contraction, add its index to the list of remaining indices
+    typedef typename boost::mpl::if_<
+        boost::mpl::not_<
+            should_add_curIndex
+        >,
+        typename boost::mpl::push_front<
+            typename next_pull_contract_indices::remaining_indices,
+            first_LSeq
+        >::type,
+        typename next_pull_contract_indices::remaining_indices
+    >::type remaining_indices;
+
+
+};
+
+//provides a list of index positions numbers of indices undergoing a contraction
+template<typename Seq,typename indices,bool empty_indices>
+struct pull_sequence_from_list
+{
+
+    typedef boost::mpl::vector_c<int> sequence;
+    typedef boost::mpl::vector_c<int> partition_sequence; //partitions contract_sequence into separate contractions
+};
+
+
+//! Given a Seq of MIA indices and a subset (given in indices parameter) provides a list of index positions of each index found in indices
+template<typename Seq,typename indices>
+struct pull_sequence_from_list<Seq,indices,false>
+{
+
+    //Pull first index to look for off of indices
+    typedef typename boost::mpl::deref<typename boost::mpl::begin<indices>::type>::type first_index;
+
+
+    //pop the first index off of indices
+    typedef typename boost::mpl::pop_front<indices>::type poppedIndices;
+
+    //recursively search for index position of remaining indices
+    typedef pull_sequence_from_list<Seq,poppedIndices,boost::mpl::empty<poppedIndices>::value> next_pull_sequence_from_list;
+
+
+    //iterate through Seq, and if any indices in Seq matches first_index, push its location to the front of the sequence list
+        typedef typename boost::mpl::reverse_iter_fold<
+                Seq,
+                typename next_pull_sequence_from_list::sequence,
+                boost::mpl::if_<
+                    boost::is_same<
+                        boost::mpl::deref<_2>,
+                        first_index
+                    >,
+                    boost::mpl::push_front<
+                        _1,
+                        boost::mpl::distance<
+                            typename boost::mpl::begin<Seq>::type,
+                            _2
+                        >
+                    >,
+                    _1
+                >
+    >::type sequence;
+
+    typedef typename boost::mpl::push_front<
+                typename next_pull_sequence_from_list::partition_sequence,
+                boost::mpl::int_<
+                    boost::mpl::size<sequence>::value-boost::mpl::size<typename next_pull_sequence_from_list::sequence>::value
+                >
+            >::type partition_sequence;
+};
+
+
+
+
+
+
+
 
 //used to get the order of inner, inter, and outer product indices for left operands
 template<typename LSeq,typename RSeq,bool empty_LSeq,int recursive_depth,typename Pred=boost::mpl::quote2<boost::is_same> >
@@ -107,6 +339,7 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
     typedef  pull_left_operand_index_sequence<poppedLSeq,RSeq,boost::mpl::empty<poppedLSeq>::value,recursive_depth+1,Pred> next_pull_left_operand_index_sequence;
 
 
+    //if the occurence count is equal to 1 and the current index is NOT an element-wise index, push the current recursive depth onto the top of math_order_sequence list
     typedef typename boost::mpl::if_<
         boost::mpl::and_<
             boost::mpl::equal_to<
@@ -126,15 +359,11 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
     >::type match_order_sequence;
 
 
+    //if we couldn't find the current index in RSeq and push the current recursive depth onto the top of no_match_order_sequence list
     typedef typename boost::mpl::if_<
-        boost::mpl::and_<
-            boost::mpl::equal_to<
-                n,boost::mpl::int_<0>
-            >,
-            boost::mpl::equal_to<
-                boost::mpl::int_<first_LSeq::elemval>,
-                boost::mpl::int_<0>
-            >
+        boost::mpl::equal_to<
+            n,
+            boost::mpl::int_<0>
         >,
         typename boost::mpl::push_front<
             typename next_pull_left_operand_index_sequence::no_match_order_sequence,
@@ -142,6 +371,7 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
         typename next_pull_left_operand_index_sequence::no_match_order_sequence
     >::type no_match_order_sequence;
 
+    //if the occurence count is equal to 1 and the current index IS an element-wise index, push the current recursive depth onto the top of inter_match_order_sequence list
     typedef typename boost::mpl::if_<
         boost::mpl::and_<
             boost::mpl::equal_to<
@@ -457,14 +687,8 @@ struct pull_product_indices<LSeq,RSeq,false>
     >::type inter_product_indices;
 
     typedef typename boost::mpl::if_<
-        boost::mpl::and_<
-            boost::mpl::not_<
-                matched
-            >,
-            boost::mpl::equal_to<
-                boost::mpl::int_<first_LSeq::elemval>,
-                boost::mpl::int_<0>
-            >
+        boost::mpl::not_<
+            matched
         >,
         typename boost::mpl::push_front<
             typename next_pull_product_indices::outer_product_indices,

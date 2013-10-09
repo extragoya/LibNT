@@ -12,6 +12,7 @@ set(LibMIA_headers
 	 Lattice.h
      LibMIAAlgorithm.h
 	 LibMIAException.h
+	 LibMIAHelpers.h
      MappedDenseLattice.h
      MappedSparseLattice.h
      MIA.h

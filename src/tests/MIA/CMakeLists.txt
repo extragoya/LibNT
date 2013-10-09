@@ -4,6 +4,10 @@ set (ASSIGN_SOURCES mia_assign_test.cpp)
 add_executable(MIAAssignTests ${ASSIGN_SOURCES})
 ADD_TEST(MIAAssignTests ${CMAKE_CURRENT_BINARY_DIR}/MIAAssignTests)
 
+set (UNARY_SOURCES mia_unary_test.cpp)
+add_executable(MIAUnaryTests ${UNARY_SOURCES})
+ADD_TEST(MIAUnaryTests ${CMAKE_CURRENT_BINARY_DIR}/MIAUnaryTests)
+
 set (CONSTR_SOURCES mia_constr_test.cpp)
 add_executable(MIAConstrTests ${CONSTR_SOURCES})
 ADD_TEST(MIAConstrTests ${CMAKE_CURRENT_BINARY_DIR}/MIAConstrTests)
@@ -22,6 +26,7 @@ set (SOLVE_SOURCES mixed_mia_solve_test.cpp)
 
 if(NOT MIA_USE_HEADER_ONLY_TESTS)
 	target_link_libraries(MIAAssignTests ${Boost_LIBRARIES})
+	target_link_libraries(MIAUnaryTests ${Boost_LIBRARIES})
 	target_link_libraries(MIAConstrTests ${Boost_LIBRARIES})
 	target_link_libraries(MixedMIAMergeTests ${Boost_LIBRARIES})
 	target_link_libraries(MixedMIAMultTests ${Boost_LIBRARIES})
