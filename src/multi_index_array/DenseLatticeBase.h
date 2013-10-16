@@ -36,7 +36,7 @@
 
 #include <Eigen/Dense>
 
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "Lattice.h"
 #include "Packer.h"
 

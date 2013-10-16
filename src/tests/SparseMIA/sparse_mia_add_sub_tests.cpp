@@ -19,7 +19,7 @@
 #include "DenseMIA.h"
 #include "SparseMIA.h"
 #include "Index.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 template<class _data_type>
 void do_work(size_t dim1,size_t dim2){
 

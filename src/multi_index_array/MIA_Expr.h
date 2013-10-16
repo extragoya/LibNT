@@ -32,7 +32,7 @@
 #include <boost/mpl/equal.hpp>
 
 #include "kennytm/vtmp.hpp"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "ExprUtil.h"
 
 namespace LibMIA
@@ -148,7 +148,7 @@ struct perform_merge<l_Seq,r_Seq,typename boost::disable_if< boost::mpl::equal<l
     {
 
 
-        static_assert(internal::order<lMIAType>::value==internal::order<rMIAType>::value,"Orders of two MIAs must be the same to perform addition.");
+        static_assert(internal::order<typename std::remove_const<lMIAType>::type>::value==internal::order<typename std::remove_const<rMIAType>::type >::value,"Orders of two MIAs must be the same to perform addition.");
 
         //statically verify MIA indices match correctly
         typedef perform_cartesian_check<l_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
@@ -206,7 +206,7 @@ struct perform_destructive_merge<l_Seq,r_Seq,typename boost::disable_if< boost::
     {
 
 
-        static_assert(internal::order<lMIAType>::value==internal::order<rMIAType>::value,"Orders of two MIAs must be the same to perform addition.");
+        static_assert(internal::order<typename std::remove_const<lMIAType>::type>::value==internal::order<typename std::remove_const<rMIAType>::type >::value,"Orders of two MIAs must be the same to perform addition.");
 
         typedef perform_cartesian_check<l_Seq,r_Seq,internal::merge_rule,boost::mpl::quote2<internal::same_product_index_id> > cartesian_check;
         cartesian_check::run();
@@ -716,7 +716,7 @@ public:
     static constexpr bool mHasOwnership=ownership;
     MIA_Atom(_MIA* mia): m_mia(mia)
     {
-        static_assert(internal::is_MIA<_MIA>::value,"Somehow expression was instantiated with a non-MIA class.");
+        static_assert(internal::is_MIA<typename std::remove_const<_MIA>::type>::value,"Somehow expression was instantiated with a non-MIA class.");
 
 
     }
@@ -819,7 +819,7 @@ public:
 
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform assignment.");
+        static_assert(internal::order<typename std::remove_const<_MIA>::type>::value==internal::order<typename std::remove_const<otherMIA>::type >::value,"Orders of two MIAs must be the same to perform assignment.");
 
         if(other_ownership){
 
@@ -874,12 +874,11 @@ public:
 
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform addition.");
+        static_assert(internal::order<typename std::remove_const<_MIA>::type>::value==internal::order<typename std::remove_const<otherMIA>::type>::value,"Orders of two MIAs must be the same to perform addition.");
 
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
 
-        typedef typename internal::data_type<_MIA>::type a_data_type;
-        typedef typename internal::data_type<otherMIA>::type b_data_type;
+
 //        auto lambda=[](const a_data_type & _a, const  b_data_type & _b){
 //            return _a+_b;
 //        };
@@ -924,8 +923,7 @@ public:
 
 
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef typename internal::data_type<_MIA>::type a_data_type;
-        typedef typename internal::data_type<otherMIA>::type b_data_type;
+
 //        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
 //            return _a+_b;
 //        };
@@ -973,12 +971,11 @@ public:
 
 
 
-        static_assert(internal::order<_MIA>::value==internal::order<otherMIA>::value,"Orders of two MIAs must be the same to perform subtraction.");
+        static_assert(internal::order<typename std::remove_const<_MIA>::type>::value==internal::order<typename std::remove_const<otherMIA>::type>::value,"Orders of two MIAs must be the same to perform subtraction.");
 
         //check to makes sure no left-hand indice is repeated
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
-        typedef typename internal::data_type<_MIA>::type a_data_type;
-        typedef typename internal::data_type<otherMIA>::type b_data_type;
+
 //        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
 //            return _a-_b;
 //        };
@@ -1021,8 +1018,7 @@ public:
 
         typedef typename MIAMergeReturnType<_MIA,otherMIA>::type cType;
 
-        typedef typename internal::data_type<_MIA>::type a_data_type;
-        typedef typename internal::data_type<otherMIA>::type b_data_type;
+
 //        auto lambda=[](const a_data_type & _a, const b_data_type & _b){
 //            return _a-_b;
 //        };

@@ -14,8 +14,8 @@
 
 //This file should be dedicated primarily to forward declare and datatype resolutions
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef LIBMIAUTIL_H
+#define LIBMIAUTIL_H
 
 
 #include <time.h>
@@ -276,6 +276,27 @@ struct is_ProdInd: public boost::false_type {};
 template<size_t i,int elemval>
 struct is_ProdInd<ProdInd<i,elemval>>: public boost::true_type {};
 
+//see below
+template<class T,class Enable = void>
+struct const_argument_qualifier
+{
+    typedef const T type;
+};
+
+//SparseMIAs and Lattices could be modified (by a re-sort) even when the operation doesn't alter the underlying data. So in C++, even if the underlying data in 'const', the datatype will not be
+template<class T>
+struct const_argument_qualifier<T,typename boost::enable_if<is_SparseMIA<T> >::type>
+{
+    typedef T type;
+};
+
+template<class T>
+struct const_argument_qualifier<T,typename boost::enable_if<is_SparseLattice<T> >::type>
+{
+    typedef T type;
+};
+
+
 template<class T> struct incomplete;
 
 
@@ -390,7 +411,7 @@ struct check_index_compatibility:
 template<typename Lhs, typename Rhs>
 struct ScalarPromoteType
 {
-    typedef typename boost::numeric::conversion_traits<typename internal::data_type<Lhs>::type,typename internal::data_type<Rhs>::type>::supertype type;
+    typedef typename boost::numeric::conversion_traits<typename internal::data_type<typename std::remove_const<Lhs>::type>::type,typename internal::data_type<typename std::remove_const<Rhs>::type >::type>::supertype type;
 
 };
 
@@ -497,8 +518,8 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::or_< //when a lattice mapping is required, dense * sparse is always a dense
-            internal::is_DenseMIA<L_MIA>,
-            internal::is_DenseMIA<R_MIA>
+            internal::is_DenseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_DenseMIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
@@ -512,8 +533,8 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
-            internal::is_SparseMIA<L_MIA>,
-            internal::is_SparseMIA<R_MIA>
+            internal::is_SparseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_SparseMIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
@@ -535,8 +556,8 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
-            internal::is_DenseMIA<L_MIA>,
-            internal::is_DenseMIA<R_MIA>
+            internal::is_DenseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_DenseMIA<typename std::remove_const<R_MIA>::type >
         >
     >::type
 >
@@ -550,8 +571,8 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::or_< //when no lattice mapping is required, dense * sparse is always a sparse
-            internal::is_SparseMIA<L_MIA>,
-            internal::is_SparseMIA<R_MIA>
+            internal::is_SparseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_SparseMIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
@@ -568,8 +589,8 @@ template<class L_MIA,class R_MIA, size_t order>
 struct MIASolveReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
-            internal::is_MIA<L_MIA>,
-            internal::is_MIA<R_MIA>
+            internal::is_MIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_MIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
@@ -587,15 +608,15 @@ struct MIAUnaryType
 
 
 template<typename MIA,size_t remaining_indices_size>
-struct MIAUnaryType<MIA,remaining_indices_size,typename boost::enable_if<internal::is_DenseMIA<MIA>>::type>
+struct MIAUnaryType<MIA,remaining_indices_size,typename boost::enable_if<internal::is_DenseMIA<typename std::remove_const<MIA>::type>>::type>
 {
-    typedef DenseMIA<typename internal::data_type<MIA>::type,remaining_indices_size> type;
+    typedef DenseMIA<typename internal::data_type<typename std::remove_const<MIA>::type>::type,remaining_indices_size> type;
 };
 
 template<typename MIA,size_t remaining_indices_size>
-struct MIAUnaryType<MIA,remaining_indices_size,typename boost::enable_if<internal::is_SparseMIA<MIA>>::type>
+struct MIAUnaryType<MIA,remaining_indices_size,typename boost::enable_if<internal::is_SparseMIA<typename std::remove_const<MIA>::type>>::type>
 {
-    typedef SparseMIA<typename internal::data_type<MIA>::type,remaining_indices_size> type;
+    typedef SparseMIA<typename internal::data_type<typename std::remove_const<MIA>::type>::type,remaining_indices_size> type;
 };
 
 template<typename Lhs, typename Rhs,class Enable = void>
@@ -608,14 +629,14 @@ struct MIAMergeReturnType<Lhs,Rhs,
     typename
         boost::enable_if<
             boost::mpl::and_<
-                internal::is_DenseMIA<Lhs>,
-                internal::is_DenseMIA<Rhs>
+                internal::is_DenseMIA<typename std::remove_const<Lhs>::type>,
+                internal::is_DenseMIA<typename std::remove_const<Rhs>::type>
             >
         >::type
     >
 {
 
-    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<typename std::remove_const<Lhs>::type>::value> type;
 };
 
 
@@ -625,19 +646,19 @@ struct MIAMergeReturnType<Lhs,Rhs,
         boost::enable_if<
             boost::mpl::or_<
                 boost::mpl::and_<
-                    internal::is_DenseMIA<Lhs>,
-                    internal::is_SparseMIA<Rhs>
+                    internal::is_DenseMIA<typename std::remove_const<Lhs>::type>,
+                    internal::is_SparseMIA<typename std::remove_const<Rhs>::type>
                 >,
                 boost::mpl::and_<
-                    internal::is_SparseMIA<Lhs>,
-                    internal::is_DenseMIA<Rhs>
+                    internal::is_SparseMIA<typename std::remove_const<Lhs>::type>,
+                    internal::is_DenseMIA<typename std::remove_const<Rhs>::type>
                 >
             >
         >::type
     >
 {
 
-    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+    typedef DenseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<typename std::remove_const<Lhs>::type>::value> type;
 };
 
 template<typename Lhs, typename Rhs>
@@ -645,14 +666,14 @@ struct MIAMergeReturnType<Lhs,Rhs,
     typename
         boost::enable_if<
             boost::mpl::and_<
-                internal::is_SparseMIA<Lhs>,
-                internal::is_SparseMIA<Rhs>
+                internal::is_SparseMIA<typename std::remove_const<Lhs>::type>,
+                internal::is_SparseMIA<typename std::remove_const<Rhs>::type>
             >
         >::type
     >
 {
 
-    typedef SparseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<Lhs>::value> type;
+    typedef SparseMIA<typename ScalarPromoteType<Lhs,Rhs>::type,internal::order<typename std::remove_const<Lhs>::type>::value> type;
 };
 
 
@@ -666,5 +687,5 @@ struct MIAMergeReturnType<Lhs,Rhs,
 }
 
 
-#endif // SPARSEUTIL_H
+#endif // LIBMIAUTIL_H
 

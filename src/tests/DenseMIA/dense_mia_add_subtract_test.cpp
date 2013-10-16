@@ -36,18 +36,20 @@ void do_work(size_t dim1,size_t dim2){
 
     a.ones();
     b.ones();
+    const LibMIA::DenseMIA<_data_type,4> temp_a(a);
     //c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
 
-    c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
+    c(i,j,k,l)=b(i,j,k,l)+temp_a(j,l,i,k);
     c2.init(2);
     BOOST_CHECK_MESSAGE(c==c2,std::string("Non-destructive Add 1 for ")+typeid(_data_type).name());
 
 
-    b(i,j,k,l)+=a(j,l,i,k);
+    b(i,j,k,l)+=temp_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==c2,std::string("Destructive Add 1 for ")+typeid(_data_type).name());
 
     b.init(3);
-    c(i,j,k,l)=b(i,j,k,l)-a(j,l,i,k);
+    const LibMIA::DenseMIA<_data_type,4> temp_b(b);
+    c(i,j,k,l)=temp_b(i,j,k,l)-a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==c2,std::string("Non-destructive Subtract 1 for ")+typeid(_data_type).name());
 
 

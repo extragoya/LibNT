@@ -26,7 +26,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::MIAINDEX m;
     LibMIA::MIAINDEX n;
 
-    LibMIA::DenseMIA<_data_type,4> dense_a(dim1,dim2,dim1,dim2);
+    LibMIA::DenseMIA<_data_type,4> temp_a(dim1,dim2,dim1,dim2);
     LibMIA::DenseMIA<_data_type,4> dense_b(dim2,dim2,dim1,dim1);
     LibMIA::DenseMIA<_data_type,4> dense_c;
     LibMIA::DenseMIA<_data_type,2> dense_c2;
@@ -45,13 +45,13 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::SparseMIA<_data_type,4> c;
 
 
-    dense_a.randu(0,20);
+    temp_a.randu(0,20);
     dense_b.randu(0,20);
     dense_b2.randu(0,20);
     dense_d.randu(0,20);
     dense_d2.randu(0,20);
 
-    for(auto it=dense_a.data_begin();it<dense_a.data_end();++it)
+    for(auto it=temp_a.data_begin();it<temp_a.data_end();++it)
         if(*it<15)
             *it=0;
     for(auto it=dense_b.data_begin();it<dense_b.data_end();++it)
@@ -67,6 +67,7 @@ void mult_work(size_t dim1, size_t dim2){
         if(*it<15)
             *it=0;
 
+    const LibMIA::DenseMIA<_data_type,4> dense_a(temp_a);
     a=dense_a;
     b=dense_b;
     b2=dense_b2;

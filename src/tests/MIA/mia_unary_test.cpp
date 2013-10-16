@@ -243,9 +243,9 @@ void dense_unary_work(){
     a.randu(-5,5);
 
 
-
-    b(j,k,l,m)=a(i,j,i,k,l,m); //contraction
-    other_b(j,k,l,m)=a(i,j,n,k,l,m)*delta(i,n); //equivalent operation
+    const LibMIA::DenseMIA<data_type,6> temp_a(a); //check const_correctness
+    b(j,k,l,m)=temp_a(i,j,i,k,l,m); //contraction
+    other_b(j,k,l,m)=temp_a(i,j,n,k,l,m)*delta(i,n); //equivalent operation
     BOOST_CHECK_MESSAGE(b==other_b,std::string("Simple Contraction 1 for Dense ")+typeid(data_type).name());
 
     a=LibMIA::DenseMIA<data_type,6>(_dim,_dim+1,_dim,_dim+2,_dim-1,_dim-2); //now try with non-uniform dimensions

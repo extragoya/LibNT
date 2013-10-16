@@ -45,7 +45,7 @@
 
 #include "Lattice.h"
 #include "LibMIAAlgorithm.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "tupleit.hh"
 //#define LM_CSC_TIMES 1 //define to perform old compressed column lattice multiplication - should be off
 //#define LM_COLUMN_SEARCH 1 //define to perform column search during mult_scatter operation (not as efficient)

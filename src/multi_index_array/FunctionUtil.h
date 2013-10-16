@@ -20,7 +20,7 @@
 
 #include <boost/numeric/conversion/converter.hpp>
 
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "PermuteIterator.h"
 namespace LibMIA

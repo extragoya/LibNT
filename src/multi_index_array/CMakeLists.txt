@@ -4,7 +4,7 @@ set(LibMIA_headers
      DenseLatticeBase.h
      DenseMIA.h
      DenseMIABase.h
-	 ExprUtil.h     
+	 ExprUtil.h
 	 FunctionUtil.h
 	 ImplicitMIA.h
      Index.h
@@ -13,10 +13,11 @@ set(LibMIA_headers
      LibMIAAlgorithm.h
 	 LibMIAException.h
 	 LibMIAHelpers.h
+	 LibMIAUtil.h
      MappedDenseLattice.h
      MappedSparseLattice.h
      MIA.h
-     MIA_Expr.h	 
+     MIA_Expr.h
      Packer.h
 	 PermuteIterator.h
      SparseLattice.h
@@ -24,9 +25,8 @@ set(LibMIA_headers
 	 SparseMIA.h
 	 SparseMIABase.h
      tupleit.hh
-     UniqueLabel.h
-     Util.h  
-	${PROJECT_BINARY_DIR}/MIAConfig.h	 
+     UniqueLabel.h     
+	${PROJECT_BINARY_DIR}/MIAConfig.h
      )
 add_library(LibMIA STATIC ${LibMIA_headers})
 set_target_properties(LibMIA PROPERTIES LINKER_LANGUAGE CXX)
@@ -34,14 +34,14 @@ set_target_properties(LibMIA PROPERTIES LINKER_LANGUAGE CXX)
 
 set_target_properties(LibMIA PROPERTIES
   PUBLIC_HEADER "${LibMIA_headers};${CMAKE_BINARY_DIR}/MIAConfig.h")
- 
+
 install(TARGETS LibMIA
   # IMPORTANT: Add the LibMIA library to the "export-set"
-  EXPORT LibMIALibraryDepends  
+  EXPORT LibMIALibraryDepends
   #we make a dummy LibMIA library, so another library can link to it and have it resolve its own library dependencies.
   ARCHIVE DESTINATION "${INSTALL_INCLUDE_DIR}" OPTIONAL
-  #LIBRARY DESTINATION "${INSTALL_LIB_DIR}/shlib" 
-  #ARCHIVE DESTINATION include OPTIONAL 
+  #LIBRARY DESTINATION "${INSTALL_LIB_DIR}/shlib"
+  #ARCHIVE DESTINATION include OPTIONAL
   PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}"
     )
 

@@ -23,7 +23,7 @@
 
 
 #include "LibMiaException.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "DenseMIABase.h"
 

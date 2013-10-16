@@ -12,7 +12,7 @@
 #include "DenseMIA.h"
 #include "Index.h"
 #include "LibMIAException.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 
 template<typename data_type, size_t _order>
 void random_mia(LibMIA::DenseMIA<data_type,_order> & mia,double _prob,bool need_ranked=true)
@@ -72,12 +72,14 @@ void solve_work(size_t dim1, size_t dim2){
             flag=false;
 
     }
+    const LibMIA::DenseMIA<_data_type,4> temp_a(temp_a); //make sure we've sorted out const correctness
+    const LibMIA::DenseMIA<_data_type,4> temp_b(dense_b);
     a=dense_a;
     b=dense_b;
-    c(i,j,m,n)=dense_a(i,j,k,l)|b(k,l,m,n);
+    c(i,j,m,n)=temp_a(i,j,k,l)|b(k,l,m,n);
     BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product Inverse 1 (dense) for ")+typeid(_data_type).name() );
 
-    c(i,j,m,n)=a(i,j,k,l)|dense_b(k,l,m,n);
+    c(i,j,m,n)=a(i,j,k,l)|temp_b(k,l,m,n);
     BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product Inverse 1 (sparse) for ")+typeid(_data_type).name() );
 
     flag=true;

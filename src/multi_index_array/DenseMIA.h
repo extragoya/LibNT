@@ -26,7 +26,7 @@
 
 
 #include "LibMIAException.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "DenseMIABase.h"
 #include "ImplicitMIA.h"
@@ -394,7 +394,7 @@ public:
 
     }
 
-    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) ->MappedDenseLattice<data_type>;
+    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) const ->MappedDenseLattice<data_type>;
 
 
 
@@ -1083,7 +1083,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
 
 
 template<class T, size_t _order>
-auto DenseMIA<T,_order>::toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) ->MappedDenseLattice<data_type>
+auto DenseMIA<T,_order>::toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) const ->MappedDenseLattice<data_type>
 {
 
 

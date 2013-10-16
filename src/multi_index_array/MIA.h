@@ -26,7 +26,7 @@
 #include "Index.h"
 
 #include "MIA_Expr.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "FunctionUtil.h"
 namespace LibMIA
@@ -110,6 +110,15 @@ public:
     auto operator()(Ts...ts)->decltype(perform_unary<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(this->final_derived())) {
         static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
         return perform_unary<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(final_derived());
+
+        //return MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&final_derived());
+
+    }
+
+    template<class...Ts>
+    auto operator()(Ts...ts)const->decltype(perform_unary<const FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(this->final_derived())) {
+        static_assert(internal::check_mia_indexing<MIA,Ts...>::type::value,"Number of dimensions must be same as <order> and each given index must be created using the MIAIndex macro.");
+        return perform_unary<const FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence>(final_derived());
 
         //return MIA_Atom<FinalDerived,typename internal::Indicial_Sequence<Ts...>::sequence,false>(&final_derived());
 

@@ -29,13 +29,13 @@ void assign_work(){
     MIAType c;
 
     a.randu(-5,5);
-
-    c=a;
+    const MIAType temp_a(a); //check const correctness
+    c=temp_a;
     BOOST_CHECK_MESSAGE(a==c,"Straight MIA assignment");
 
     b.zeros();
     c.zeros();
-    b(i,j,k)=a(i,j,k);
+    b(i,j,k)=temp_a(i,j,k);
     c(i,j,k)=b(i,j,k);
     BOOST_CHECK_MESSAGE(a==c,"Non-shuffled MIA Expression assignment");
 

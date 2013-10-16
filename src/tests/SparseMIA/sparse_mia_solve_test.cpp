@@ -12,7 +12,7 @@
 #include "DenseMIA.h"
 #include "Index.h"
 #include "LibMIAException.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 
 template<typename data_type, size_t _order>
 void random_mia(LibMIA::DenseMIA<data_type,_order> & mia,double _prob,bool need_ranked=true)

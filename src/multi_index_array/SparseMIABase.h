@@ -21,7 +21,7 @@
 
 
 #include "LibMIAException.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "MIA.h"
 #include "MappedSparseLattice.h"

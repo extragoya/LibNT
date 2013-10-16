@@ -5,7 +5,7 @@
 #include "DenseLattice.h"
 #include "SparseLattice.h"
 #include "MIAConfig.h"
-#include "Util.h"
+#include "LibMIAUtil.h"
 
 #include <Eigen/Dense>
 

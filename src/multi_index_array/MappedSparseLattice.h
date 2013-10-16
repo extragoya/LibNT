@@ -23,7 +23,7 @@
 #include <boost/assert.hpp>
 #include <boost/array.hpp>
 
-#include "Util.h"
+#include "LibMIAUtil.h"
 #include "SparseLatticeBase.h"
 #include "SparseLattice.h"
 

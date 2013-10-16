@@ -21,7 +21,8 @@ constexpr int dim=5;
 template<typename data_type>
 void do_work(size_t dim1){
 
-    LibMIA::DenseMIA<data_type,3> dense_a(dim1,dim1,dim1);
+    LibMIA::DenseMIA<data_type,3> temp_a(dim1,dim1,dim1);
+
     LibMIA::DenseMIA<data_type,3> dense_b(dim1,dim1,dim1);
     LibMIA::DenseMIA<data_type,3> dense_c;
     LibMIA::DenseMIA<data_type,3> dense_c2;
@@ -33,16 +34,19 @@ void do_work(size_t dim1){
     LibMIA::MIAINDEX j;
     LibMIA::MIAINDEX k;
 
-    dense_a.randu(0,20);
+    temp_a.randu(0,20);
     dense_b.randu(0,20);
-    for(auto it=dense_a.data_begin();it<dense_a.data_end();++it)
+    for(auto it=temp_a.data_begin();it<temp_a.data_end();++it)
         if(*it<15)
             *it=0;
     for(auto it=dense_b.data_begin();it<dense_b.data_end();++it)
         if(*it<15)
             *it=0;
 
-    sparse_a=dense_a;
+    sparse_a=temp_a;
+
+    const LibMIA::DenseMIA<data_type,3> dense_a(temp_a); //use a const, just to double check we got const correction right in the expression templates
+
     dense_c(i,j,k)=dense_a(i,j,k)+dense_b(i,j,k);
     dense_c2(i,j,k)=sparse_a(i,j,k)+dense_b(i,j,k);
     BOOST_CHECK_MESSAGE(dense_c==dense_c2,std::string("Non-destructive Add 1a for ")+typeid(data_type).name());
