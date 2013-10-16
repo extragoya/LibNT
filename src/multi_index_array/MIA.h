@@ -24,10 +24,11 @@
 
 
 #include "Index.h"
-#include "IndexUtil.h"
+
 #include "MIA_Expr.h"
 #include "Util.h"
-
+#include "IndexUtil.h"
+#include "FunctionUtil.h"
 namespace LibMIA
 {
 

@@ -21,10 +21,6 @@
 #include <algorithm>
 #include <numeric>
 #include <functional>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/numeric/conversion/converter.hpp>
-#include <boost/mpl/apply.hpp>
 #include <boost/dynamic_bitset.hpp>
 
 #include "Util.h"
@@ -515,7 +511,7 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
     auto other_indices=internal::get_remaining_indices<size_t,no_con_indices+no_attract_indices,mOrder>(copy_contract);
     //get their dimensionality
     std::array<index_type,other_indices.size()> otherDims;
-    internal::reorder_from(this->dims(), other_indices,otherDims);
+    auto other_dimensionality=internal::reorder_from(this->dims(), other_indices,otherDims);
 
 
     //print_array(contract_indices,"contract_indices");
@@ -556,7 +552,7 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
     retType ret(retDims);
 
     //loop through all index locations of the returning MIA not undergoing an attraction or contraction
-    size_t other_dimensionality=ret.dimensionality()/attract_dimensionality;
+
     for(size_t i=0;i<other_dimensionality;++i){
         //calculate the current index location in the original MIA
         auto other_i_idx=internal::sub2ind(internal::ind2sub(i,otherDims), other_indices, this->dims()); //get location of current index in the original MIA

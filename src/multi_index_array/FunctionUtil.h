@@ -18,11 +18,11 @@
 #define FUNCTION_UTIL_H
 
 
-
+#include <boost/numeric/conversion/converter.hpp>
 
 #include "Util.h"
-#include "MIA.h"
 #include "IndexUtil.h"
+#include "PermuteIterator.h"
 namespace LibMIA
 {
 
@@ -250,12 +250,286 @@ auto implicitNoLatticeMult(const MIA &a,const otherMIA &b,const std::array<array
 
 }
 
+//assumes C, A, and B are of the same dimensions and in the same sort order (and A and B are sorted)
+template<class ADerived, class BDerived, class c_data_type,size_t c_order,class Op>
+void outside_merge_sparse_storage_containers(SparseMIA<c_data_type,c_order> & C , const SparseMIABase<ADerived> & A,const SparseMIABase<BDerived> & B,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename ADerived::data_type a_data_type;
+
+    C.clear();
+    C.reserve(A.size()+B.size());
+    auto a_begin=A.index_begin();
+    auto b_begin=B.index_begin();
+    auto a_end=A.index_end();
+    auto b_end=B.index_end();
+    while(a_begin<a_end && b_begin<b_end){
+        if (*a_begin<*b_begin){
+            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            a_begin++;
+        }
+        else if  (*b_begin<*a_begin){
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            b_begin++;
+        }
+        else{
+            C.push_back(C.convert(op(A.data_at(a_begin-A.index_begin()),B.data_at(b_begin-B.index_begin()))),*a_begin);
+            a_begin++;
+            b_begin++;
+        }
+
+    }
+    if (a_begin==a_end){
+        while (b_begin<b_end){
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            b_begin++;
+        }
+    }
+    else{
+        while (a_begin<a_end){
+            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            a_begin++;
+        }
+    }
+
+
+
+
+}
+
+//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
+template<class AStorageItType, class BStorageItType, class Op>
+AStorageItType merge_sparse_storage_containers(AStorageItType  a_begin,AStorageItType  a_end,BStorageItType  b_begin,BStorageItType  b_end,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename boost::remove_reference<typename BStorageItType::value_type::first_type>::type b_data_type;
+    typedef typename boost::remove_reference<typename AStorageItType::value_type::first_type>::type a_data_type;
+
+    typedef converter<a_data_type,b_data_type,conversion_traits<a_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type;
+    AStorageItType a_actual_end=a_end;
+    AStorageItType a_actual_begin=a_begin;
+    while(a_begin<a_end && b_begin<b_end){
+        if (std::get<1>(*a_begin)<std::get<1>(*b_begin)){
+            a_begin++;
+        }
+        else if  (std::get<1>(*b_begin)<std::get<1>(*a_begin)){
+            std::get<0>(*a_actual_end)=op(a_data_type(0),to_mdata_type::convert(std::get<0>(*b_begin)));
+            std::get<1>(*a_actual_end++)=std::get<1>(*b_begin++);
+
+
+        }
+        else{
+            std::get<0>(*a_begin)=op(std::get<0>(*a_begin),to_mdata_type::convert(std::get<0>(*b_begin)));
+            a_begin++;
+            b_begin++;
+        }
+
+    }
+    if (a_begin==a_end){
+        while (b_begin<b_end){
+            std::get<0>(*a_actual_end)=op(a_data_type(0),to_mdata_type::convert(std::get<0>(*b_begin)));
+            std::get<1>(*a_actual_end++)=std::get<1>(*b_begin++);
+        }
+    }
+
+    std::inplace_merge(a_actual_begin,a_end,a_actual_end,[](const typename AStorageItType::value_type& lhs, const typename AStorageItType::value_type& rhs)
+    {
+        return std::get<1>(lhs)<std::get<1>(rhs);
+    });
+
+
+    return a_actual_end;
+
+}
+
+//must be boost::tuples of iterators. Assumes a's container is sized to be a.size+b.size
+template<class ADataIt, class AIndexIt, class BDataIt, class BIndexIt,class Op>
+ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_end,AIndexIt  a_index_begin,AIndexIt  a_index_end,BDataIt  b_data_begin,BDataIt  b_data_end,BIndexIt  b_index_begin,BIndexIt  b_index_end,Op op)
+{
+    using namespace boost::numeric;
+    typedef typename ADataIt::value_type a_data_type;
+    typedef typename BDataIt::value_type b_data_type;
+
+
+    typedef converter<a_data_type,b_data_type,conversion_traits<a_data_type,b_data_type>,def_overflow_handler,RoundEven<b_data_type>> to_mdata_type;
+    ADataIt a_actual_data_end=a_data_end;
+    AIndexIt a_actual_index_end=a_index_end;
+    ADataIt a_cur_data_it=a_data_begin;
+    AIndexIt a_cur_index_it=a_index_begin;
+    while(a_cur_data_it<a_data_end && b_data_begin<b_data_end){
+        if (*a_cur_index_it<*b_index_begin){
+            a_cur_index_it++;
+            a_cur_data_it++;
+        }
+        else if  (*b_index_begin<*a_cur_index_it){
+            *a_actual_data_end++=*b_data_begin++;
+            *a_actual_index_end++=*b_index_begin++;
+
+
+        }
+        else{
+            *a_cur_data_it=op(*a_cur_data_it,to_mdata_type::convert(*b_data_begin++));
+            a_cur_data_it++;
+            a_cur_index_it++;
+            b_index_begin++;
+        }
+
+    }
+    if (a_cur_data_it==a_data_end){
+        while (b_data_begin<b_data_end){
+            *a_actual_data_end++=*b_data_begin++;
+            *a_actual_index_end++=*b_index_begin++;
+
+        }
+    }
+    std::cout << "Index\t Data in scan merge" << std::endl;
+    for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
+        std::cout << *j << "\t " << *i << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+    std::inplace_merge(make_sort_permute_iter(a_index_begin,a_data_begin),
+                    make_sort_permute_iter(a_index_end,a_data_end),
+              make_sort_permute_iter(a_actual_index_end,a_actual_data_end),
+                    sort_permute_iter_compare<AIndexIt,ADataIt>());
+
+//    std::inplace_merge(a_data_begin,a_data_end,a_actual_data_end,[&](const typename ADataIt::value_type& lhs, const typename ADataIt::value_type& rhs)
+//    {
+//        return *(a_index_begin+(&lhs-&(*a_data_begin))) <*(a_index_begin+(&rhs-&(*a_data_begin)));
+//    });
+//    std::inplace_merge(a_index_begin,a_index_end,a_actual_index_end);
+    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+    std::cout << "Index\t Data in AFTER scan merge" << std::endl;
+    for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
+        std::cout << *j << "\t " << *i << std::endl;
+
+    std::cout << std::endl;
+    return a_actual_data_end;
+
+}
+
+//! Converts a scalar value to data_type
+/*!
+    \tparam from_data_type the data_type you are converting from
+*/
+template<class data_type,class from_data_type,typename boost::enable_if< boost::is_pod< from_data_type >, int >::type = 0>
+inline data_type convert(const from_data_type from){
+    using namespace boost::numeric;
+    typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
+    return to_mdata_type::convert(from);
+}
+
+
+struct print_class_name {
+    template <typename T>
+    void operator()( T t ) const {
+       std::cout << typeid(t).name() << " ";
+    }
+};
+
+inline long double log2(const long double x){
+    return  std::log(x) * M_LOG2E;
+}
+
+template<typename T1>
+inline T1 manual_int_power(const T1 base,const int _exp){
+    T1 result=1;
+    for(int i=0;i<_exp;++i)
+    {
+        result*=base;
+
+    }
+    return result;
+
+}
+
 /*! @} */
 }
 
 
 
+template<class T>
+struct MIAprint
+{
+    void operator() (T i)
+    {
+        std::cout << " " << i;
+    }
+} ;
 
+template<class T>
+struct select_first
+{
+    T& operator()(T&left, T& right){
+        return left;
+    }
+};
+
+
+
+template<class array_type>
+void print_array(const array_type & _array, const std::string &header){
+    std::cout << header;
+    for(auto & _i:_array){
+        std::cout << " " << _i;
+    }
+    std::cout << std::endl;
+
+}
+
+template<class array_type>
+void print_array_on_line(const array_type & _array){
+    for(auto & _i:_array){
+        std::cout << " " << _i;
+    }
+
+
+}
+
+template<class T1, class T2,size_t _size>
+bool compare_arrays(const std::array<T1,_size> & array1, const std::array<T2,_size> & array2){
+    typedef boost::numeric::converter<T1,T2> to_mdata_type;
+    for(size_t i=0;i<_size;++i)
+        if (array1[i]!=to_mdata_type::convert(array2[i]))
+            return false;
+
+    return true;
+
+
+}
+
+template<class data_type>
+struct array_converter
+{
+
+    template<class other_data_type,size_t _size>
+    static std::array<data_type,_size> convert(const std::array<other_data_type,_size> & _from)
+    {
+        typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
+        std::array<data_type,_size> ret;
+        for(size_t i=0;i<_size;++i)
+            ret[i]=to_mdata_type::convert(_from[i]);
+
+        return ret;
+    }
+
+    template<size_t _size>
+    static std::array<data_type,_size> convert(std::array<data_type,_size> & _from){
+        return _from;
+    }
+};
+
+//!prec must be positive
+template<typename T, typename T2,typename T3>
+inline bool isEqualFuzzy(T a, T2 b, T3 prec = Tolerance<T>::tolerance)
+{
+  if(std::abs(a) < 1 || std::abs(b) < 1)
+    return std::abs(a-b)<=prec;
+  else{
+    return std::abs(a - b) <= std::min(std::abs(a), std::abs(b)) * prec;
+  }
+}
 
 }
 

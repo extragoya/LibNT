@@ -27,7 +27,7 @@
 
 #include "LibMIAException.h"
 #include "Util.h"
-
+#include "FunctionUtil.h"
 //, boost::multipliable<Derived>
 //
 namespace LibMIA

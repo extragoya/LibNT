@@ -16,19 +16,17 @@
 #ifndef SPARSEMIABASE_H_INCLUDED
 #define SPARSEMIABASE_H_INCLUDED
 
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/variate_generator.hpp>
+
 #include <boost/utility/enable_if.hpp>
 
-#include "PermuteIterator.h"
-#include "LibMiaException.h"
+
+#include "LibMIAException.h"
 #include "Util.h"
 #include "IndexUtil.h"
 #include "MIA.h"
 #include "MappedSparseLattice.h"
 #include "LibMIAAlgorithm.h"
-
+#include "FunctionUtil.h"
 
 //\defgroup
 namespace LibMIA
@@ -382,9 +380,14 @@ public:
     {
 
         this->sort(mDefaultLinIdxSequence);
-        std::cout << "Index\t Data" << std::endl;
+        print_arrray(this->dims(),"Dimensions");
+        std::cout << "Nonzeros " << this->size() << std::endl;
+        std::cout << "Dimens" << std::endl;
+        std::cout << "Index\t Indices\t Data" << std::endl;
         for(auto it=this->storage_begin();it<this->storage_end();++it){
-            std::cout << index_val(*it) << "\t " << data_val(*it) << std::endl;
+            std::cout << index_val(*it) << "\t ";
+            print_array_on_line(this->ind2sub(index_val(*it)));
+            std::cout << "\t" << data_val(*it) << std::endl;
         }
         std::cout << std::endl;
 
@@ -486,10 +489,10 @@ public:
         if(this->size()!=otherMIA.size())
             return false;
         this->sort();
-        otherMIA.sort();
+        otherMIA.sort(mLinIdxSequence);
         auto it2=otherMIA.index_begin();
         for(auto it=this->index_begin();it<this->index_end();++it,++it2){
-            if (this->convert_to_default_linIdxSequence(*it)!=otherMIA.convert_to_default_linIdxSequence(*it2))
+            if (*it!=*it2)
                 return false;
 
         }
@@ -754,6 +757,16 @@ public:
 
     template<typename otherDerived, typename Op>
     typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op);
+
+    //! Function for performing contraction and attraction. Best not to call directly, instead use the MIA algebra unary operation functionality, e.g., a(i,i)
+    /*!
+        \param[in] contract_indices list of indices undergoing a contraction
+        \param[in] contract_partitions if more than one set of contractions is taking place, specifies how to partition contract_indices into corresponding sets of contractions
+        \param[in] attract_indices list of indices undergoing an attraction
+        \param[in] attract_partitions if more than one set of attractions is taking place, specifies how to partition attract_indices into corresponding sets of attractions
+    */
+    template<size_t no_con_indices,size_t no_con_partitions,size_t no_attract_indices,size_t no_attract_partitions>
+    typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) ;
 
 protected:
 
@@ -1325,6 +1338,148 @@ auto  SparseMIABase<Derived>::noLatticeMult(const DenseMIABase<otherDerived> &b,
     }
 
     return C;
+
+}
+
+
+template<typename Derived>
+template<size_t no_con_indices,size_t no_con_partition,size_t no_attract_indices, size_t no_attract_partition>
+typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partition>::type
+SparseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partition> & contract_partition,const std::array<int,no_attract_indices> & attract_indices, const std::array<int,no_attract_partition> & attract_partition)
+{
+
+    typedef typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partition>::type retType;
+
+    //pull indices not undergoing an attraction or contraction
+    auto copy_contract=internal::concat_index_arrays(contract_indices,attract_indices);
+    std::sort(copy_contract.begin(),copy_contract.end());
+    auto other_indices=internal::get_remaining_indices<size_t,no_con_indices+no_attract_indices,mOrder>(copy_contract);
+
+    //get their dimensionality
+    std::array<index_type,other_indices.size()> otherDims;
+    auto other_dimensionality=internal::reorder_from(this->dims(), other_indices,otherDims);
+
+    //sort a using other_indices as major, followed by attract indices and contract indices
+    auto sort_order=internal::concat_index_arrays(contract_indices,attract_indices,other_indices);
+    this->sort(sort_order);
+
+
+    //get the dimensionality of indices involved in contraction
+    index_type contract_dimensionality=index_type(1);
+    size_t cur_idx=0;
+    for(size_t i=0;i<no_con_partition;++i)
+    {
+
+       contract_dimensionality=internal::manual_int_power(this->dim(contract_indices[cur_idx]),contract_partition[i])*contract_dimensionality;
+       cur_idx+=contract_partition[i];
+
+    }
+
+    //get the dimensionality of indices involved in attraction
+    std::array<index_type,no_attract_partition> attract_index_ranges;
+    cur_idx=0;
+    index_type attract_dimensionality=1;
+    for(size_t i=0;i<no_attract_partition;++i)
+    {
+       attract_index_ranges[i]= this->dim(attract_indices[cur_idx]);
+       attract_dimensionality=internal::manual_int_power(attract_index_ranges[i],attract_partition[i])*attract_dimensionality;
+       cur_idx+=attract_partition[i];
+
+    }
+    //add the attraction index ranges to the otherDims to get the returning dimensionality
+    auto retDims=internal::concat_index_arrays(otherDims,attract_index_ranges);
+    retType ret(retDims);
+
+
+    index_type cur_non_zero_idx;
+    index_type attract_idx=0;
+    auto cur_it=this->index_begin();
+    data_type sum;
+    bool add_to_sum;
+    //loop through all nonzeros of original MIA
+    while(cur_it<this->index_end())
+    {
+
+        //get individual index locations in order of contract, attract, other_indices
+        auto indices=internal::ind2sub(*cur_it, this->dims(),sort_order);
+
+        add_to_sum=true;
+
+        std::array<index_type,no_attract_partition> cur_attract_indices;
+        size_t attract_start=no_con_indices;
+        //if an attraction is taking place, examine the attraction indices of the current nonzero, and see if it falls on the appropriate diagonal
+        for(size_t part_idx=0;part_idx<no_attract_partition;part_idx++)
+        {
+            auto check_idx=indices[attract_start]; //all indices in the current attraction set must be check_idx
+            for(size_t _idx=attract_start+1;_idx<attract_start+attract_partition[part_idx];++_idx)
+            {
+                if(indices[_idx]!=check_idx){ //if it doesn't match throw a flag and break the loop
+                    add_to_sum=false;
+                    break;
+                }
+
+            }
+            if(!add_to_sum)
+                break;
+            cur_attract_indices[part_idx]=check_idx; //update the array of attraction indices
+            attract_start+=attract_partition[part_idx]; //caclulate the starting index of the next attraction set (if any)
+        }
+        if(add_to_sum){ //if all attraction indices match, calculate the linear index of them in the returning MIA
+            attract_idx=internal::sub2ind(cur_attract_indices,attract_index_ranges);
+        }
+        else{ //if the attraction indices don't match, we are discarding this value, so just continue on to the next non-zero
+            cur_it++;
+            continue;
+        }
+
+        cur_non_zero_idx=*cur_it;
+        sum=0;
+        //to perform contraction examine all nonzeros that share the same non-contracted indices. Since we sorted the original MIA, all such nonzeros should be next to each other
+        //if no contraction is being performed, this loop will just iterate once
+        while(cur_it<this->index_end()&&cur_non_zero_idx/(contract_dimensionality)==(*cur_it)/(contract_dimensionality)){
+            //std::cout << "Looking at index " << *cur_it << " default: " << convert_to_default_linIdxSequence(*cur_it) << std::endl;
+            indices=internal::ind2sub(*cur_it, this->dims(),sort_order); //update our array of expanded indices
+            //print_array(indices,"Current indices");
+            add_to_sum=true;
+            size_t contract_start=0;
+            //examine each set of contractions, and if the indices for each set of contractions match, then include the data to the running sum
+            for(size_t part_idx=0;part_idx<no_con_partition;part_idx++)
+            {
+                auto check_idx=indices[contract_start]; //all indices in the current contraction set must match check_idx
+                for(size_t con_idx=contract_start+1;con_idx<contract_start+contract_partition[part_idx];++con_idx)
+                {
+                    if(indices[con_idx]!=check_idx){ //if the index doesn't match, this data element will be discarded, and we should continue on to the next one (if any)
+                        add_to_sum=false;
+                        break;
+                    }
+
+                }
+                if(!add_to_sum)
+                    break;
+                contract_start+=contract_partition[part_idx]; //calculate the starting index of the next set of contractions
+            }
+            if(add_to_sum){
+                //std::cout << "Adding to sum " <<std::endl;
+                sum+=*(this->data_begin()+(cur_it-this->index_begin())); //if the contraction indices of the current data element all match, add it to the current sum
+
+            }
+            cur_it++; //examine the next data element
+        }
+        if(sum){
+            //std::cout << "Pushing sum " <<sum << " to index " << cur_non_zero_idx/(contract_dimensionality*attract_dimensionality)+attract_idx*other_dimensionality <<std::endl;
+
+            //push back the running sum, and also the index value
+            ret.push_back(sum,cur_non_zero_idx/(contract_dimensionality*attract_dimensionality)+attract_idx*other_dimensionality);
+        }
+
+    }
+
+    return ret;
+    //print_array(other_indices,"other_indices");
+    //print_array(retDims,"retDims");
+
+
+
 
 }
 

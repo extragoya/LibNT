@@ -19,13 +19,13 @@
 #include <type_traits>
 #include <iostream>
 #include <algorithm>
-#include <boost/shared_array.hpp>
+
 #include <boost/multi_array.hpp>
 #include <boost/type_traits.hpp>
 
 
 
-#include "LibMiaException.h"
+#include "LibMIAException.h"
 #include "Util.h"
 #include "IndexUtil.h"
 #include "DenseMIABase.h"

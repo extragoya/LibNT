@@ -33,9 +33,8 @@
 
 #include "kennytm/vtmp.hpp"
 #include "Util.h"
-#include "IndexUtil.h"
 #include "ExprUtil.h"
-#include "Index.h"
+
 namespace LibMIA
 {
 
@@ -76,30 +75,7 @@ public:
 http://stackoverflow.com/questions/10830406/copy-an-mplvector-c-to-a-static-array-at-compile-time*/
 
 
-//should be depreciated, as the above converter from mpl::vector to array is likely faster
-//template< typename Sequence >
-//class sequence_array : public std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>
-//{
-//    typedef typename std::array< typename Sequence::value_type, boost::mpl::size<Sequence>::type::value>::iterator iterator;
-//    struct copier_
-//    {
-//        copier_(iterator it) : it_(it) {}
-//        template<typename U> void operator()(U u)
-//        {
-//            *(it_++) = u;
-//        }
-//        iterator it_;
-//    };
-//public:
-//    sequence_array()
-//    {
-//        boost::mpl::for_each<Sequence>(copier_(this->begin()));
-//    }
-//};
 
-
-
-//operator*(MIA_Expression)
 
 }
 

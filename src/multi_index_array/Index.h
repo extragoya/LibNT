@@ -19,6 +19,7 @@
 #include <string>
 
 #include <boost/mpl/bool.hpp>
+#include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
 #include <boost/mpl/min_max.hpp>
 #include <boost/mpl/int.hpp>
@@ -68,11 +69,7 @@ constexpr int assign_rule=1;
 constexpr int merge_rule=2;
 constexpr int binary_rule=0;
 
-template<class T>
-struct is_ProdInd: public boost::false_type {};
 
-template<size_t i,int elemval>
-struct is_ProdInd<ProdInd<i,elemval>>: public boost::true_type {};
 
 template<class T,int rule_id>
 struct match_rule;

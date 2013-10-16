@@ -24,7 +24,6 @@
 #include <boost/mpl/logical.hpp>
 #include <boost/mpl/bool.hpp>
 #include <boost/mpl/vector.hpp>
-#include <boost/mpl/print.hpp>
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/plus.hpp>
 #include <boost/mpl/begin_end.hpp>
@@ -46,14 +45,13 @@
 #include <boost/mpl/transform_view.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/placeholders.hpp>
-#include <boost/mpl/bind.hpp>
 #include <boost/mpl/erase.hpp>
 #include <boost/mpl/quote.hpp>
 #include <boost/mpl/apply.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/mpl/reverse_iter_fold.hpp>
 
-#include "Index.h"
+
 #include "Util.h"
 using namespace boost::mpl::placeholders;
 namespace LibMIA

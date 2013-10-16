@@ -21,7 +21,7 @@
 #include <algorithm>
 
 
-
+#include "Util.h"
 #include "ImplicitMIA.h"
 #include "IndexUtil.h"
 
@@ -62,6 +62,8 @@ ImplicitMIA<data_type,_order> create_delta(size_t dim){
 
 
 }
+
+
 
 
 
