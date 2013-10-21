@@ -39,57 +39,70 @@ namespace LibMIA
 namespace internal
 {
 
-template<typename T,size_t _order>
-struct data_type<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct data_type<ImplicitMIA<T,_order, isRef> >
 {
     typedef T type;
 };
 
 //implicit MIAs dont have references to their data elements
 template<typename T,size_t _order>
-struct data_type_ref<ImplicitMIA<T,_order> >
+struct data_type_ref<ImplicitMIA<T,_order, false> >
 {
     typedef T type;
 };
 
 template<typename T,size_t _order>
-struct const_data_type_ref<ImplicitMIA<T,_order> >
+struct const_data_type_ref<ImplicitMIA<T,_order, false> >
 {
     typedef const T type;
 };
 
+//implicit MIAs dont have references to their data elements
 template<typename T,size_t _order>
-struct index_type<ImplicitMIA<T,_order> >
+struct data_type_ref<ImplicitMIA<T,_order, true> >
+{
+    typedef T & type;
+};
+
+template<typename T,size_t _order>
+struct const_data_type_ref<ImplicitMIA<T,_order, true> >
+{
+    typedef const T & type;
+};
+
+template<typename T,size_t _order,bool isRef>
+struct index_type<ImplicitMIA<T,_order, isRef> >
 {
     typedef long long type;
 };
 
-template<typename T,size_t _order>
-struct order<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct order<ImplicitMIA<T,_order, isRef> >
 {
     constexpr static size_t value=_order;
 };
 
 //should never be used
-template<typename T,size_t _order>
-struct data_iterator<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct data_iterator<ImplicitMIA<T,_order, isRef> >
 {
     typedef void type;
 };
 
 //should never be used
-template<typename T,size_t _order>
-struct const_data_iterator<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct const_data_iterator<ImplicitMIA<T,_order, isRef> >
 {
     typedef void type;
 };
 
-template<typename T,size_t _order>
-struct function_type<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct function_type<ImplicitMIA<T,_order, isRef> >
 {
-    typedef typename data_type<ImplicitMIA<T,_order>>::type data_type;
-    typedef typename index_type<ImplicitMIA<T,_order>>::type index_type;
-    typedef std::function<data_type(const index_type &)> type;
+    typedef typename data_type_ref<ImplicitMIA<T,_order, isRef>>::type data_type_ref;
+    typedef typename index_type<ImplicitMIA<T,_order, isRef>>::type index_type;
+    typedef std::function<data_type_ref(const index_type &)> type;
 };
 
 
@@ -103,10 +116,10 @@ struct function_type<ImplicitMIA<T,_order> >
 //    typedef boost::function_input_iterator<function_type, index_type> type;
 //};
 
-template<typename T,size_t _order>
-struct FinalDerived<ImplicitMIA<T,_order> >
+template<typename T,size_t _order,bool isRef>
+struct FinalDerived<ImplicitMIA<T,_order, isRef> >
 {
-    typedef ImplicitMIA<T,_order> type;
+    typedef ImplicitMIA<T,_order, isRef> type;
 };
 
 }
@@ -124,9 +137,10 @@ struct FinalDerived<ImplicitMIA<T,_order> >
 
   \tparam T   the datatype of individual elements.
   \tparam _order   the order (number of indices) of the MIA.
+  \tparam isRef if the ImplicitMIA references another Dense MIA raw data, set to true
 */
-template <class _data_type, size_t _order>
-class ImplicitMIA: public DenseMIABase<ImplicitMIA<_data_type,_order> >
+template <class _data_type, size_t _order,bool isRef>
+class ImplicitMIA: public DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >
 {
 
 
@@ -137,6 +151,9 @@ public:
 
     //! raw data_type
     typedef typename internal::data_type<ImplicitMIA>::type data_type;
+    //! raw data_type
+    typedef typename internal::data_type_ref<ImplicitMIA>::type data_type_ref;
+
     //! raw index_type
     typedef typename internal::index_type<ImplicitMIA>::type index_type;
 
@@ -249,12 +266,18 @@ public:
     }
 
     //! Returns scalar data at given linear index
-    inline const data_type atIdx(index_type idx) const{
+    inline const data_type_ref atIdx(index_type idx) const{
 
         //return lin index
         return mFunction(idx);
     }
 
+    //! Returns scalar data at given linear index
+    inline data_type_ref atIdx(index_type idx) {
+
+        //return lin index
+        return mFunction(idx);
+    }
 
 
     //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.

@@ -20,9 +20,9 @@ template<typename data_type>
 void random_matrix(LibMIA::DenseLattice<data_type> & lat,double _prob,bool need_ranked=true)
 {
     boost::uniform_real<> uni_dist(0,1);
-    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA::gen, uni_dist);
+    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA::LibMIA_gen(), uni_dist);
     boost::uniform_real<> uni_dist2(-10,10);
-    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni2(LibMIA::gen, uni_dist2);
+    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni2(LibMIA::LibMIA_gen(), uni_dist2);
     lat.zeros();
     for(size_t k=0;k<(size_t)lat.depth();++k){
         auto _start=lat.data_begin()+k*lat.width()*lat.height();

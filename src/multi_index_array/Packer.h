@@ -13,15 +13,15 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#define pack754_32(f) (pack754((f), 32, 8))
-#define pack754_64(f) (pack754((f), 64, 11))
-#define unpack754_32(i) (unpack754((i), 32, 8))
-#define unpack754_64(i) (unpack754((i), 64, 11))
+#define pack754_32(f) (pack754_LibMIA((f), 32, 8))
+#define pack754_64(f) (pack754_LibMIA((f), 64, 11))
+#define unpack754_32(i) (unpack754_LibMIA((i), 32, 8))
+#define unpack754_64(i) (unpack754_LibMIA((i), 64, 11))
 
 typedef long double pack754_type;
 
 
-uint64_t pack754(pack754_type f, unsigned bits, unsigned expbits)
+inline uint64_t pack754_LibMIA(pack754_type f, unsigned bits, unsigned expbits)
 {
     pack754_type fnorm;
     int shift;
@@ -50,7 +50,7 @@ uint64_t pack754(pack754_type f, unsigned bits, unsigned expbits)
     return (sign<<(bits-1)) | (exp<<(bits-expbits-1)) | significand;
 }
 
-pack754_type unpack754(uint64_t i, unsigned bits, unsigned expbits)
+inline pack754_type unpack754_LibMIA(uint64_t i, unsigned bits, unsigned expbits)
 {
     pack754_type result;
     long long shift;

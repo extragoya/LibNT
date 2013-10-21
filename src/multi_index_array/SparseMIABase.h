@@ -458,7 +458,7 @@ public:
         using namespace boost::numeric;
 
         boost::uniform_real<> uni_dist(0,this->m_dimensionality-1);
-        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(gen, uni_dist);
+        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA_gen(), uni_dist);
         typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
         for (auto i=derived().index_begin();i<derived().index_end();++i){
             *i=to_mdata_type::convert(uni());

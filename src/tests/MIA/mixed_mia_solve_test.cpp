@@ -18,9 +18,9 @@ template<typename data_type, size_t _order>
 void random_mia(LibMIA::DenseMIA<data_type,_order> & mia,double _prob,bool need_ranked=true)
 {
     boost::uniform_real<> uni_dist(0,1);
-    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA::gen, uni_dist);
+    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA::LibMIA_gen(), uni_dist);
     boost::uniform_real<> uni_dist2(-10,10);
-    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni2(LibMIA::gen, uni_dist2);
+    boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni2(LibMIA::LibMIA_gen(), uni_dist2);
     mia.zeros();
     for(auto it =mia.data_begin(); it<mia.data_end(); ++it)
     {
@@ -72,7 +72,7 @@ void solve_work(size_t dim1, size_t dim2){
             flag=false;
 
     }
-    const LibMIA::DenseMIA<_data_type,4> temp_a(temp_a); //make sure we've sorted out const correctness
+    const LibMIA::DenseMIA<_data_type,4> temp_a(dense_a); //make sure we've sorted out const correctness
     const LibMIA::DenseMIA<_data_type,4> temp_b(dense_b);
     a=dense_a;
     b=dense_b;

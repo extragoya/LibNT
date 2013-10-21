@@ -33,7 +33,12 @@
 
 namespace LibMIA
 {
-boost::random::mt19937 gen(time(0));
+
+inline boost::random::mt19937& LibMIA_gen() {
+   static boost::random::mt19937 gen(time(0));
+   return gen;
+}
+
 /** \addtogroup util Utilities
  *  @{
 */
@@ -131,7 +136,7 @@ class DenseMIA;
 template <class T,size_t _order>
 class SparseMIA;
 
-template <class T,size_t _order>
+template <class T,size_t _order,bool isRef=false>
 class ImplicitMIA;
 
 template<class _MIA,class m_Seq,bool ownership=true,size_t inter_product_size=0>
@@ -218,8 +223,8 @@ struct is_MIA<DenseMIABase<Derived > >: public boost::true_type {};
 template<class T, size_t _order>
 struct is_MIA<DenseMIA<T,_order > >: public boost::true_type {};
 
-template<class T, size_t _order>
-struct is_MIA<ImplicitMIA<T,_order > >: public boost::true_type {};
+template<class T, size_t _order,bool isRef>
+struct is_MIA<ImplicitMIA<T,_order,isRef > >: public boost::true_type {};
 
 template<class T, size_t _order>
 struct is_MIA<SparseMIA<T,_order > >: public boost::true_type {};
@@ -236,8 +241,8 @@ struct is_DenseMIA<DenseMIA<T,_order > >: public boost::true_type {};
 template<class Derived>
 struct is_DenseMIA<DenseMIABase<Derived> >:public boost::true_type {};
 
-template<class T, size_t _order>
-struct is_DenseMIA<ImplicitMIA<T,_order > >: public boost::true_type {};
+template<class T, size_t _order,bool isRef>
+struct is_DenseMIA<ImplicitMIA<T,_order,isRef > >: public boost::true_type {};
 
 template<class Derived>
 struct is_DenseMIA<MIA<Derived> >:public is_DenseMIA<Derived> {};

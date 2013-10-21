@@ -25,7 +25,8 @@
 #include "PermuteIterator.h"
 namespace LibMIA
 {
-
+#define sind(x) (sin(fmod((x),360) * M_PI / 180))
+#define cosd(x) (cos(fmod((x),360) * M_PI / 180))
 namespace internal{
 /** \addtogroup util Utilities
  *  @{
@@ -431,6 +432,8 @@ struct print_class_name {
 inline long double log2(const long double x){
     return  std::log(x) * M_LOG2E;
 }
+
+
 
 template<typename T1>
 inline T1 manual_int_power(const T1 base,const int _exp){
