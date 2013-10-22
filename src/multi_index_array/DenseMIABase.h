@@ -24,6 +24,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "LibMIAUtil.h"
+#include "LibMIARanges.h"
 #include "FunctionUtil.h"
 #include "MIA.h"
 #include "DenseLattice.h"
@@ -306,6 +307,54 @@ public:
     typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
 
 
+
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] ranges array of Range's specifying range of the MIA view. Will assert a compile error if size of ranges!=mOrder or if any of Ranges datatype are not Range
+        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
+    */
+    template
+    <
+        size_t new_order=mOrder,
+        typename boost::enable_if_c<
+            new_order==internal::order<Derived>::value,
+            int
+        >::type=0
+    >
+    ImplicitMIA<data_type,new_order,true> view(const std::array<Range<index_type>,mOrder> & ranges);
+
+    template
+    <
+        size_t new_order=mOrder,
+        typename boost::enable_if_c<
+            new_order<internal::order<Derived>::value,
+            int
+        >::type=0
+    >
+    ImplicitMIA<data_type,new_order,true> view(const std::array<Range<index_type>,mOrder> & ranges);
+
+
+
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] ranges variadic parameter specifying range of the MIA view. Will assert a compile error if size of ranges!=mOrder or if any of Ranges datatype are not Range
+        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
+    */
+    template<typename... Ranges>
+    ImplicitMIA<data_type,internal::get_range_count<Ranges...>::range_count::value,true> view(Ranges... ranges) {
+        static_assert(internal::check_ranges<DenseMIABase,Ranges...>::type::value,"Range or integral datatypes must be passed to MIA when creating a view. Number of arguments must be equal to MIA order.");
+        typedef typename internal::get_range_count<Ranges...>::range_count range_count;
+
+        std::array<Range<index_type>,mOrder> range_array;
+        internal::get_range_array(range_array.begin(),ranges...);
+        return view<(size_t)(range_count::value)>(range_array);
+    }
+
+
+
+
+
+
     //DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partition> & contract_partition,const std::array<int,no_attract_indices> & attract_indices, const std::array<int,no_attract_partition> & attract_partition) const
 
 
@@ -453,6 +502,117 @@ bool DenseMIABase<Derived>::fuzzy_equals(const MIA<otherDerived> & otherMIA,data
 
 }
 
+
+
+template<typename Derived>
+template
+    <
+        size_t new_order,
+        typename boost::enable_if_c<
+            new_order < internal::order<Derived>::value,
+            int
+        >::type
+    >
+auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ranges)->ImplicitMIA<data_type,new_order,true> {
+#ifdef LIBMIA_CHECK_DIMS
+    size_t constant_count=0;
+    for(auto &i:ranges){
+        if(i.mEnd<i.mBegin)
+            throw MIAParameterException("End of Range must be greater than beginning.");
+        if((i.mEnd-i.mBegin)%i.mStep)
+            throw MIAParameterException("Bounds of Range must be divisible by step size.");
+        if(i.mEnd==i.mBegin)
+            constant_count++;
+
+    }
+    if (constant_count>mOrder-new_order)
+        throw MIAParameterException("Number of non-singleton ranges must be equal to the new_order template parameter.");
+#endif
+
+    typedef ImplicitMIA<data_type,new_order,true> retType; //the true tparam ensures that it returns references to the same raw data as *true
+    //calculate returing dimensions
+    std::array<index_type,new_order> retDims;
+    //calculate returing dimensions
+    std::array<size_t,new_order> retDimIndices;
+    //holds the indices that remain constant (ie Range is only 1)
+    std::array<index_type,mOrder> baseline_indices;
+    size_t retIdx=0;
+    for(size_t idx=0;idx<mOrder;++idx){
+        if(ranges[idx].mEnd>ranges[idx].mBegin){
+            retDimIndices[retIdx]=idx;
+            retDims[retIdx++]=(ranges[idx].mEnd-ranges[idx].mBegin)/ranges[idx].mStep;
+        }
+        else
+            baseline_indices[idx]=ranges[idx].mBegin; //store the constant-valued index
+    }
+    //now create a lambda function that returns a reference to this's data based on the ranges provided
+    typedef typename internal::function_type<retType>::type function_type;
+
+    function_type func=[this,ranges,retDims,retDimIndices,baseline_indices](index_type idx)->data_type&{
+        //std::cout << "idx " << idx <<std::endl;
+
+        auto indices=internal::ind2sub(idx,retDims); //get the indices in the subview
+        //print_array(indices,"indices");
+        auto expanded_indices=baseline_indices;
+        //convert the indices to the indices in *this
+        for(size_t idx=0;idx<new_order;++idx){
+            expanded_indices[retDimIndices[idx]]=indices[idx]*ranges[retDimIndices[idx]].mStep+ranges[retDimIndices[idx]].mBegin;
+        }
+
+        //print_array(indices,"indices");
+        return this->at(expanded_indices); //return the corresponding data from *this
+    };
+
+    return retType(func,retDims);
+}
+
+
+template<typename Derived>
+template
+    <
+        size_t new_order,
+        typename boost::enable_if_c<
+            new_order==internal::order<Derived>::value,
+            int
+        >::type
+    >
+auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ranges)->ImplicitMIA<data_type,new_order,true> {
+#ifdef LIBMIA_CHECK_DIMS
+    for(auto &i:ranges){
+        if(i.mEnd<i.mBegin)
+            throw MIAParameterException("End of Range must be greater than beginning.");
+        if((i.mEnd-i.mBegin)%i.mStep)
+            throw MIAParameterException("Bounds of Range must be divisible by step size.");
+
+    }
+#endif
+
+    typedef ImplicitMIA<data_type,new_order,true> retType; //the true tparam ensures that it returns references to the same raw data as *true
+    //calculate returing dimensions
+    std::array<index_type,new_order> retDims;
+    size_t retIdx=0;
+    for(size_t idx=0;idx<new_order;++idx){
+        retDims[retIdx++]=(ranges[idx].mEnd-ranges[idx].mBegin)/ranges[idx].mStep;
+    }
+    //now create a lambda function that returns a reference to this's data based on the ranges provided
+    typedef typename internal::function_type<retType>::type function_type;
+
+    function_type func=[this,ranges,retDims](index_type idx)->data_type&{
+        //std::cout << "idx " << idx <<std::endl;
+
+        auto indices=internal::ind2sub(idx,retDims); //get the indices in the subview
+        //print_array(indices,"indices");
+        //convert the indices to the indices in *this
+        for(size_t idx=0;idx<new_order;++idx){
+            indices[idx]=indices[idx]*ranges[idx].mStep+ranges[idx].mBegin;
+        }
+
+        //print_array(indices,"indices");
+        return this->at(indices); //return the corresponding data from *this
+    };
+
+    return retType(func,retDims);
+}
 
 template<typename Derived>
 template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>

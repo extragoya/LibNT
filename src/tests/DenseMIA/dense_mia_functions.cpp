@@ -92,9 +92,9 @@ BOOST_AUTO_TEST_CASE( DenseMIAFunctionTests )
 
     functions_work<double>();
 
-//    functions_work<float>();
-//    functions_work<int>();
-//    functions_work<long>();
+    functions_work<float>();
+    functions_work<int>();
+    functions_work<long>();
 
 
 

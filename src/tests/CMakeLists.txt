@@ -7,5 +7,6 @@ add_subdirectory(SparseLattice)
 add_subdirectory(MIA)
 add_subdirectory(DenseMIA)
 add_subdirectory(SparseMIA)
+add_subdirectory(ImplicitMIA)
 
 

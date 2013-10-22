@@ -21,6 +21,7 @@
 #include <boost/numeric/conversion/converter.hpp>
 
 #include "LibMIAUtil.h"
+#include "LibMIARanges.h"
 #include "IndexUtil.h"
 #include "PermuteIterator.h"
 namespace LibMIA
@@ -409,6 +410,43 @@ ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_en
     return a_actual_data_end;
 
 }
+
+
+template<typename index_type,typename T,
+    typename boost::enable_if<
+        boost::is_integral<T>,
+        int
+    >::type=0
+>
+Range<index_type> create_range(T t){
+    return Range<index_type>((index_type)t); //create range object based on t;
+}
+
+//if the current variadic template parameter is a Range object, simply just return it
+template<typename index_type>
+Range<index_type> & create_range(Range<index_type>&t){
+    return t;
+}
+
+//base case for variadic parameters - do not alter the iterator
+template<typename ItType>
+void get_range_array(ItType it){
+    return;
+}
+
+//if the current variable in the varadic template is an integral type, create a Range object for that type and add it using the current array iterator
+template<typename ItType,typename T,typename...Ranges>
+void get_range_array(ItType *it,T t,Ranges...ranges){
+    typedef ItType RangeType;
+    typedef typename RangeType::index_type index_type;
+    *it=create_range<index_type>(t);
+
+    get_range_array(it+1,ranges...); //recurse to next spot in the container and the next variadic template parameter
+
+}
+
+
+
 
 //! Converts a scalar value to data_type
 /*!

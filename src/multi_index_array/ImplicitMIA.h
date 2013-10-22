@@ -202,7 +202,7 @@ public:
 
     */
     template<class array_index_type>
-    ImplicitMIA(const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order> >(_dims)
+    ImplicitMIA(const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(_dims)
     {
 
 
@@ -211,7 +211,7 @@ public:
     }
 
     //!  Constructs empty ImplicitMIA
-    ImplicitMIA(const ImplicitMIA& otherMIA):DenseMIABase<ImplicitMIA<_data_type,_order> >(otherMIA.dims())
+    ImplicitMIA(const ImplicitMIA& otherMIA):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(otherMIA.dims())
     {
         mFunction=otherMIA.mFunction;
     }
@@ -224,7 +224,7 @@ public:
 
     */
     template<class array_index_type>
-    ImplicitMIA(function_type &_function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order> >(_dims)
+    ImplicitMIA(const function_type &_function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(_dims)
     {
 
 
@@ -232,9 +232,28 @@ public:
     }
 
 
+    //!  Constructs DenseMIA of specified size.
+    /*!
+        Scalar data will be set to zero
 
+        \param[in] dims variadic parameter to specify size. Will assert a compile failure is number of parameters is different than _order
 
+    */
+    template<typename... Dims>
+    ImplicitMIA(const function_type &_function,Dims... dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> > {dims...}
+    {
 
+        static_assert(internal::check_mia_constructor<ImplicitMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+        mFunction=_function;
+
+    }
+
+    ImplicitMIA& operator=(const ImplicitMIA & otherMIA){
+        this->m_dims=otherMIA.dims();
+        this->mFunction=otherMIA.get_function();
+        this->m_dimensionality=otherMIA.dimensionality();
+        return *this;
+    }
 
 
 
@@ -246,7 +265,7 @@ public:
 
     */
     template<typename... Dims>
-    ImplicitMIA(Dims... dims):DenseMIABase<ImplicitMIA<_data_type,_order> > {dims...}
+    ImplicitMIA(Dims... dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> > {dims...}
     {
 
         static_assert(internal::check_mia_constructor<ImplicitMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");

@@ -25,6 +25,9 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <boost/numeric/conversion/converter.hpp>
+#include <boost/type_traits/is_floating_point.hpp>
+#include <boost/type_traits/is_integral.hpp>
+#include <boost/mpl/count_if.hpp>
 
 
 
@@ -144,6 +147,9 @@ class MIA_Atom;
 
 template<size_t ID,int ElemWise>
 struct ProdInd;
+
+template<typename index_type=long long>
+struct Range;
 
 namespace internal
 {
@@ -281,6 +287,12 @@ struct is_ProdInd: public boost::false_type {};
 template<size_t i,int elemval>
 struct is_ProdInd<ProdInd<i,elemval>>: public boost::true_type {};
 
+template<class T>
+struct is_Range: public boost::false_type {};
+
+template<class index_type>
+struct is_Range<Range<index_type>>: public boost::true_type {};
+
 //see below
 template<class T,class Enable = void>
 struct const_argument_qualifier
@@ -309,10 +321,12 @@ template<class T> struct incomplete;
 
 
 
+
+
+
 //should be undefined
 template<typename...Args>
 struct check_mia_index_args;
-
 
 //base case, inherit from true_type
 template<>
@@ -393,6 +407,57 @@ struct check_mia_indexing
     >::type type;
 
 };
+
+//should be undefined
+template<typename...Ranges>
+struct check_mia_range_args;
+
+//base case, inherit from true_type
+template<>
+struct check_mia_range_args<>:public boost::true_type {};
+
+//checks to ensure that ranges are either Range type or integral type. Uses recursion to allow
+//check to happen regardless of number of arguments. Checking is controlled through inheritance
+template<typename range,typename...Ranges>
+struct check_mia_range_args<range,Ranges...> :
+        boost::mpl::and_<
+            boost::mpl::or_<
+                internal::is_Range<range>,
+                boost::is_integral<range>
+            >,
+            check_mia_range_args<Ranges...>
+        >
+    {};
+
+
+
+
+//checks that the number of Range arguments equals the MIA order and that the arguments are the appropriate data type
+template<class _MIA, typename...Ranges>
+struct check_ranges
+{
+
+    typedef typename
+    boost::mpl::and_<
+        check_dims_count<_MIA,Ranges...>,
+        check_mia_range_args<Ranges...>
+    >::type type;
+
+};
+
+template<typename...Ranges>
+struct get_range_count{
+    typedef typename Indicial_Sequence<Ranges...>::sequence mpl_ranges;
+    typedef typename
+        boost::mpl::count_if<
+            mpl_ranges,
+            internal::is_Range<_>
+        >::type range_count;
+
+};
+
+
+
 
 template<class index_type1,class index_type2>
 struct check_index_compatibility:

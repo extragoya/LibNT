@@ -160,7 +160,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_b(i,j,k,l)+=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Add (Sort) 1b for ")+typeid(_data_type).name());
 
-    dense_b.init(3);
+    dense_b.fill(3);
     b=dense_b;
     a.reset_linIdx_sequence();
     a.sort();
@@ -214,7 +214,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1a for ")+typeid(_data_type).name());
 
-    dense_b.init(3);
+    dense_b.fill(3);
     b=dense_b;
     a.reset_linIdx_sequence();
     a.sort();
@@ -225,7 +225,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1b for ")+typeid(_data_type).name());
 
-    dense_b.init(3);
+    dense_b.fill(3);
     b=dense_b;
     a.change_linIdx_sequence(new_linIdxSequence);
     a.sort();
@@ -236,7 +236,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Scan) 1c for ")+typeid(_data_type).name());
 
-    dense_b.init(3);
+    dense_b.fill(3);
     b=dense_b;
     a.reset_linIdx_sequence();
     a.sort();
@@ -248,7 +248,7 @@ void do_work(size_t dim1,size_t dim2){
     dense_b(i,j,k,l)-=dense_a(j,l,i,k);
     BOOST_CHECK_MESSAGE(b==dense_b,std::string("Destructive Subtract (Sort) 1a for ")+typeid(_data_type).name());
 
-    dense_b.init(3);
+    dense_b.fill(3);
     b=dense_b;
     a.reset_linIdx_sequence();
     a.sort();

@@ -29,7 +29,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 	find_package(Boost 1.53.0 REQUIRED EXACT COMPONENTS unit_test_framework timer system chrono)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
-		message(${Boost_LIBRARIES})
+		#message(${Boost_LIBRARIES})
 	endif()
 endif(MIA_USE_HEADER_ONLY_TESTS)
 set(Boost_install_include "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)

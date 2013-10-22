@@ -145,6 +145,11 @@ public:
         static_assert(internal::check_mia_constructor<MIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
     }
 
+    FinalDerived& operator=(data_type _data){
+        this->init(_data);
+        return final_derived();
+    }
+
     void init(const std::array<index_type,mOrder> _dims){
         m_dims(_dims);
         m_dimensionality(compute_dimensionality());
@@ -190,7 +195,7 @@ public:
     }
 
     /** Sets all mia data to given value.*/
-    void init(data_type val){
+    void fill(data_type val){
         std::fill ( derived().data_begin(), derived().data_end(), val);
     }
 
@@ -295,14 +300,20 @@ public:
 
     //! Returns scalar data at given indices
     inline const_data_type_ref atIdx(index_type idx) const{
-
+#ifdef LIBMIA_CHECK_DIMS
+        if(idx<0||idx>=this->dimensionality())
+            throw MIAParameterException("Index is out of range of the MIA.");
+#endif
         return derived().atIdx(idx);
 
     }
 
     //! Returns scalar data at given indices
     inline data_type_ref atIdx(index_type idx) {
-
+#ifdef LIBMIA_CHECK_DIMS
+        if(idx<0||idx>=this->dimensionality())
+            throw MIAParameterException("Index is out of range of the MIA.");
+#endif
         return derived().atIdx(idx);
     }
 
