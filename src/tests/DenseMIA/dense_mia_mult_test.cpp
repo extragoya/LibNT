@@ -120,6 +120,7 @@ void mult_work(size_t dim1, size_t dim2){
             }
         }
     }
+
     c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
 
 
@@ -196,6 +197,16 @@ void mult_work(size_t dim1, size_t dim2){
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
     c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
     BOOST_CHECK_MESSAGE(c==c_result,std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
+
+
+    //now we test two MIAs get reduced down to data_type because of a pure inner product
+    d.ones();
+    _data_type _data=d(l)*d(l);
+    BOOST_CHECK_MESSAGE(_data==d.dim(0),std::string("Complete reduction 1 via inner product ")+typeid(_data_type).name() );
+
+    d2.ones();
+    _data=d2(i,j)*d2(i,j);
+    BOOST_CHECK_MESSAGE(_data==d2.dim(0)*d2.dim(1),std::string("Complete reduction 2 via inner product ")+typeid(_data_type).name() );
 
 }
 

@@ -63,10 +63,22 @@ ImplicitMIA<data_type,_order> create_delta(size_t dim){
 
 }
 
+//!Create an implicit MIA of just ones
+template<class data_type,class... Dims>
+auto create_ones(Dims...dims)->ImplicitMIA<data_type,sizeof...(Dims)>{
 
+    typedef ImplicitMIA<data_type,sizeof...(Dims)> retType;
+    static_assert(internal::check_mia_constructor<retType,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
+    typedef typename internal::index_type<retType>::type index_type;
 
+    retType ret({dims...});
 
-
+    auto _function=[](index_type idx){
+        return data_type(1);
+    };
+    ret.get_function()=_function;
+    return ret;
+}
 }
 
 #endif // LIBMIAHELPERS_H_INCLUDED

@@ -258,6 +258,7 @@ public:
         return !(*this==otherMIA.derived());
     }
 
+
     template<class otherDerived,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type  plus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
 
@@ -267,6 +268,7 @@ public:
         return c;
     }
 
+
     template<class otherDerived,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type  minus_(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const{
 
@@ -275,7 +277,26 @@ public:
         c.minus_equal(b,index_order);
         return c;
     }
+    //!Component-wise addition with another MIA
+    template<class otherDerived>
+    typename MIAMergeReturnType<Derived,otherDerived>::type operator+(const MIA<otherDerived> &b)const{
+        return this->outside_merge(b,std::plus<data_type>());
+    }
+    //!Component-wise subtraction with another MIA
+    template<class otherDerived>
+    typename MIAMergeReturnType<Derived,otherDerived>::type operator-(const MIA<otherDerived> &b)const{
+        return this->outside_merge(b,std::minus<data_type>());
+    }
 
+    //! Add a single value to all elements (non-zero elements if sparse)
+    typename MIANonlinearFuncType<Derived>::type operator+(data_type _data) const{
+        typedef typename MIANonlinearFuncType<Derived>::type retType;
+        retType ret(final_derived());
+
+        for(auto it=ret.data_begin(); it< ret.data_end();++it)
+            *it=*it+_data;
+        return ret;
+    }
 
     template<class otherDerived,typename index_param_type,typename Op>
     typename MIAMergeReturnType<Derived,otherDerived>::type  outside_merge(const MIA<otherDerived> &b,Op op,const std::array<index_param_type,mOrder>& index_order) const{
@@ -289,6 +310,7 @@ public:
     template<class otherDerived,typename Op>
     typename MIAMergeReturnType<Derived,otherDerived>::type  outside_merge(const MIA<otherDerived> &b,Op op) const{
 
+        static_assert(mOrder==internal::order<otherDerived>::value,"Orders of two MIAs must be the same to perform addition");
         typedef typename MIAMergeReturnType<Derived,otherDerived>::type CType;
         CType c(*this);
         c.merge(b,op);
@@ -307,32 +329,22 @@ public:
     typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
 
 
-
-    //! Returns scalar data at given indices
-    /*!
-        \param[in] ranges array of Range's specifying range of the MIA view. Will assert a compile error if size of ranges!=mOrder or if any of Ranges datatype are not Range
-        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
-    */
     template
     <
-        size_t new_order=mOrder,
-        typename boost::enable_if_c<
-            new_order==internal::order<Derived>::value,
-            int
-        >::type=0
+        size_t new_order=mOrder
     >
-    ImplicitMIA<data_type,new_order,true> view(const std::array<Range<index_type>,mOrder> & ranges);
+    const ImplicitMIA<data_type,new_order,true> view(std::array<Range<index_type>,mOrder> & ranges) const{
+        const ImplicitMIA<data_type,new_order,true> ret=do_view<new_order>(ranges);
+        return ret;
+    }
 
     template
     <
-        size_t new_order=mOrder,
-        typename boost::enable_if_c<
-            new_order<internal::order<Derived>::value,
-            int
-        >::type=0
+        size_t new_order=mOrder
     >
-    ImplicitMIA<data_type,new_order,true> view(const std::array<Range<index_type>,mOrder> & ranges);
-
+    ImplicitMIA<data_type,new_order,true> view(std::array<Range<index_type>,mOrder> & ranges){
+         return do_view<new_order>(ranges);
+    }
 
 
     //! Returns scalar data at given indices
@@ -341,7 +353,7 @@ public:
         \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
     */
     template<typename... Ranges>
-    ImplicitMIA<data_type,internal::get_range_count<Ranges...>::range_count::value,true> view(Ranges... ranges) {
+    ImplicitMIA<data_type,internal::get_range_count<Ranges...>::range_count::value,true> view(Ranges... ranges) const {
         static_assert(internal::check_ranges<DenseMIABase,Ranges...>::type::value,"Range or integral datatypes must be passed to MIA when creating a view. Number of arguments must be equal to MIA order.");
         typedef typename internal::get_range_count<Ranges...>::range_count range_count;
 
@@ -409,6 +421,32 @@ public:
 protected:
 
     SolveInfo mSolveInfo;
+
+    //! Returns scalar data at given indices
+    /*!
+        \param[in] ranges array of Range's specifying range of the MIA view. Will assert a compile error if size of ranges!=mOrder or if any of Ranges datatype are not Range
+        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
+    */
+    template
+    <
+        size_t new_order=mOrder,
+        typename boost::enable_if_c<
+            new_order==internal::order<Derived>::value,
+            int
+        >::type=0
+    >
+    ImplicitMIA<data_type,new_order,true> do_view( std::array<Range<index_type>,mOrder> & ranges) const;
+
+    template
+    <
+        size_t new_order=mOrder,
+        typename boost::enable_if_c<
+            new_order<internal::order<Derived>::value,
+            int
+        >::type=0
+    >
+    ImplicitMIA<data_type,new_order,true> do_view( std::array<Range<index_type>,mOrder> & ranges) const;
+
 
 
 private:
@@ -513,7 +551,7 @@ template
             int
         >::type
     >
-auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ranges)->ImplicitMIA<data_type,new_order,true> {
+auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges)const->ImplicitMIA<data_type,new_order,true>  {
 #ifdef LIBMIA_CHECK_DIMS
     size_t constant_count=0;
     for(auto &i:ranges){
@@ -538,11 +576,13 @@ auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ran
     std::array<index_type,mOrder> baseline_indices;
     size_t retIdx=0;
     for(size_t idx=0;idx<mOrder;++idx){
+        if(ranges[idx].mEnd==-1)
+            ranges[idx].mEnd=this->dim(idx);
         if(ranges[idx].mEnd>ranges[idx].mBegin){
             retDimIndices[retIdx]=idx;
             retDims[retIdx++]=(ranges[idx].mEnd-ranges[idx].mBegin)/ranges[idx].mStep;
         }
-        else
+        else if(ranges[idx].mEnd==ranges[idx].mBegin)
             baseline_indices[idx]=ranges[idx].mBegin; //store the constant-valued index
     }
     //now create a lambda function that returns a reference to this's data based on the ranges provided
@@ -560,7 +600,9 @@ auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ran
         }
 
         //print_array(indices,"indices");
-        return this->at(expanded_indices); //return the corresponding data from *this
+        //the const cast is ugly, but we're relying on const overloading for the view function and also for the ImplicitMIA to ensure any const references are not modified
+        //a less hacky solution would be nicer
+        return const_cast<data_type&>(this->at(expanded_indices)); //return the corresponding data from *this
     };
 
     return retType(func,retDims);
@@ -576,7 +618,7 @@ template
             int
         >::type
     >
-auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ranges)->ImplicitMIA<data_type,new_order,true> {
+auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges) const->ImplicitMIA<data_type,new_order,true> {
 #ifdef LIBMIA_CHECK_DIMS
     for(auto &i:ranges){
         if(i.mEnd<i.mBegin)
@@ -592,6 +634,8 @@ auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ran
     std::array<index_type,new_order> retDims;
     size_t retIdx=0;
     for(size_t idx=0;idx<new_order;++idx){
+        if(ranges[idx].mEnd==-1)
+            ranges[idx].mEnd=this->dim(idx);
         retDims[retIdx++]=(ranges[idx].mEnd-ranges[idx].mBegin)/ranges[idx].mStep;
     }
     //now create a lambda function that returns a reference to this's data based on the ranges provided
@@ -607,8 +651,9 @@ auto DenseMIABase<Derived>::view(const std::array<Range<index_type>,mOrder> &ran
             indices[idx]=indices[idx]*ranges[idx].mStep+ranges[idx].mBegin;
         }
 
-        //print_array(indices,"indices");
-        return this->at(indices); //return the corresponding data from *this
+        //the const cast is ugly, but we're relying on const overloading for the view function and also for the ImplicitMIA to ensure any const references are not modified
+        //a less hacky solution would be nicer
+        return const_cast<data_type&>(this->at(indices)); //return the corresponding data from *this
     };
 
     return retType(func,retDims);

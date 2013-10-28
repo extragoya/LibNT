@@ -669,6 +669,23 @@ struct MIASolveReturnType<L_MIA,R_MIA,order,
 
 };
 
+//the datatype after application of a nonlinear function (copied).
+template<typename MIA,class Enable=void>
+struct MIANonlinearFuncType{};
+
+template<typename MIA>
+struct MIANonlinearFuncType<MIA,typename boost::enable_if<internal::is_DenseMIA<typename std::remove_const<MIA>::type>>::type>{
+    typedef typename std::remove_const<MIA>::type MIA_type;
+    typedef DenseMIA<typename internal::data_type<MIA_type>::type,internal::order<MIA_type>::value> type;
+};
+
+template<typename MIA>
+struct MIANonlinearFuncType<MIA,typename boost::enable_if<internal::is_SparseMIA<typename std::remove_const<MIA>::type>>::type>{
+    typedef typename std::remove_const<MIA>::type MIA_type;
+    typedef SparseMIA<typename internal::data_type<MIA_type>::type,internal::order<MIA_type>::value> type;
+
+};
+
 
 template<typename MIA,size_t remaining_indices_size,class Enable = void>
 struct MIAUnaryType

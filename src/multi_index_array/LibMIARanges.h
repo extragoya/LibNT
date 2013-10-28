@@ -40,6 +40,11 @@ struct Range{
 
 };
 
+typedef Range<long long> Rg;
+
+Rg _all(){
+    return Rg(0,-1,1);
+}
 
 } //namespace LIBMIARANGES_H_INCLUDED
 

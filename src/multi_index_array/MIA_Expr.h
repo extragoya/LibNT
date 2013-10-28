@@ -726,8 +726,66 @@ public:
 
     }
 
-    template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
-    auto operator*(const MIA_Atom<otherMIA,r_Seq, other_ownership,other_inter_number> & Rhs)->
+
+    operator _MIA &&(){
+        return std::move(*(this->m_mia));
+    }
+
+    //should only be enabled when we've reduce two MIAs to a single number (ie pure inner product)
+    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
+                typename boost::enable_if_c<
+                    boost::mpl::size<
+                        typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence
+                    >::value==0,
+                    int
+                >::type=0
+            >
+    auto operator*(const MIA_Atom<otherMIA,r_Seq, otherOwnership,other_inter_number> & Rhs)->
+        typename internal::data_type<
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type
+        >::type
+    {
+
+
+        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+
+
+        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
+
+        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+        //std::cout << "ALat done" << std::endl;
+        //aLat.print();
+        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+        //std::cout << "BLat done" << std::endl;
+        //bLat.print();
+
+
+        auto cLat=aLat*bLat;
+        auto c_data=cLat(0,0,0);
+        return c_data;
+//        std::cout << "CLat done" << std::endl;
+//        cLat.print();
+
+
+
+
+    }
+
+    //when performing a lattice product
+    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
+        typename boost::disable_if<
+            boost::mpl::or_<
+                typename isPureOuterInterProduct<m_Seq,r_Seq>::type,
+                boost::mpl::bool_<
+                    boost::mpl::size<
+                        typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence
+                    >::value==0
+                >
+            >,
+            int
+        >::type=0
+    >
+    auto operator*(const MIA_Atom<otherMIA,r_Seq, otherOwnership,other_inter_number> & Rhs)->
         MIA_Atom<
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
             typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
@@ -738,16 +796,89 @@ public:
 
 
 
-//        std::cout << "Left seq " << std::endl;
-//        boost::mpl::for_each< m_Seq >(print_class_name());
-//        std::cout << "Right seq " << std::endl;
-//        boost::mpl::for_each< r_Seq >(print_class_name());
-//        std::cout << "Result seq " << std::endl;
-//        boost::mpl::for_each< typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence >(print_class_name());
-        return perform_product<otherMIA,r_Seq,other_ownership,other_inter_number>(Rhs);
+
+        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+
+        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
+
+        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
+
+        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+        //std::cout << "ALat done" << std::endl;
+        //aLat.print();
+        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+        //std::cout << "BLat done" << std::endl;
+        //bLat.print();
+
+
+        auto cLat=aLat*bLat;
+//        std::cout << "CLat done" << std::endl;
+//        cLat.print();
+
+
+
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
+        //std::cout << "Lattice product finished " << std::endl;
+
+
+        //create an MIA from cLat
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
+
+
 
 
     }
+
+
+
+    //when multiplication only has inter or outer products, we don't need to create a lattice, call specialized function in mia
+    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
+        typename boost::enable_if<
+            boost::mpl::and_<
+                typename isPureOuterInterProduct<m_Seq,r_Seq>::type,
+                boost::mpl::bool_<
+                    boost::mpl::size<
+                        typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence
+                    >::value!=0
+                >
+            >,
+            int
+        >::type=0
+    >
+    auto operator*(const MIA_Atom<otherMIA,r_Seq, otherOwnership,other_inter_number> & Rhs)->
+        MIA_Atom<
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
+            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
+            true,
+            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
+        >
+    {
+
+
+        //std::cout << "Pure outer/inter started " << std::endl;
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+        typedef solve_product_expr_helper<m_Seq,r_Seq> helper;
+
+
+
+        MIA_return_type* cMIA(new MIA_return_type(m_mia->noLatticeMult(*Rhs.m_mia,helper::left_inter_product_order(),
+                                                                       helper::left_outer_product_order(),
+                                                                       helper::right_inter_product_order(),
+                                                                       helper::right_outer_product_order())));
+        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+
+        //std::cout << "Pure outer/inter finished " << std::endl;
+        //create an MIA from cLat
+        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
+
+
+
+
+    }
+
+
 
     template<class otherMIA,class r_Seq,bool other_ownership,size_t other_inter_number>
     auto operator|(const MIA_Atom<otherMIA,r_Seq,other_ownership,other_inter_number> & Rhs)->
@@ -1074,91 +1205,53 @@ private:
 
 
 
-    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
-                typename boost::disable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0
-            >
-    auto perform_product(const MIA_Atom<otherMIA,r_Seq, otherOwnership,other_inter_number> & Rhs)->
-        MIA_Atom<
-            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
-            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
-            true,
-            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
-        >
-    {
-
-
-
-
-        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
-
-        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
-
-        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
-
-        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
-        //std::cout << "ALat done" << std::endl;
-        //aLat.print();
-        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
-        //std::cout << "BLat done" << std::endl;
-        //bLat.print();
-
-
-        auto cLat=aLat*bLat;
-        //std::cout << "CLat done" << std::endl;
-        //cLat.print();
-
-
-
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
-        //std::cout << "Lattice product finished " << std::endl;
-
-
-        //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
-
-
-
-
-    }
-    //when multiplication only has inter or outer products, we don't need to create a lattice, call specialized function in mia
-    template<class otherMIA,class r_Seq,size_t other_inter_number,typename boost::enable_if_c<isPureOuterInterProduct<m_Seq,r_Seq>::type::value,int>::type=0>
-    auto perform_product(const MIA_Atom<otherMIA,r_Seq, other_inter_number> & Rhs)->
-        MIA_Atom<
-            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type,
-            typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,
-            true,
-            MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
-        >
-    {
-
-
-        //std::cout << "Pure outer/inter started " << std::endl;
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        typedef solve_product_expr_helper<m_Seq,r_Seq> helper;
-
-
-        MIA_return_type* cMIA(new MIA_return_type(m_mia->noLatticeMult(*Rhs.m_mia,helper::left_inter_product_order(),
-                                                                       helper::left_outer_product_order(),
-                                                                       helper::right_inter_product_order(),
-                                                                       helper::right_outer_product_order())));
-        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-
-        //std::cout << "Pure outer/inter finished " << std::endl;
-        //create an MIA from cLat
-        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
-
-
-
-
-    }
-
 };
 
+//if the MIA_Atom owns the data then its' temporary and we can just modify the MIA data in-place
+template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number, class UnaryOperation,typename boost::enable_if_c<ownership,int>::type=0>
+MIA_Atom<typename MIANonlinearFuncType<_MIA>::type,m_Seq,true,inter_product_number>
+do_func(const MIA_Atom<_MIA,m_Seq,ownership,inter_product_number> & _atom, UnaryOperation op){
+
+    _atom.m_mia->apply_func(op);
+
+    return _atom;
+}
+
+//if the MIA_Atom does not the data then we cannot modify data in-place, so just do a copy
+template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number, class UnaryOperation,typename boost::disable_if_c<ownership,int>::type=0>
+MIA_Atom<typename MIANonlinearFuncType<_MIA>::type,m_Seq,true,inter_product_number>
+do_func(const MIA_Atom<_MIA,m_Seq,ownership,inter_product_number> & _atom, UnaryOperation op){
+    typedef typename MIANonlinearFuncType<_MIA>::type retType;
+    retType * ret=new retType(*(_atom.m_mia));
+    ret->apply_func(op);
+    return MIA_Atom<retType,m_Seq,true,inter_product_number>(ret);
+}
 
 
 
+template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number>
+MIA_Atom<typename MIANonlinearFuncType<_MIA>::type,m_Seq,true,inter_product_number>
+sqrt(const MIA_Atom<_MIA,m_Seq,ownership,inter_product_number> & _atom){
+    typedef typename internal::data_type<typename std::remove_const<_MIA>::type>::type data_type;
+    data_type (*fpc)(data_type) = &std::sqrt;
+    return do_func(_atom,std::ptr_fun(fpc));
+
+}
+
+template<class _MIA,class m_Seq,bool ownership,size_t inter_product_number>
+MIA_Atom<typename MIANonlinearFuncType<_MIA>::type,m_Seq,true,inter_product_number>
+pow(const MIA_Atom<_MIA,m_Seq,ownership,inter_product_number> & _atom,typename internal::data_type<typename std::remove_const<_MIA>::type>::type  exp){
+    typedef typename internal::data_type<typename std::remove_const<_MIA>::type>::type data_type;
+
+    data_type (*fpc)(data_type,data_type) = &std::pow;
+    auto f1 = std::bind(fpc, std::placeholders::_1, exp);
+
+    return do_func(_atom,f1);
+
+
+
+
+}
 
 }// namespace LibMIA
 

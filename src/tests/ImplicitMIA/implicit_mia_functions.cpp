@@ -41,6 +41,19 @@ void functions_work(){
             return 2;
     };
     MIAType a(_func,dim1,dim2,dim3);
+    bool _correct=true;
+    for(auto it=a.data_begin();it<a.data_end();++it){
+        if((it-a.data_begin())%2==0){
+            if(*it!=1)
+                _correct=false;
+        }
+        else{
+            if(*it!=2)
+                _correct=false;
+        }
+
+    }
+    BOOST_CHECK_MESSAGE(_correct,std::string("Basic data iterator test for ImplicitMIA for ")+typeid(_data_type).name());
 
     DenseMIAType dense_a(dim1,dim2,dim3);
     for(size_t idx=0;idx<dense_a.dimensionality();++idx){
@@ -59,7 +72,7 @@ void functions_work(){
     };
     MIAType_ref a_ref(_func_ref,dim1,dim2,dim3);
     BOOST_CHECK_MESSAGE(a_ref==dense_a,std::string("Value test for ImplicitMIA with reference for ")+typeid(_data_type).name());
-    bool _correct=true;
+    _correct=true;
     for(size_t idx=0;idx<dense_a.dimensionality();++idx){
         if(&(dense_a.atIdx(idx))!=&(a_ref.atIdx(idx))){
             _correct=false;
@@ -68,6 +81,26 @@ void functions_work(){
 
     }
     BOOST_CHECK_MESSAGE(_correct,std::string("Reference test for ImplicitMIA with reference for ")+typeid(_data_type).name());
+
+    //now test the assign to data_type operation - which implicity tests the iterators of ImplicitMIA
+    a_ref.fill(2);
+    _correct=true;
+    for(size_t idx=0;idx<a_ref.dimensionality();++idx){
+        if(a_ref.atIdx(idx)!=2){
+            _correct=false;
+            break;
+        }
+
+    }
+    BOOST_CHECK_MESSAGE(_correct,std::string("Basic assignment functionality test to referred data for ImplicitMIA with reference for ")+typeid(_data_type).name());
+    _correct=true;
+    for(size_t idx=0;idx<dense_a.dimensionality();++idx){
+        if(dense_a.atIdx(idx)!=2){
+            _correct=false;
+            break;
+        }
+
+    }
 
 }
 

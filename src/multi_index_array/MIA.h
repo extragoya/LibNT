@@ -64,6 +64,63 @@ struct FinalDerived<MIA<Derived> >:public FinalDerived<Derived>{};
 }
 
 
+template<class MIA_Type,class UnaryOperation,
+    typename  boost::enable_if<
+        internal::is_MIA<
+            typename std::remove_const<MIA_Type>::type
+        >,int
+    >::type=0
+>
+typename MIANonlinearFuncType<MIA_Type>::type do_func(const MIA_Type& mia, UnaryOperation op){
+    typename MIANonlinearFuncType<MIA_Type>::type ret=mia;
+    ret.apply_func(op);
+    return ret;
+}
+
+template<class MIA_Type,
+    typename  boost::enable_if<
+        internal::is_MIA<
+            typename std::remove_const<MIA_Type>::type
+        >,int
+    >::type=0
+>
+typename MIANonlinearFuncType<MIA_Type>::type sqrt(const MIA_Type& mia){
+    typedef typename internal::data_type<MIA_Type>::type data_type;
+    data_type (*fpc)(data_type) = &std::sqrt;
+    return do_func(mia,std::ptr_fun(fpc));
+}
+
+//!raise MIA to a power
+template<class MIA_Type,
+    typename  boost::enable_if<
+        internal::is_MIA<
+            typename std::remove_const<MIA_Type>::type
+        >,int
+    >::type=0
+>
+typename MIANonlinearFuncType<MIA_Type>::type pow(const MIA_Type& mia,double exp){
+    typedef typename internal::data_type<MIA_Type>::type data_type;
+    data_type (*fpc)(data_type,data_type) = &std::pow;
+    auto f1 = std::bind(fpc, std::placeholders::_1, exp);
+
+    return do_func(mia,f1);
+}
+
+//!negate every non-zerp
+template<class MIA_Type,
+    typename  boost::enable_if<
+        internal::is_MIA<
+            typename std::remove_const<MIA_Type>::type
+        >,int
+    >::type=0
+>
+typename MIANonlinearFuncType<MIA_Type>::type negate(const MIA_Type& mia){
+    typedef typename internal::data_type<MIA_Type>::type data_type;
+
+    return do_func(mia,std::negate<data_type>());
+}
+
+
 /** \addtogroup mia Multi-Index Array Classes
 *  @{
 */
@@ -145,10 +202,12 @@ public:
         static_assert(internal::check_mia_constructor<MIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
     }
 
-    FinalDerived& operator=(data_type _data){
-        this->init(_data);
-        return final_derived();
-    }
+
+
+
+
+
+
 
     void init(const std::array<index_type,mOrder> _dims){
         m_dims(_dims);
@@ -178,6 +237,15 @@ public:
 
         return final_derived()=std::move(otherMIA.final_derived());
     }
+
+    //!Applies the given function, component-wise to each data element. Typically some sort of nonlinear function. Can be lambda, std::function, or custom functor
+    template<class UnaryOperation>
+    void apply_func(UnaryOperation op){
+        for(auto it=derived().data_begin(); it< derived().data_end();++it)
+            *it=this->convert(op(*it));
+
+    }
+
 
 //    toLatticeExpression(std::array<size_t> outer_product_indices, std::array<size_t> inner_product_indices,,std::array<size_t> inter_product_indices){
 //        return toLatticeCopy(outer_product_indices, inner_product_indices, inter_product_indices );

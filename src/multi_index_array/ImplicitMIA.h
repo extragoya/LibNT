@@ -20,7 +20,12 @@
 #include <iostream>
 #include <algorithm>
 
-
+#include <boost/iterator/iterator_facade.hpp>
+#include <boost/mpl/if.hpp>
+#include <boost/type_traits/is_const.hpp>
+#include <boost/type_traits/is_convertible.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/iterator/iterator_traits.hpp>
 
 #include "LibMiaException.h"
 #include "LibMIAUtil.h"
@@ -32,6 +37,12 @@
 //\defgroup
 namespace LibMIA
 {
+
+//forward declaration of data iterator
+template<typename ImplictMIAType>
+class implicit_iter;
+
+
 
 /** \addtogroup mia Multi-Index Array Classes
  *  @{
@@ -87,14 +98,14 @@ struct order<ImplicitMIA<T,_order, isRef> >
 template<typename T,size_t _order,bool isRef>
 struct data_iterator<ImplicitMIA<T,_order, isRef> >
 {
-    typedef void type;
+    typedef implicit_iter<ImplicitMIA<T,_order, isRef>> type;
 };
 
 //should never be used
 template<typename T,size_t _order,bool isRef>
 struct const_data_iterator<ImplicitMIA<T,_order, isRef> >
 {
-    typedef void type;
+    typedef implicit_iter<const ImplicitMIA<T,_order, isRef>> type;
 };
 
 template<typename T,size_t _order,bool isRef>
@@ -151,8 +162,10 @@ public:
 
     //! raw data_type
     typedef typename internal::data_type<ImplicitMIA>::type data_type;
-    //! raw data_type
+    //! raw data_type reference
     typedef typename internal::data_type_ref<ImplicitMIA>::type data_type_ref;
+    //! const raw data_type reference
+    typedef typename internal::const_data_type_ref<ImplicitMIA>::type const_data_type_ref;
 
     //! raw index_type
     typedef typename internal::index_type<ImplicitMIA>::type index_type;
@@ -168,6 +181,9 @@ public:
 
     //! order of the MIA
     constexpr static size_t mOrder=_order;
+
+    typedef typename internal::data_iterator<ImplicitMIA>::type data_iterator;
+    typedef typename internal::const_data_iterator<ImplicitMIA>::type const_data_iterator;
 
 
 private:
@@ -190,7 +206,7 @@ public:
     }
 
     //!  Constructs empty ImplicitMIA
-    ImplicitMIA():MIA<ImplicitMIA<_data_type,_order> >()
+    ImplicitMIA():DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >()
     {
         mFunction=this->zero_function();
     }
@@ -274,6 +290,21 @@ public:
     }
 
 
+    template<typename Derived>
+    ImplicitMIA & operator=(const DenseMIABase<Derived> & otherMIA)
+    {
+
+        check_if_assign_legal<isRef>();
+        if(this->dims()!=otherMIA.dims()){
+            throw MIAParameterException("To assign to an ImplicitMIA that refers to another's underlying data, dims of two  MIAs must be identical.");
+        }
+        for(size_t idx=0;idx<this->dimensionality();++idx){
+            this->atIdx(idx)=this->convert(otherMIA.atIdx(idx));
+        }
+        return *this;
+    }
+
+
 
 
     //! Returns size of raw data. For dense cases, this is the same as dimensionality
@@ -285,10 +316,11 @@ public:
     }
 
     //! Returns scalar data at given linear index
-    inline const data_type_ref atIdx(index_type idx) const{
+    inline const_data_type_ref atIdx(index_type idx) const{
 
         //return lin index
-        return mFunction(idx);
+        const_data_type_ref ret= mFunction(idx);
+        return ret;
     }
 
     //! Returns scalar data at given linear index
@@ -352,7 +384,7 @@ public:
         return mFunction;
     }
 
-    template<class other_data_type>
+    template<class other_data_type=data_type>
     DenseMIA<other_data_type,mOrder> make_explicit() const{
         DenseMIA<other_data_type,mOrder> temp(this->dims());
         //get the explicit values
@@ -412,6 +444,22 @@ public:
 
     }
 
+    data_iterator data_begin(){
+        return data_iterator(this,0);
+    }
+
+    data_iterator data_end(){
+        return data_iterator(this,this->dimensionality());
+    }
+
+    const_data_iterator data_begin() const{
+        return const_data_iterator(this,0);
+    }
+
+    const_data_iterator data_end() const{
+        return const_data_iterator(this,this->dimensionality());
+    }
+
 
 
 protected:
@@ -441,6 +489,22 @@ protected:
 
     }
 
+    //If ImplicitMIAs refer to some DenseMIA data held elsewhere, ie isRef is true, then under strict conditions assignment is legal. Otherwise, assignment is always illegal. These two functions
+    //ensure that a compilation error will trigger if someone tries to assign with isRef set to false.
+    template<bool should_do_assign,typename boost::disable_if_c<should_do_assign,int>::type=0>
+    void check_if_assign_legal()
+    {
+        //use delayed parsing, so the static assert will only trigger if the function is actually used within a compilation unit
+        struct fake : std::false_type{};
+        static_assert(fake::value,"ImplictMIA must have its isRef tparam set to true to perform assignment");
+    }
+
+    template<bool should_do_assign,typename boost::enable_if_c<should_do_assign,int>::type=0>
+    void check_if_assign_legal()
+    {
+
+    }
+
 private:
 
 
@@ -453,6 +517,93 @@ private:
 
 
 
+//!Iterator for ImplicitMIAs.
+/*!
+        When ImplicitMIA's isRef is false, just returns data_type upon dereference, otherwise returns &data_type. In the latter case, interoperability
+        with std::algorithms has not been tested for swapping and copying algorithms, like std::sort. Can handle const, by passing a const ImplicitMIA
+        type as ImplicitMIAType (typedefs in the traits class)
+*/
+template<class ImplicitMIAType>
+class implicit_iter
+  : public boost::iterator_facade<
+       implicit_iter<ImplicitMIAType>,
+       typename boost::mpl::if_<
+            boost::is_const<ImplicitMIAType>,
+            const typename internal::data_type<typename std::remove_const<ImplicitMIAType>::type>::type,
+            typename internal::data_type<ImplicitMIAType>::type
+        >::type,
+        boost::random_access_traversal_tag,
+        typename boost::mpl::if_<
+            boost::is_const<ImplicitMIAType>,
+            const typename internal::data_type_ref<typename std::remove_const<ImplicitMIAType>::type>::type, //is isRef is false in ImplicitMIAType, will return data_type instead of data_type&
+            typename internal::data_type_ref<ImplicitMIAType>::type
+        >::type
+    >
+{
+private:
+    typedef ImplicitMIAType miaType;
+    typedef typename boost::iterator_difference<implicit_iter>::type difference_type;
+    typedef typename boost::iterator_reference<implicit_iter>::type reference;
+
+    friend class boost::iterator_core_access;
+    template <class> friend class implicit_iterator;
+
+    typedef typename internal::index_type<miaType>::type index_type;
+
+    miaType * mia_ref; //pointer to the mia and the current idx is how the iterator keeps track of how to return data
+    index_type mIdx;
+
+    struct enabler {};
+
+    template <class OtherMIAType>
+    bool equal(implicit_iter<OtherMIAType> const& other) const
+    {
+        return this->mia_ref == other.mia_ref && this->mIdx==other.mIdx;
+    }
+
+    void increment()
+    { mIdx++; }
+
+    void decrement()
+    { mIdx--; }
+
+    void advance(difference_type _diff){
+        mIdx+=_diff;
+    }
+
+    template <class OtherMIAType>
+    difference_type distance_to(implicit_iter<OtherMIAType> const& other) const{
+        return other.mIdx-this->mIdx;
+    }
+
+    reference dereference() const
+    { return mia_ref->atIdx(mIdx); }
+
+public:
+
+
+    implicit_iter()
+      : mia_ref(0),mIdx(0) {}
+
+    implicit_iter(miaType * _mia)
+      : mia_ref(_mia),mIdx(0) {}
+
+    explicit implicit_iter(miaType * _mia, index_type _idx)
+      : mia_ref(_mia),mIdx(_idx) {}
+
+    template <class OtherMIAType>
+    implicit_iter(
+      implicit_iter<OtherMIAType> const& other
+    , typename boost::enable_if<
+          boost::is_convertible<OtherMIAType*,ImplicitMIAType*>
+        , enabler
+      >::type = enabler()
+  )
+    : mia_ref(other.mia_ref),mIdx(other.mIdx) {}
+
+
+
+};
 
 
 

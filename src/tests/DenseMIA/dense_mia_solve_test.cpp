@@ -63,6 +63,10 @@ void solve_work(size_t dim1,size_t dim2){
     d2(i,j,m,n)=a2(k,l,i,j)*b2(k,l,m,n);
     BOOST_CHECK_MESSAGE(d.fuzzy_equals(d2,test_precision<_data_type>()),std::string("Inner/Outer Product Least Squares 1 for ")+typeid(_data_type).name() );
 
+    c(i,j,k,l)=a(!i,!j,!k,!l)|b(!k,!j,!l,!i);
+    d(k,j,l,i)=a(!i,!j,!k,!l)*c(!i,!j,!k,!l);
+    BOOST_CHECK_MESSAGE(d.fuzzy_equals(b,test_precision<_data_type>()),std::string("Pure Inter-product Inverse 1 for ")+typeid(_data_type).name() );
+
 }
 
 BOOST_AUTO_TEST_CASE( DenseMIASolveTests )
