@@ -797,6 +797,8 @@ public:
 
 
 
+        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
+            std::cout << "Entered product" << std::endl;
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
 
         auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
@@ -804,10 +806,12 @@ public:
         typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
         auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
-        //std::cout << "ALat done" << std::endl;
+        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
+            std::cout << "ALat done" << std::endl;
         //aLat.print();
         auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
-        //std::cout << "BLat done" << std::endl;
+        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
+            std::cout << "BLat done" << std::endl;
         //bLat.print();
 
 

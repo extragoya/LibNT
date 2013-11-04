@@ -163,7 +163,7 @@ public:
 
 
     //!Creates empty MIA of provided dimensionality
-    SparseMIABase(const std::array<index_type,mOrder> &_dims): MIA<SparseMIABase<Derived > >(_dims),mIsSorted(true) {
+    SparseMIABase(const std::array<index_type,mOrder> &_dims,bool _is_sorted=true): MIA<SparseMIABase<Derived > >(_dims),mIsSorted(_is_sorted) {
         init_linIdx_sequence();
     }
 
@@ -380,7 +380,7 @@ public:
     {
 
         this->sort(mDefaultLinIdxSequence);
-        print_arrray(this->dims(),"Dimensions");
+        print_array(this->dims(),"Dimensions");
         std::cout << "Nonzeros " << this->size() << std::endl;
         std::cout << "Dimens" << std::endl;
         std::cout << "Index\t Indices\t Data" << std::endl;
@@ -455,9 +455,11 @@ public:
 
     */
     void rand_indices(){
+        if(!this->dimensionality()) //do nothing is dimensionality is zero
+            return;
         using namespace boost::numeric;
 
-        boost::uniform_real<> uni_dist(0,this->m_dimensionality-1);
+        boost::uniform_real<> uni_dist(0,this->dimensionality()-1);
         boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA_gen(), uni_dist);
         typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
         for (auto i=derived().index_begin();i<derived().index_end();++i){
@@ -482,23 +484,11 @@ public:
 
     //!Comparison operator to another Sparse MIA. Will account for differing lexicographical precedences.
     template<class otherDerived>
-    bool operator==(SparseMIABase<otherDerived>& otherMIA)
-    {
-        if(this->dims()!=otherMIA.dims())
-            return false;
-        if(this->size()!=otherMIA.size())
-            return false;
-        this->sort();
-        otherMIA.sort(mLinIdxSequence);
-        auto it2=otherMIA.index_begin();
-        for(auto it=this->index_begin();it<this->index_end();++it,++it2){
-            if (*it!=*it2)
-                return false;
+    bool operator==(SparseMIABase<otherDerived>& otherMIA);
 
-        }
-        return std::equal(this->data_begin(),this->data_end(),otherMIA.data_begin());
+    template<class otherDerived>
+    bool fuzzy_equals(SparseMIABase<otherDerived>& otherMIA, data_type precision);
 
-    }
 
 
     template<class otherDerived>
@@ -799,6 +789,33 @@ protected:
     bool compare_with_dense(const DenseMIABase<otherDerived>& otherMIA,Predicate predicate);
 
 
+
+    //!Comparison operator to another Sparse MIA. Will account for differing lexicographical precedences.
+    template<class otherDerived, class Predicate>
+    bool compare_with_sparse(SparseMIABase<otherDerived>& otherMIA,Predicate predicate)
+    {
+        if(this->dims()!=otherMIA.dims())
+            return false;
+        if(this->size()!=otherMIA.size())
+            return false;
+        this->sort();
+        otherMIA.sort(mLinIdxSequence);
+        auto it2=otherMIA.index_begin();
+        for(auto it=this->index_begin();it<this->index_end();++it,++it2){
+            if (*it!=*it2)
+                return false;
+
+        }
+        auto data_it2=otherMIA.data_begin();
+        for(auto data_it=this->data_begin();data_it<this->data_end();++data_it,++data_it2){
+            if (!predicate(*data_it,*data_it2))
+                return false;
+
+        }
+        return true;
+
+    }
+
     void init_linIdx_sequence(){
         for(size_t i=0;i<mLinIdxSequence.size();++i)
             mLinIdxSequence[i]=i;
@@ -1077,14 +1094,42 @@ bool SparseMIABase<Derived>::fuzzy_equals(const DenseMIABase<otherDerived>& othe
     return compare_with_dense(otherMIA,pred);
 }
 
+
+template<class Derived>
+template<class otherDerived>
+bool SparseMIABase<Derived>::operator==(SparseMIABase<otherDerived>& otherMIA)
+{
+    typedef typename SparseMIABase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[](data_type a,other_data_type b){
+        return a==b;
+    };
+    return compare_with_sparse(otherMIA,pred);
+}
+
+template<class Derived>
+template<class otherDerived>
+bool SparseMIABase<Derived>::fuzzy_equals(SparseMIABase<otherDerived>& otherMIA,data_type precision)
+{
+
+    typedef typename SparseMIABase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[precision](data_type a,other_data_type b){
+        return isEqualFuzzy(a,b,precision);
+    };
+    return compare_with_sparse(otherMIA,pred);
+}
+
 template<class Derived>
 template<class otherDerived, class Predicate>
 bool SparseMIABase<Derived>::compare_with_dense(const DenseMIABase<otherDerived>& otherMIA,Predicate predicate)
 {
 
-
-    if(this->dims()!=otherMIA.dims())
+    //std::cout << "Entered == with dense" << std::endl;
+    if(this->dims()!=otherMIA.dims()){
+//        std::cout << "Dimension mismatch " << std::endl;
+//        print_array(this->dims(),"this->dims()");
+//        print_array(otherMIA.dims(),"otherMIA.dims()");
         return false;
+    }
     this->sort();
     if (!this->size())
     {

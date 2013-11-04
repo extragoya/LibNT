@@ -33,6 +33,8 @@ void random_matrix(LibMIA::DenseLattice<data_type> & lat,double _prob,bool need_
                 if(uni()<_prob){
                     *it=uni2();
                 }
+                else
+                    *it=0;
 
             }
             if(need_ranked){
@@ -64,14 +66,15 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
 
     denseType DenseLat1(m1,n1,p);
-    denseType DenseLat1_lsqr(m1,2*n1,p);
-    denseType DenseLat2(n1,n2,p);
+    denseType DenseLat1_lsqr(2*m1,n1,p);
+    denseType DenseLat2(m1,n2,p);
 
     denseType DenseLat3;
     denseType DenseLat3_mixed;
 
-    sparseType SparseLat1(m1,n1,p);
-    sparseType SparseLat2(n1,n2,p);
+    sparseType SparseLat1;
+    sparseType SparseLat2;
+    sparseType SparseLat1_lsqr;
     sparseType SparseLat3;
 
     random_matrix(DenseLat1,0.4);
@@ -80,6 +83,7 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
     SparseLat1=DenseLat1;
     SparseLat2=DenseLat2;
+    SparseLat1_lsqr=DenseLat1_lsqr;
 
     DenseLat3=DenseLat1.solve(DenseLat2);
     DenseLat3_mixed=DenseLat1.solve(SparseLat2);
@@ -88,17 +92,23 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
     BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("Full Dimension Solve Test 1 for ")+typeid(data_type).name());
     //now invert the sparse version instead
+
     DenseLat3_mixed=SparseLat1.solve(DenseLat2);
+
     BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("Full Dimension Solve Test 2 for ")+typeid(data_type).name());
 
 
+    DenseLat2=denseType(2*m1,n2,p);
+    random_matrix(DenseLat2,0.4,false);
+    SparseLat2=DenseLat2;
 
     DenseLat3=DenseLat1_lsqr.solve(DenseLat2);
     DenseLat3_mixed=DenseLat1_lsqr.solve(SparseLat2);
 
     BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("LSQR Solve Test 1 for ")+typeid(data_type).name());
 
-
+    DenseLat3_mixed=SparseLat1_lsqr.solve(DenseLat2);
+    BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(DenseLat3_mixed,test_precision<data_type>()),std::string("LSQR Solve Test 2 for ")+typeid(data_type).name());
 
 }
 
@@ -108,8 +118,8 @@ BOOST_AUTO_TEST_CASE( MixedLatticeSolveTests )
 
     //multwork<double>(3,3,3,3);
     //solvework<double>(5,5,5,5);
-    solvework<double>(20,20,20,20);
-    solvework<float>(20,20,20,20);
+    solvework<double>(20,20,10,20);
+    solvework<float>(20,20,10,20);
 
 
 

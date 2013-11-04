@@ -40,7 +40,7 @@
 
 #include "MIAConfig.h"
 #include <Eigen/Sparse>
-
+#include <Eigen/Core>
 
 
 #include "Lattice.h"
@@ -124,7 +124,7 @@ public:
     typename SparseProductReturnType<Derived,otherDerived>::type operator*(SparseLatticeBase<otherDerived> &b);
 
     template <class otherDerived>
-    typename DenseProductReturnType<Derived,otherDerived>::type operator*(const DenseLatticeBase<otherDerived> &b);
+    typename SparseProductReturnType<Derived,otherDerived>::type operator*(const DenseLatticeBase<otherDerived> &b);
 
 
     //only enable for operands that have the same index_type
@@ -132,7 +132,7 @@ public:
     typename SparseSolveReturnType<Derived,otherDerived>::type solve(SparseLatticeBase<otherDerived> &b);
 
     template <class otherDerived>
-    typename SparseSolveReturnType<Derived,otherDerived>::type solve(DenseLatticeBase<otherDerived> &b);
+    typename SparseSolveReturnType<Derived,otherDerived>::type solve(const DenseLatticeBase<otherDerived> &b);
 
     data_type operator()(index_type _row, index_type _column, index_type _tab) const;
 
@@ -146,14 +146,7 @@ public:
 //
 
 
-    void sparse_init(bool _is_sorted, bool _linIdxSequence)
-    {
 
-        m_is_sorted=_is_sorted;
-        m_linIdxSequence=_linIdxSequence;
-
-
-    }
 
     template<class otherDerived>
     typename SparseMergeReturnType<Derived,otherDerived>::type operator+(SparseLatticeBase<otherDerived> &b)
@@ -193,7 +186,7 @@ public:
             //T temp2=std::get<0>(temp);
 
             std::cout << std::get<0>(temp) <<"\t" ;
-            std::cout << row(index_val(temp)) << "\t"<< column(index_val(temp)) << "\t" << tab(index_val(temp)) <<"\n";
+            std::cout << row(index_val(temp)) << "\t"<< column(index_val(temp)) << "\t" << tab(index_val(temp)) <<std::endl;;
         }
     }
 
@@ -310,6 +303,14 @@ public:
 
         return m_linIdxSequence;
     }
+
+    void set_linIdxSequence(bool _linIdxSequence,bool _is_sorted=true){
+        m_is_sorted=_is_sorted;
+        m_linIdxSequence=_linIdxSequence;
+    }
+
+
+
 
     bool tab_compare(index_type lin_index1, index_type lin_index2) const
     {
@@ -485,6 +486,23 @@ protected:
     bool compare_with_dense(const DenseLatticeBase<otherDerived>& otherLat,BinaryPredicate predicate);
 
     index_type full2lin_index(index_type _row, index_type _column, index_type _tab) const;
+
+    void sparse_init(bool _is_sorted, bool _linIdxSequence)
+    {
+
+        m_is_sorted=_is_sorted;
+        m_linIdxSequence=_linIdxSequence;
+
+
+    }
+
+
+    template <class otherDerived, bool LSQR>
+    typename SparseSolveReturnType<Derived,otherDerived>::type perform_solve(SparseLatticeBase<otherDerived> &b);
+
+    template <class otherDerived,bool LSQR>
+    typename SparseSolveReturnType<Derived,otherDerived>::type perform_solve(const DenseLatticeBase<otherDerived> &b);
+
     bool m_is_sorted;
     bool m_linIdxSequence;
 
@@ -718,14 +736,52 @@ auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator
 
 }
 
+//template <class Derived>
+//template <class otherDerived>
+//typename DenseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
+//
+//    this->check_mult_dims(b);
+//    typedef typename DenseProductReturnType<Derived,otherDerived>::type c_type;
+//    typedef typename otherDerived::index_type b_index_type;
+//    c_type c(this->height(),b.width(),this->depth()); //should be zero-initialized
+//    this->sort(RowMajor);
+//
+//    auto a_temp_begin=this->index_begin();
+//    auto a_temp_end=a_temp_begin;
+//
+//    while(a_temp_begin<this->index_end()){
+//        auto cur_tab=this->tab(*a_temp_begin);
+//        auto cur_row=this->row(*a_temp_begin);
+//        a_temp_end=a_temp_begin+1;
+//        while(a_temp_end<this->index_end()&&this->tab(*a_temp_end)==cur_tab && this->row(*a_temp_end)==cur_row){
+//            a_temp_end++;
+//        }
+//        for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
+//            for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
+//                c(cur_row,b_columns,cur_tab)+=this->data_at(a_it-this->index_begin())*b(this->column(*a_it),b_columns,cur_tab);
+//            }
+//        }
+//        a_temp_begin=a_temp_end;
+//    }
+//    return c;
+//
+//
+//}
+
 template <class Derived>
 template <class otherDerived>
-typename DenseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
+typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
     this->check_mult_dims(b);
-    typedef typename DenseProductReturnType<Derived,otherDerived>::type c_type;
+    typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
     typedef typename otherDerived::index_type b_index_type;
-    c_type c(this->height(),b.width(),this->depth()); //should be zero-initialized
+
+    typename c_type::Indices c_indices;
+    c_indices.reserve(this->size());
+    typename c_type::Data c_data;
+    c_data.reserve(this->size());
+    typename internal::data_type<c_type>::type cur_c_data;
+
     this->sort(RowMajor);
 
     auto a_temp_begin=this->index_begin();
@@ -739,13 +795,22 @@ typename DenseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<De
             a_temp_end++;
         }
         for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
+            cur_c_data=0;
             for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
-                c(cur_row,b_columns,cur_tab)+=this->data_at(a_it-this->index_begin())*b(this->column(*a_it),b_columns,cur_tab);
+                cur_c_data+=this->data_at(a_it-this->index_begin())*b(this->column(*a_it),b_columns,cur_tab);
+
+            }
+            if(std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
+                c_data.push_back(cur_c_data);
+                c_indices.push_back(cur_row+(b_columns+cur_tab*b.width())*this->height());
             }
         }
         a_temp_begin=a_temp_end;
     }
-    return c;
+    c_type ret(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth());
+    ret.set_linIdxSequence(RowMajor);
+
+    return ret;
 
 
 }
@@ -776,6 +841,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     index_type cur_tab;
     //initial estimate of size of C
     typename RType::Indices c_indices;
+
     c_indices.reserve(this->size()+b.size());
     typename RType::Data c_data;
     c_data.reserve(this->size()+b.size());
@@ -1480,10 +1546,174 @@ inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<ind
 }
 
 
+namespace{
+//!Helper class to pull least squares or householder inversion
+template<bool LSQR,class EigenSparseMatrix>
+struct sparse_lattice_solver;
+
+template<class EigenSparseMatrix>
+struct sparse_lattice_solver<true,EigenSparseMatrix> {
+
+    typedef Eigen::SparseQR<EigenSparseMatrix,Eigen::COLAMDOrdering<typename EigenSparseMatrix::Index>> solverType;
+
+    solverType _solver;
+    void initialize_solver(const EigenSparseMatrix & _matrix,SolveInfo &_solveInfo){
+
+
+
+
+        _solver.compute(_matrix);
+        if(_solver.info()!=Eigen::Success){
+            _solveInfo=RankDeficient;
+
+        }
+        else{
+            _solveInfo=FullyRanked;
+        }
+    }
+
+    template<typename BType, typename CType>
+    void _solve(const BType & b, CType & c)
+    {
+        _solver._solve(b,c);
+    }
+    auto info()->decltype(_solver.info())
+    {
+        return _solver.info();
+    }
+
+    auto lastErrorMessage()->decltype(_solver.lastErrorMessage()){
+        return _solver.lastErrorMessage();
+    }
+
+//        std::cout << "analyze succeeded " << std::endl;
+//        _solver.factorize(_matrix);
+//        if(_solver.info()!=Eigen::Success){
+//            std::cout << "factoring failed " << std::endl;
+//            _solveInfo=RankDeficient;
+//        }
+
+
+
+
+};
+
+template<class EigenSparseMatrix>
+struct sparse_lattice_solver<false,EigenSparseMatrix> {
+
+    typedef Eigen::SparseLU<EigenSparseMatrix> solverTypeLU;
+
+    //typedef Eigen::SimplicialLDLT<EigenSparseMatrix> solverTypeChol;
+    solverTypeLU _solverLU;
+    //solverTypeChol _solverChol;
+
+    void initialize_solver(const EigenSparseMatrix & _matrix,SolveInfo &_solveInfo){
+
+
+        _solverLU.analyzePattern(_matrix);
+        _solverLU.factorize(_matrix);
+
+        if(this->info()!=Eigen::Success){
+
+            _solveInfo=RankDeficient;
+        }
+        else{
+
+            _solveInfo=LeastSquares;
+        }
+
+
+    }
+
+    template<typename BType, typename CType>
+    void _solve(const BType & b, CType & c){
+
+            _solverLU._solve(b,c);
+
+
+    }
+    auto info()->decltype(_solverLU.info()){
+
+            return _solverLU.info();
+    }
+
+    auto lastErrorMessage()->decltype(_solverLU.lastErrorMessage()){
+
+            return _solverLU.lastErrorMessage();
+
+
+    }
+
+};
+}
+
 template <class Derived>
 template <class otherDerived>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(SparseLatticeBase<otherDerived> &b)
 {
+
+
+    this->check_solve_dims(b);
+
+
+
+    typedef typename SparseSolveReturnType<Derived,otherDerived>::type RType;
+
+
+    if (this->width()==this->height()){
+        return perform_solve<otherDerived,false>(b);
+    }
+    else if(this->width()<this->height()){
+        return perform_solve<otherDerived,true>(b);
+
+    }
+    else
+        throw LatticeParameterException("Only square or over-determined systems are supported");
+
+
+
+
+
+
+
+}
+
+
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(const DenseLatticeBase<otherDerived> &b)
+{
+
+
+    this->check_solve_dims(b);
+
+
+
+    typedef typename SparseSolveReturnType<Derived,otherDerived>::type RType;
+
+
+    if (this->width()==this->height()){
+        return perform_solve<otherDerived,false>(b);
+    }
+    else if (this->width()<this->height()){
+        return perform_solve<otherDerived,true>(b);
+
+    }
+    else
+        throw LatticeParameterException("Only square or over-determined systems are supported");
+
+
+
+
+
+
+}
+
+template <class Derived>
+template <class otherDerived,bool LSQR>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::perform_solve(SparseLatticeBase<otherDerived> &b)
+{
+
 
     this->check_solve_dims(b);
 
@@ -1524,7 +1754,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-    typedef Eigen::SparseLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
+
     std::vector<typename MappedSparseMatrix_cm::Index> a_rows; //we make it MappedSparseMatrix_cm::Index, incase index_type differs from MappedSparseMatrix_cm::Index
 
 
@@ -1591,14 +1821,17 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_rows.size(),&a_columns[0],&a_rows[0],&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
 
-            //compute LU decomposition
-            LU_decomp lu_of_A;
-            lu_of_A.analyzePattern(A);
-            lu_of_A.factorize(A);
-            if(lu_of_A.info()!=Eigen::Success)
+            //get solver
+            typedef sparse_lattice_solver<LSQR,MappedSparseMatrix_cm> solverType;
+            solverType _solver;
+            _solver.initialize_solver(A,this->mSolveInfo);
+
+            if(this->mSolveInfo==RankDeficient)
             {
                 std::stringstream t;
-                t << "Could not perform LU decomp on tab " << k << ".";
+                t << "Could not perform facotrization on tab " << k << " due to error : " << _solver.lastErrorMessage() << ".";
+                std::cout << A << std::endl;
+
                 throw RankDeficientException(t.str());
             }
 
@@ -1616,11 +1849,12 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 //get wrapper for corresponding column of lattice c
                 c_vector_type c_vector=c.column_vector(b_cur_column,k);
                 //solve and store in lattice c
-                lu_of_A._solve(b_vector,c_vector);
-                if(lu_of_A.info()!=Eigen::Success)
+                _solver._solve(b_vector,c_vector);
+                if(_solver.info()!=Eigen::Success)
                 {
+                    this->mSolveInfo=RankDeficient;
                     std::stringstream t;
-                    t << "Solution process on tab " << k << " and column "<< b_cur_column << "of RHS failed.";
+                    t << "Solution process on tab " << k << " and column "<< b_cur_column << "of RHS failed due to error : " << _solver.lastErrorMessage() << ".";
                     throw RankDeficientException(t.str());
                 }
 
@@ -1630,6 +1864,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
         }
         else
         {
+            this->mSolveInfo=RankDeficient;
             std::stringstream t;
             t << "Rank deficient tab. Tab " << k << "has zero entries.";
             throw RankDeficientException(t.str());
@@ -1646,12 +1881,13 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     return c;
 }
 template <class Derived>
-template <class otherDerived>
-typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::solve(DenseLatticeBase<otherDerived> &b)
+template <class otherDerived,bool LSQR>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<otherDerived> &b)
 {
 
     this->check_solve_dims(b);
     typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
+    typedef typename c_type::matrix_type c_matrix_type;
 
 
 
@@ -1670,7 +1906,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef const typename  Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-    typedef Eigen::SparseLU<MappedSparseMatrix_cm> LU_decomp;    //LU decomposition type for A
+
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
 
@@ -1716,23 +1952,37 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
 
             //compute LU decomposition
-            LU_decomp lu_of_A;
-            lu_of_A.analyzePattern(A);
-            lu_of_A.factorize(A);
-            if(lu_of_A.info()!=Eigen::Success)
+            //get solver
+            typedef sparse_lattice_solver<LSQR,MappedSparseMatrix_cm> solverType;
+            solverType _solver;
+            _solver.initialize_solver(A,this->mSolveInfo);
+            if(this->mSolveInfo==RankDeficient)
             {
                 std::stringstream t;
-                t << "Could not perform LU decomp on tab " << k << ".";
+                t << "Could not perform facotrization on tab " << k << " due to error : " << _solver.lastErrorMessage() << ".";
                 throw RankDeficientException(t.str());
             }
-            c.derived().tab_matrix(k)=lu_of_A.solve(b.derived().tab_matrix(k));
-            if(lu_of_A.info()!=Eigen::Success)
-            {
-                std::stringstream t;
-                t << "Solution process on tab " << k << " failed.";
-                throw RankDeficientException(t.str());
+
+
+            //for some reason, the QR solver throws an exception if it's passed two EigenMap matrices. But if doesn't when passed with individual EigenMap columns
+            for(size_t col_idx=0;col_idx<(size_t)b.width();++col_idx){
+                auto c_vector=c.column_vector(col_idx,k);
+                auto b_vector=b.column_vector(col_idx,k);
+                _solver._solve(b_vector,c_vector);
+                if(_solver.info()!=Eigen::Success)
+                {
+                    this->mSolveInfo=RankDeficient;
+                    std::stringstream t;
+                    t << "Solution process on tab " << k << "  col " << col_idx << " failed due to error : " << _solver.lastErrorMessage() << ".";
+                    throw RankDeficientException(t.str());
+                }
+
             }
+
+
+
              //now map back to A's full index, using the temp CSC matrix that was created
+             //***ACtually, this should happen even if the solution process failed - must change in all sparse routines!
             for(auto column_it=a_columns.begin();column_it<a_columns.end()-1;++column_it){
                 auto cur_column=column_it-a_columns.begin();
                 for(auto row_it=a_temp_begin+*column_it;row_it<a_temp_begin+*(column_it+1);++row_it)
@@ -1743,6 +1993,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
         }
         else
         {
+            this->mSolveInfo=RankDeficient;
             std::stringstream t;
             t << "Rank deficient tab. Tab " << k << "has zero entries.";
             throw RankDeficientException(t.str());

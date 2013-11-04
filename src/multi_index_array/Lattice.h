@@ -159,7 +159,14 @@ public:
         }
 
     }
+    SolveInfo mSolveInfo=NoInfo;
 
+    SolveInfo solveInfo() const{
+        return mSolveInfo;
+    }
+    void setSolveInfo(SolveInfo _solveInfo){
+        mSolveInfo=_solveInfo;
+    }
 
 protected:
 
@@ -193,20 +200,20 @@ protected:
     }
 
 
-    void init(index_type _height, index_type _width, index_type _depth){
+    void init(index_type _height, index_type _width, index_type _depth, SolveInfo _solveInfo=NoInfo){
         m_height=_height;
         m_width=_width;
         m_depth=_depth;
-
+        mSolveInfo=_solveInfo;
 
     }
 
-protected:
 
 
-    index_type m_height;
-    index_type m_width;
-    index_type m_depth;
+
+    index_type m_height=0;
+    index_type m_width=0;
+    index_type m_depth=0;
 
 
 

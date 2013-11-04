@@ -162,9 +162,9 @@ public:
     DenseLattice(const DenseLattice & other):DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
     {
 
-        this->mSolveInfo=other.solveInfo();
+
         *m_Data=*(other.m_Data);
-        this->init( other.height(), other.width(), other.depth());
+        this->init( other.height(), other.width(), other.depth(),other.solveInfo());
 
     }
 
@@ -172,10 +172,10 @@ public:
     DenseLattice(DenseLattice && other) :DenseLatticeBase<DenseLattice<T> >(),m_smart_raw_ptr(),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[0][0][0],boost::fortran_storage_order()))
     {
 
-        this->mSolveInfo=other.solveInfo();
+
         m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
         m_Data.swap(other.m_Data);
-        this->init( other.height(), other.width(), other.depth());
+        this->init( other.height(), other.width(), other.depth(),other.solveInfo());
 
     }
 
@@ -184,10 +184,10 @@ public:
     {
 
         if(this!=&other){
-            this->mSolveInfo=other.solveInfo();
+
             m_smart_raw_ptr.swap(other.m_smart_raw_ptr);
             m_Data.swap(other.m_Data);
-            this->init( other.height(), other.width(), other.depth());
+            this->init( other.height(), other.width(), other.depth(),other.solveInfo());
         }
         return *this;
 
@@ -205,10 +205,10 @@ public:
     {
 
 
-        this->mSolveInfo=other.solveInfo();
+
         typedef  typename internal::data_type<otherDerived>::type other_data_type;
         typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
-        this->init( other.height(), other.width(), other.depth());
+        this->init( other.height(), other.width(), other.depth(),other.solveInfo());
         for (int i=0; i<this->height(); i++)
             for(int j=0; j<this->width(); j++)
                 for(int k=0; k<this->depth(); k++)

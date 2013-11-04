@@ -22,7 +22,7 @@
 
 #include <boost/multi_array.hpp>
 #include <boost/type_traits.hpp>
-
+#include <boost/utility/enable_if.hpp>
 
 
 #include "LibMIAException.h"
@@ -272,13 +272,13 @@ public:
         If otherMIA's datatype is different than this->data_type, then individual entries will be converted.
 
     */
-    template<class otherDerived>
-    DenseMIA(const DenseMIABase<otherDerived>& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
+    template<class otherMIAType, typename boost::enable_if<typename internal::is_DenseMIA<otherMIAType>::type,int>::type=0>
+    DenseMIA(const otherMIAType& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
 
         this->mSolveInfo=otherMIA.solveInfo();
-        static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+        static_assert(internal::order<otherMIAType>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
         m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
         m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
 
@@ -301,6 +301,28 @@ public:
 
 
     }
+
+    //!  Copy constructor for SparseMIA.
+    /*!
+        If otherMIA's datatype is different than this->data_type, then individual entries will be converted.
+
+    */
+    template<class otherMIAType, typename boost::enable_if<typename internal::is_SparseMIA<otherMIAType>::type,int>::type=0>
+    DenseMIA(const otherMIAType& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
+    {
+
+
+
+        static_assert(internal::order<otherMIAType>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+        this->straight_assign(otherMIA);
+
+
+
+
+
+
+    }
+
 
 
 
@@ -360,42 +382,22 @@ public:
 
     }
 
-    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
+
+
+
+
+    //!  Assignment based on given order.
     /*!
-        For DenseMIAs, this function calls toLatticeCopy
+
+        If the data_type of otherMIA is not the same as this, the scalar data will be converted. The function allows a user to specify
+        a permutation of indices to shuffle around the scalar data. Will assert compile failure if the orders of the two MIAs don't match up
+
+        \param[in] otherMIA the other MIA
+        \param[in] index_order The assignment order, given for otherMIA. E.g., if order is {2,0,1} this->at(x,y,z)==otherMIA.at(y,z,x).
+
     */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
-    DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices) const
-    {
-        return this->toLatticeCopy(row_indices, column_indices, tab_indices);
-
-    }
-
-    //! Flattens the MIA to a Lattice by permuting the data in-place.
-    /*!
-        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
-        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
-        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
-        \return MappedDenseLattice class that wraps this's raw data
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
-    MappedDenseLattice<data_type> toLatticePermute(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices);
-
-
-    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.
-    /*!
-        For DenseMIAs, this function calls toLatticePermute
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
-    auto toLatticeDiscard(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices)
-    ->decltype(this->toLatticePermute(row_indices, column_indices, tab_indices))
-    {
-        return this->toLatticePermute(row_indices, column_indices, tab_indices);
-
-    }
-
-    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) const ->MappedDenseLattice<data_type>;
-
+    template<typename otherDerived,typename index_param_type>
+    void assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
 
     //!  Assignment based on given order.
@@ -440,6 +442,8 @@ public:
     template<typename other_data_type>
     DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& restrict otherMIA);
 
+    template<typename otherDerived>
+    DenseMIA& operator=(const SparseMIABase<otherDerived>& otherMIA);
 
     DenseMIA& operator=(const DenseMIA& otherMIA);
 
@@ -641,14 +645,57 @@ public:
     template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type = 0>
     void  merge(const MIA<otherDerived> &b,const Op& op);
 
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom.
+    /*!
+        For DenseMIAs, this function calls toLatticeCopy
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
+    DenseLattice<data_type> toLatticeExpression(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices) const
+    {
+        return this->toLatticeCopy(row_indices, column_indices, tab_indices);
+
+    }
+
+    //! Flattens the MIA to a Lattice by permuting the data in-place.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return MappedDenseLattice class that wraps this's raw data
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
+    MappedDenseLattice<data_type> toLatticePermute(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices);
+
+
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA in question is a temp object.
+    /*!
+        For DenseMIAs, this function calls toLatticePermute
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
+    auto toLatticeDiscard(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices)
+    ->decltype(this->toLatticePermute(row_indices, column_indices, tab_indices))
+    {
+        return this->toLatticePermute(row_indices, column_indices, tab_indices);
+
+    }
+
+    auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices) const ->MappedDenseLattice<data_type>;
+
 protected:
     template<typename other_data_type>
     DenseMIA& straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA);
 
+    template<typename otherDerived>
+    DenseMIA& straight_assign(const SparseMIABase<otherDerived>& otherMIA);
+
+
+
 private:
 
 
-
+    template <class D1,class D2,bool D3,size_t D4> friend class MIA_Atom;
+    template <class E1> friend class DenseMIABase;
+    template <class F1> friend class MIA;
 
 
 
@@ -867,6 +914,19 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<T,_order>& othe
     return this->straight_assign(otherMIA);
 
 }
+
+
+template<class T, size_t _order>
+template<typename otherDerived>
+DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const SparseMIABase<otherDerived>& otherMIA)
+{
+
+    static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+    return this->straight_assign(otherMIA);
+
+}
+
+
 template<class T, size_t _order>
 template<typename other_data_type>
 DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA)
@@ -904,6 +964,43 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_dat
 
 
 template<class T, size_t _order>
+template<typename otherDerived>
+DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const SparseMIABase<otherDerived>& otherMIA){
+
+    static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+
+    if(this->m_dimensionality!=otherMIA.dimensionality()){
+        if(hasOwnership){
+            this->m_dimensionality=otherMIA.dimensionality();
+            this->m_dims=otherMIA.dims();
+            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            m_smart_raw_ptr.swap(temp_ptr);
+            temp_ptr.release();
+            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->m_dims,boost::fortran_storage_order()));
+        }
+        else
+            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
+    }
+    else if(this->m_dims!=otherMIA.dims()){
+            this->m_dims=otherMIA.dims();
+    }
+    this->zeros();
+    this->mSolveInfo=otherMIA.solveInfo();
+
+    //std::cout << "about to convert" << std::endl;
+    for(auto it=otherMIA.index_begin();it<otherMIA.index_end();++it){
+
+        //std::cout << idx << std::endl;
+        this->atIdx(otherMIA.convert_to_default_linIdxSequence(*it))=this->convert(otherMIA.data_at(it-otherMIA.index_begin()));
+    }
+
+    return *this;
+
+}
+
+
+
+template<class T, size_t _order>
 template<typename other_data_type,typename index_param_type>
 void DenseMIA<T,_order>::assign(const ImplicitMIA<other_data_type,mOrder>& otherMIA,const std::array<index_param_type,_order>& index_order)
 {
@@ -927,6 +1024,55 @@ void DenseMIA<T,_order>::assign(const ImplicitMIA<other_data_type,mOrder>& other
 
 }
 
+
+
+template<class T, size_t _order>
+template<typename otherDerived,typename index_param_type>
+void DenseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order)
+{
+
+
+    static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
+
+    if(this->m_dimensionality!=otherMIA.dimensionality()){
+        if(hasOwnership){
+            internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
+            this->m_dimensionality=otherMIA.dimensionality();
+            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            m_smart_raw_ptr.swap(temp_ptr);
+            temp_ptr.release();
+            m_Data.reset(new data_container_type(m_smart_raw_ptr.get(),this->dims(),boost::fortran_storage_order()));
+        }
+        else
+            throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
+    }
+     else{
+
+        internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
+    }
+
+    this->zeros();
+    this->mSolveInfo=otherMIA.solveInfo();
+    index_type curIdx=0;
+    auto lhsOrder=internal::reverseOrder(index_order);
+    auto dim_accumulator=internal::createDimAccumulator(otherMIA.dims(),lhsOrder); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    auto multiplier=internal::createMultiplier(this->dims());
+    //print_array(dim_accumulator,"dim_accumulator");
+    //print_array(index_order,"index_order");
+
+
+
+    for(auto it=otherMIA.index_begin();it<otherMIA.index_end();++it){
+
+        //std::cout << idx << std::endl;
+        auto default_idx=otherMIA.convert_to_default_linIdxSequence(*it);
+        auto shuffled_idx=internal::getShuffleLinearIndex(default_idx,this->dims(),multiplier,dim_accumulator);
+        this->atIdx(shuffled_idx)=this->convert(otherMIA.data_at(it-otherMIA.index_begin()));
+    }
+
+
+}
 
 
 template<class T, size_t _order>

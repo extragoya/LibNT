@@ -504,17 +504,11 @@ struct SparseProductReturnType
 
     typedef typename
     boost::enable_if<
-    boost::mpl::and_<
-    boost::is_same<
-    typename internal::index_type<Lhs>::type,
-    typename internal::index_type<Rhs>::type
-    >,
     boost::is_same<
     typename internal::data_type<Lhs>::type,
     typename internal::data_type<Rhs>::type
-    >
-    >
-    ,  SparseLattice<typename internal::data_type<Lhs>::type>
+    >,
+    SparseLattice<typename internal::data_type<Lhs>::type>
     >::type type;
 
 
@@ -588,13 +582,13 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::or_< //when a lattice mapping is required, dense * sparse is always a dense
-            internal::is_DenseMIA<typename std::remove_const<L_MIA>::type>,
-            internal::is_DenseMIA<typename std::remove_const<R_MIA>::type>
+            internal::is_SparseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_SparseMIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
 {
-    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+    typedef SparseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 
@@ -603,13 +597,13 @@ template<class L_MIA,class R_MIA, size_t order
 struct MIAProductReturnType<L_MIA,R_MIA,order,
     typename boost::enable_if<
         boost::mpl::and_<
-            internal::is_SparseMIA<typename std::remove_const<L_MIA>::type>,
-            internal::is_SparseMIA<typename std::remove_const<R_MIA>::type>
+            internal::is_DenseMIA<typename std::remove_const<L_MIA>::type>,
+            internal::is_DenseMIA<typename std::remove_const<R_MIA>::type>
         >
     >::type
 >
 {
-    typedef SparseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 

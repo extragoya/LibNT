@@ -189,13 +189,13 @@ public:
 
 
     template<typename index_param_type>
-    MIA(const std::array<index_param_type,mOrder > &_dims){
+    MIA(const std::array<index_param_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo):mSolveInfo(_solveInfo){
         static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Dimensions must be given in a data type convertable to index_type");
         std::copy(_dims.begin(),_dims.end(),m_dims.begin());
         m_dimensionality=compute_dimensionality();
     }
 
-    MIA(const std::array<index_type,mOrder > &_dims): m_dims(_dims),m_dimensionality(compute_dimensionality()) {}
+    MIA(const std::array<index_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo): m_dims(_dims),m_dimensionality(compute_dimensionality()),mSolveInfo(_solveInfo) {}
 
     template<typename... Dims>
     MIA(Dims... dims):m_dims{{dims...}},m_dimensionality(compute_dimensionality()) {
@@ -209,9 +209,10 @@ public:
 
 
 
-    void init(const std::array<index_type,mOrder> _dims){
+    void init(const std::array<index_type,mOrder> _dims,SolveInfo _solveInfo=NoInfo){
         m_dims(_dims);
         m_dimensionality(compute_dimensionality());
+        mSolveInfo(_solveInfo);
     }
 
 //    template<class otherDerived,class index_param_type>
@@ -400,8 +401,15 @@ public:
 //        return derived().contract_attract(std::array<int,0>(),attract_indices);
 //    }
 
-
+    SolveInfo solveInfo() const{
+        return mSolveInfo;
+    }
+    void setSolveInfo(SolveInfo _solveInfo){
+        mSolveInfo=_solveInfo;
+    }
 protected:
+
+
 
     index_type compute_dimensionality(){
         index_type running_product=1;
@@ -420,7 +428,8 @@ protected:
 
 
     std::array<index_type,mOrder> m_dims;
-    index_type m_dimensionality;
+    index_type m_dimensionality=0;
+    SolveInfo mSolveInfo=NoInfo;
 
 
 

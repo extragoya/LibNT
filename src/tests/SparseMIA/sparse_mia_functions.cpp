@@ -91,6 +91,10 @@ void do_work(size_t dim1, size_t dim2, size_t dim3){
     passed=(*(test1.data_begin())==(data_type)counter1 && *(test1.data_begin()+1)==(data_type)counter2);
     BOOST_CHECK_MESSAGE(passed,std::string("Collect duplicates test 2 of data content for ")+typeid(MIAType).name());
 
+    MIAType test2; //zero dimensionality
+
+    test2.rand_indices(); //make sure no error thrown when dimensionality is zero
+
 }
 
 

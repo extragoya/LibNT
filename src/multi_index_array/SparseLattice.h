@@ -211,7 +211,7 @@ public:
     //!  Copy constructor
     SparseLattice(const SparseLattice& other): m_data(other.m_data),m_indices(other.m_indices)
     {
-        this->init(other.height(),other.width(),other.depth());
+        this->init(other.height(),other.width(),other.depth(),other.solveInfo());
         this->sparse_init(other.is_sorted(),other.linIdxSequence());
 
     }
@@ -229,7 +229,7 @@ public:
 
         }
 
-        this->init(other.height(),other.width(),other.depth());
+        this->init(other.height(),other.width(),other.depth(),other.solveInfo());
         this->sparse_init(other.is_sorted(),other.linIdxSequence());
 
     }
@@ -239,7 +239,7 @@ public:
     {
         m_data.swap(other.m_data);
         m_indices.swap(other.m_indices);
-        this->init(other.height(),other.width(),other.depth());
+        this->init(other.height(),other.width(),other.depth(),other.solveInfo());
         this->sparse_init(other.is_sorted(),other.linIdxSequence());
 
     }
@@ -249,7 +249,7 @@ public:
     {
         m_data.swap(other.m_data);
         m_indices.swap(other.m_indices);
-        this->init(other.height(),other.width(),other.depth());
+        this->init(other.height(),other.width(),other.depth(),other.solveInfo());
         this->sparse_init(other.is_sorted(),other.linIdxSequence());
         return *this;
 
@@ -297,7 +297,7 @@ public:
     SparseLattice(const DenseLattice<T>& dlat)
     {
         clear();
-        this->init(dlat.height(),dlat.width(),dlat.depth());
+        this->init(dlat.height(),dlat.width(),dlat.depth(),dlat.solveInfo());
         this->sparse_init(false,ColumnMajor);
         for (int k=0; k<dlat.depth(); k++)
         {
@@ -326,7 +326,7 @@ public:
 
         clear();
         std::copy(b.begin(),b.end(),this->begin());
-        this->init(b.height(),b.width(),b.depth());
+        this->init(b.height(),b.width(),b.depth(),b.solveInfo());
         this->sparse_init(b.is_sorted(),b.linIdxSequence());
 
         return *this;

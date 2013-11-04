@@ -120,13 +120,13 @@ public:
     }
 
     template<typename... Dims>
-    DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...),mSolveInfo(NoInfo) {}
+    DenseMIABase(Dims... dims): MIA<DenseMIABase<Derived > >(dims...) {}
 
 
-    DenseMIABase(): MIA<DenseMIABase<Derived > >(),mSolveInfo(NoInfo) {}
+    DenseMIABase(): MIA<DenseMIABase<Derived > >() {}
 
 
-    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims),mSolveInfo(NoInfo) {}
+    DenseMIABase(std::array<index_type,internal::order<DenseMIABase>::value> &_dims): MIA<DenseMIABase<Derived > >(_dims) {}
 
     template<class otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
     bool operator==(const MIA<otherDerived>& otherMIA) const;
@@ -150,64 +150,12 @@ public:
         return derived().atIdx(idx);
     }
 
-    SolveInfo solveInfo() const{
-        return mSolveInfo;
-    }
-
-    void setSolveInfo(SolveInfo _solveInfo){
-        mSolveInfo=_solveInfo;
-    }
 
 
 
-    //! Flattens the MIA to a Lattice by creating a copy of the data.
-    /*!
-        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
-        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
-        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
-        \return DenseLattice class that owns a copy of this's raw data
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
-
-
-    DenseLattice<data_type> toStraightLatticeCopy(size_t number_of_row_indices,size_t number_of_column_indices) const;
 
 
 
-    //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
-    template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
-    typename MIAMergeReturnType<Derived,otherDerived>::type
-    implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const;
-
-
-    //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
-    template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
-    typename MIAMergeReturnType<Derived,otherDerived>::type
-    implicit_merge(const MIA<otherDerived> &b,const Op& op) const;
-
-    //! Routine for performing multiplication without the need for a lattice multiplication
-    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
-    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
-    noLatticeMult(const MIA<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const;
-
-    //! Routine for performing multiplication without the need for a lattice multiplication
-    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
-    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
-    noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const{
-            auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx);
-            auto c_reorder=internal::concat_index_arrays(internal::createAscendingIndex<L_outer>(R_outer),internal::createAscendingIndex<R_outer>(),internal::createAscendingIndex<R_inter>(L_outer+R_outer));
-            //print_array(c.linIdxSequence(),"Old sort order");
-            c.set_linIdxSequence(c_reorder);
-            //print_array(c.linIdxSequence(),"New sort order");
-            //print_array(c.dims(),"Old dims");
-            auto new_c_dims=c.dims();
-            internal::reorder_from(c.dims(), c_reorder,new_c_dims);
-            //print_array(new_c_dims,"New dims");
-            c.set_dims(new_c_dims);
-            return c;
-
-    }
 
     data_iterator data_begin()
     {
@@ -318,15 +266,7 @@ public:
     }
 
 
-    //! Function for performing contraction and attraction. Best not to call directly, instead use the MIA algebra unary operation functionality, e.g., a(i,i)
-    /*!
-        \param[in] contract_indices list of indices undergoing a contraction
-        \param[in] contract_partitions if more than one set of contractions is taking place, specifies how to partition contract_indices into corresponding sets of contractions
-        \param[in] attract_indices list of indices undergoing an attraction
-        \param[in] attract_partitions if more than one set of attractions is taking place, specifies how to partition attract_indices into corresponding sets of attractions
-    */
-    template<size_t no_con_indices,size_t no_con_partitions,size_t no_attract_indices,size_t no_attract_partitions>
-    typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
+
 
 
     template
@@ -347,10 +287,11 @@ public:
     }
 
 
-    //! Returns scalar data at given indices
+    //! Returns a view (or subblock) of the MIA.
     /*!
         \param[in] ranges variadic parameter specifying range of the MIA view. Will assert a compile error if size of ranges!=mOrder or if any of Ranges datatype are not Range
-        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this
+        \return An ImplicitMIA that references *this's underlying raw data. Note changing the data in the ImplicitMIA will change *this. If you want a copy, call the make_explicit() function
+                of the returned ImplicitMIA.
     */
     template<typename... Ranges>
     ImplicitMIA<data_type,internal::get_range_count<Ranges...>::range_count::value,true> view(Ranges... ranges) const {
@@ -415,12 +356,56 @@ public:
     }
 
 
+    //! Function for performing contraction and attraction. Best not to call directly, instead use the MIA algebra unary operation functionality, e.g., a(i,i)
+    /*!
+        \param[in] contract_indices list of indices undergoing a contraction
+        \param[in] contract_partitions if more than one set of contractions is taking place, specifies how to partition contract_indices into corresponding sets of contractions
+        \param[in] attract_indices list of indices undergoing an attraction
+        \param[in] attract_partitions if more than one set of attractions is taking place, specifies how to partition attract_indices into corresponding sets of attractions
+    */
+    template<size_t no_con_indices,size_t no_con_partitions,size_t no_attract_indices,size_t no_attract_partitions>
+    typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
 
 
+        //! Routine for performing multiplication without the need for a lattice multiplication
+    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
+    noLatticeMult(const MIA<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const;
+
+    //! Routine for performing multiplication without the need for a lattice multiplication
+    template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
+    noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const{
+            auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx);
+            auto c_reorder=internal::concat_index_arrays(internal::createAscendingIndex<L_outer>(R_outer),internal::createAscendingIndex<R_outer>(),internal::createAscendingIndex<R_inter>(L_outer+R_outer));
+            //print_array(c.linIdxSequence(),"Old sort order");
+            c.set_linIdxSequence(c_reorder);
+            //print_array(c.linIdxSequence(),"New sort order");
+            //print_array(c.dims(),"Old dims");
+            auto new_c_dims=c.dims();
+            internal::reorder_from(c.dims(), c_reorder,new_c_dims);
+            //print_array(new_c_dims,"New dims");
+            c.set_dims(new_c_dims);
+            return c;
+
+    }
+
+    //! Flattens the MIA to a Lattice by creating a copy of the data.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return DenseLattice class that owns a copy of this's raw data
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
+
+
+    DenseLattice<data_type> toStraightLatticeCopy(size_t number_of_row_indices,size_t number_of_column_indices) const;
 
 protected:
 
-    SolveInfo mSolveInfo;
+
 
     //! Returns scalar data at given indices
     /*!
@@ -449,8 +434,29 @@ protected:
 
 
 
+
+
+
+    //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
+    template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIAMergeReturnType<Derived,otherDerived>::type
+    implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const;
+
+
+    //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
+    template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
+    typename MIAMergeReturnType<Derived,otherDerived>::type
+    implicit_merge(const MIA<otherDerived> &b,const Op& op) const;
+
+
+
+
+
 private:
 
+    template <class D1,class D2,bool D3,size_t D4> friend class MIA_Atom;
+    template <class E1> friend class DenseMIABase;
+    template <class F1> friend class MIA;
 
 
 };

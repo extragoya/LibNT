@@ -21,7 +21,7 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     denseType DenseLat2(n1,n2,p);
 
     denseType DenseLat3_dense;
-    denseType DenseLat3_sparse;
+    sparseType DenseLat3_sparse;
 
     sparseType SparseLat1(m1,n1,p);
     sparseType SparseLat2(n1,n2,p);
@@ -47,15 +47,15 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     DenseLat3_sparse=SparseLat1*DenseLat2;
 
 
+//    DenseLat3_dense.print();
+//    DenseLat3_sparse.print();
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Full Dimension Mult Test 1 for ")+typeid(data_type).name());
 
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Full Dimension Mult Test 1 for ")+typeid(data_type).name());
-    //DenseLat3_dense.print();
-    //DenseLat3_sparse.print();
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
 
 
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Full Dimension Mult Test 2 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Full Dimension Mult Test 2 for ")+typeid(data_type).name());
 
     DenseLat1=denseType(1,n1,p);
     DenseLat2=denseType(n1,1,p);
@@ -74,11 +74,11 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     DenseLat3_dense=DenseLat1*DenseLat2;
     DenseLat3_sparse=SparseLat1*DenseLat2;
 
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Repeated Inner Product Mult Test 1 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Inner Product Mult Test 1 for ")+typeid(data_type).name());
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
 
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Repeated Inner Product Mult Test 2 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Inner Product Mult Test 2 for ")+typeid(data_type).name());
 
     DenseLat1=denseType(m1,1,p);
     DenseLat2=denseType(1,n2,p);
@@ -96,10 +96,10 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat3_dense=DenseLat1*DenseLat2;
     DenseLat3_sparse=SparseLat1*DenseLat2;
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Repeated Outer Product Mult Test 1 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Outer Product Mult Test 1 for ")+typeid(data_type).name());
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Repeated Outer Product Mult Test 2 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Outer Product Mult Test 2 for ")+typeid(data_type).name());
 
     DenseLat1=denseType(m1,n1,1);
     DenseLat2=denseType(n1,n2,1);
@@ -117,9 +117,9 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat3_dense=DenseLat1*DenseLat2;
     DenseLat3_sparse=SparseLat1*DenseLat2;
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("No Depth Mult Test 1 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("No Depth Mult Test 1 for ")+typeid(data_type).name());
     DenseLat3_sparse=DenseLat1*SparseLat2;
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("No Depth Mult Test 2 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("No Depth Mult Test 2 for ")+typeid(data_type).name());
 
 
 
@@ -141,9 +141,9 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     DenseLat3_dense=DenseLat1*DenseLat2;
     DenseLat3_sparse=SparseLat1*DenseLat2;
 
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Outer product, one operand, test 1 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Outer product, one operand, test 1 for ")+typeid(data_type).name());
     DenseLat3_sparse=DenseLat1*SparseLat2;
-    BOOST_CHECK_MESSAGE(DenseLat3_dense==DenseLat3_sparse,std::string("Outer product, one operand, test 2 for ")+typeid(data_type).name());
+    BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Outer product, one operand, test 2 for ")+typeid(data_type).name());
 
 
 

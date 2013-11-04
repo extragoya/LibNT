@@ -261,6 +261,7 @@ public:
         this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
+        this->mSolveInfo=otherMIA.solveInfo();
 
     }
 
@@ -333,7 +334,7 @@ public:
 
     */
     template<typename array_index_type>
-    SparseMIA(Data && scalar_data,Indices && indice_data,const std::array<array_index_type,_order> &_dims):SparseMIABase<SparseMIA<T,_order> >(_dims),m_data(),m_indices()
+    SparseMIA(Data && scalar_data,Indices && indice_data,const std::array<array_index_type,_order> &_dims,bool _is_sorted=true):SparseMIABase<SparseMIA<T,_order> >(_dims,_is_sorted),m_data(),m_indices()
     {
 
         if(scalar_data.size()!=indice_data.size()){
@@ -359,7 +360,7 @@ public:
 
     */
     template<class array_index_type>
-    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(std::move(_lat.data()),std::move(_lat.indices()),_dims)
+    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(std::move(_lat.data()),std::move(_lat.indices()),_dims,(_lat.is_sorted()&&_lat.linIdxSequence()==ColumnMajor))
     {
     }
 
@@ -417,8 +418,7 @@ public:
     //!  Sparse assignment
     template<typename otherMIAType,typename boost::enable_if< internal::is_SparseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
-        this->m_dims=otherMIA.dims();
-        this->m_dimensionality=otherMIA.dimensionality();
+
         this->mLinIdxSequence=otherMIA.linIdxSequence();
         this->copy_other_MIA(otherMIA);
         return *this;
@@ -426,14 +426,14 @@ public:
     //!  Dense assignment
     template<typename otherMIAType,typename boost::enable_if< internal::is_DenseMIA<otherMIAType>,int >::type = 0>
     SparseMIA & operator=(const otherMIAType& otherMIA){
-        this->m_dims=otherMIA.dims();
+
 
         this->copy_other_MIA(otherMIA);
         return *this;
     }
     SparseMIA& operator=(const SparseMIA& otherMIA) {
 
-        this->m_dims=otherMIA.dims();
+
 
         this->copy_other_MIA(otherMIA);
         return *this;
@@ -448,6 +448,7 @@ public:
         this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
+        this->mSolveInfo=otherMIA.solveInfo();
         return *this;
     }
 
@@ -647,9 +648,11 @@ protected:
     {
 
         //std::cout << "copy other MIA with sparse " << std::endl;
+        this->m_dims=otherMIA.dims();
+        this->m_dimensionality=otherMIA.dimensionality();
         this->mLinIdxSequence=otherMIA.linIdxSequence();
         this->mIsSorted=otherMIA.is_sorted();
-
+        this->mSolveInfo=otherMIA.solveInfo();
         this->resize(otherMIA.size());
 
         auto otherIt=otherMIA.storage_begin();
@@ -668,6 +671,9 @@ protected:
 
         this->reset_linIdx_sequence();
         this->mIsSorted=true;
+        this->mSolveInfo=denseMIA.solveInfo();
+        this->m_dims=denseMIA.dims();
+        this->m_dimensionality=denseMIA.dimensionality();
         //count the number of nnzs
         size_t nnz=0;
         for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
@@ -850,7 +856,7 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
     this->resize(otherMIA.size());
     this->m_dimensionality=otherMIA.dimensionality();
-
+    this->mSolveInfo=otherMIA.solveInfo();
     auto otherDataIt=otherMIA.data_begin();
     std::for_each(this->data_begin(),this->data_end(),[&](data_type & cur_data){
         cur_data=this->convert(*(otherDataIt++));
@@ -873,6 +879,7 @@ void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,cons
     internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //shuffle the dimensions around based on index_order
     internal::reverseOrder(index_order,this->mLinIdxSequence); //don't bother to re-sort, just change the linIdxSequence
     this->m_dimensionality=otherMIA.dimensionality();
+    this->mSolveInfo=otherMIA.solveInfo();
     if(this->mLinIdxSequence!=this->mDefaultLinIdxSequence)
         this->mIsSorted=false;
     else

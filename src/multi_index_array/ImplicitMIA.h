@@ -530,25 +530,25 @@ class implicit_iter
        typename boost::mpl::if_<
             boost::is_const<ImplicitMIAType>,
             const typename internal::data_type<typename std::remove_const<ImplicitMIAType>::type>::type,
-            typename internal::data_type<ImplicitMIAType>::type
+            typename internal::data_type<typename std::remove_const<ImplicitMIAType>::type>::type
         >::type,
         boost::random_access_traversal_tag,
         typename boost::mpl::if_<
             boost::is_const<ImplicitMIAType>,
             const typename internal::data_type_ref<typename std::remove_const<ImplicitMIAType>::type>::type, //is isRef is false in ImplicitMIAType, will return data_type instead of data_type&
-            typename internal::data_type_ref<ImplicitMIAType>::type
+            typename internal::data_type_ref<typename std::remove_const<ImplicitMIAType>::type>::type
         >::type
     >
 {
 private:
     typedef ImplicitMIAType miaType;
-    typedef typename boost::iterator_difference<implicit_iter>::type difference_type;
-    typedef typename boost::iterator_reference<implicit_iter>::type reference;
+    typedef typename boost::iterator_difference<implicit_iter>::type _difference_type;
+    typedef typename boost::iterator_reference<implicit_iter>::type _reference;
 
     friend class boost::iterator_core_access;
     template <class> friend class implicit_iterator;
 
-    typedef typename internal::index_type<miaType>::type index_type;
+    typedef typename internal::index_type<typename std::remove_const<ImplicitMIAType>::type>::type index_type;
 
     miaType * mia_ref; //pointer to the mia and the current idx is how the iterator keeps track of how to return data
     index_type mIdx;
@@ -567,16 +567,16 @@ private:
     void decrement()
     { mIdx--; }
 
-    void advance(difference_type _diff){
+    void advance(_difference_type _diff){
         mIdx+=_diff;
     }
 
     template <class OtherMIAType>
-    difference_type distance_to(implicit_iter<OtherMIAType> const& other) const{
+    _difference_type distance_to(implicit_iter<OtherMIAType> const& other) const{
         return other.mIdx-this->mIdx;
     }
 
-    reference dereference() const
+    _reference dereference() const
     { return mia_ref->atIdx(mIdx); }
 
 public:
