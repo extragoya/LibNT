@@ -28,7 +28,8 @@
 #include <boost/type_traits/is_floating_point.hpp>
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/mpl/count_if.hpp>
-
+#include <boost/mpl/or.hpp>
+#include <boost/mpl/and.hpp>
 
 
 #define PARALLEL_TOL 8192

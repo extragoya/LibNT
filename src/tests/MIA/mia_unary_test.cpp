@@ -84,7 +84,7 @@ void sparse_unary_work(){
     d(l,m)=a(i,j,i,j,l,m); //contraction
     other_d(l,m)=a(i,j,n,k,l,m)*delta(i,n)*delta2(j,k); //equivalent operation
     BOOST_CHECK_MESSAGE(d.fuzzy_equals(other_d,test_precision<data_type>()),std::string("Complex Contraction 1 for Sparse ")+typeid(data_type).name());
-//
+
     a=LibMIA::SparseMIA<data_type,6>(_dim,_dim+1,_dim,_dim+1,_dim,_dim-2); //now try with non-uniform dimensions
     a.resize(a.dimensionality()/3);
     a.randu(-5,5);
@@ -92,8 +92,10 @@ void sparse_unary_work(){
     a.collect_duplicates();
     e(m)=a(i,j,i,j,i,m); //contraction
     other_e(m)=a(i,j,n,k,l,m)*delta_3(i,n,l)*delta2(j,k); //equivalent operation
+//    e.print();
+//    other_e.print();
     BOOST_CHECK_MESSAGE(e.fuzzy_equals(other_e,test_precision<data_type>()),std::string("Complex Contraction 2 for Sparse ")+typeid(data_type).name());
-//
+
     d=LibMIA::SparseMIA<data_type,2>(_dim,_dim);
     d.resize(a.dimensionality()/3);
     d.randu(-5,5);

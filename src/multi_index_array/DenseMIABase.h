@@ -367,7 +367,24 @@ public:
     typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) const;
 
 
-        //! Routine for performing multiplication without the need for a lattice multiplication
+
+
+    //! Flattens the MIA to a Lattice by creating a copy of the data.
+    /*!
+        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
+        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
+        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
+        \return DenseLattice class that owns a copy of this's raw data
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
+    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
+
+
+    DenseLattice<data_type> toStraightLatticeCopy(size_t number_of_row_indices,size_t number_of_column_indices) const;
+
+protected:
+
+     //! Routine for performing multiplication without the need for a lattice multiplication. Note, since b is const, multiplying by itself is fine
     template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
     noLatticeMult(const MIA<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const;
@@ -389,22 +406,6 @@ public:
             return c;
 
     }
-
-    //! Flattens the MIA to a Lattice by creating a copy of the data.
-    /*!
-        \param[in] row_indices indices to map to the lattice rows - will perserve ordering
-        \param[in] column_indices indices to map to the lattice columns - will perserve ordering
-        \param[in] tab_indices indices to map to the lattice tabs - will perserve ordering
-        \return DenseLattice class that owns a copy of this's raw data
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    DenseLattice<data_type> toLatticeCopy(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices) const;
-
-
-    DenseLattice<data_type> toStraightLatticeCopy(size_t number_of_row_indices,size_t number_of_column_indices) const;
-
-protected:
-
 
 
     //! Returns scalar data at given indices

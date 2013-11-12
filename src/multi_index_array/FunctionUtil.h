@@ -267,15 +267,15 @@ void outside_merge_sparse_storage_containers(SparseMIA<c_data_type,c_order> & C 
     auto b_end=B.index_end();
     while(a_begin<a_end && b_begin<b_end){
         if (*a_begin<*b_begin){
-            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            C.push_back(C.convert(A.data_at(a_begin)),*a_begin);
             a_begin++;
         }
         else if  (*b_begin<*a_begin){
-            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin))),*b_begin);
             b_begin++;
         }
         else{
-            C.push_back(C.convert(op(A.data_at(a_begin-A.index_begin()),B.data_at(b_begin-B.index_begin()))),*a_begin);
+            C.push_back(C.convert(op(A.data_at(a_begin),B.data_at(b_begin))),*a_begin);
             a_begin++;
             b_begin++;
         }
@@ -283,13 +283,13 @@ void outside_merge_sparse_storage_containers(SparseMIA<c_data_type,c_order> & C 
     }
     if (a_begin==a_end){
         while (b_begin<b_end){
-            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin-B.index_begin()))),*b_begin);
+            C.push_back(C.convert(op(a_data_type(0),B.data_at(b_begin))),*b_begin);
             b_begin++;
         }
     }
     else{
         while (a_begin<a_end){
-            C.push_back(C.convert(A.data_at(a_begin-A.index_begin())),*a_begin);
+            C.push_back(C.convert(A.data_at(a_begin)),*a_begin);
             a_begin++;
         }
     }

@@ -247,6 +247,10 @@ public:
 
     }
 
+    void negate(){
+        apply_func(std::negate<data_type>());
+    }
+
 
 //    toLatticeExpression(std::array<size_t> outer_product_indices, std::array<size_t> inner_product_indices,,std::array<size_t> inter_product_indices){
 //        return toLatticeCopy(outer_product_indices, inner_product_indices, inter_product_indices );
@@ -384,6 +388,20 @@ public:
             throw MIAParameterException("Index is out of range of the MIA.");
 #endif
         return derived().atIdx(idx);
+    }
+
+
+    //!returns the data value at the internal DOK data container index. Same as atIdx for DenseMIAs, but for SparseMIAs, dok_index indexes only the nonzeros
+    data_type_ref data_at(size_t dok_index)
+    {
+        return *(final_derived().data_begin()+dok_index);
+
+    }
+    //!returns the data value at the internal DOK data container index. Same as atIdx for DenseMIAs, but for SparseMIAs, dok_index indexes only the nonzeros
+    const_data_type_ref data_at(size_t dok_index) const
+    {
+        return *(final_derived().data_begin()+dok_index);
+
     }
 
 

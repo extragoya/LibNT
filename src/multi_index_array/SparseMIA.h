@@ -549,6 +549,8 @@ public:
 
 
 
+
+
 //    //! Converts a scalar value to data_type
 //    /*!
 //        \tparam from_data_type the data_type you are converting from
@@ -610,20 +612,24 @@ public:
         this->sort(_stable);
 
 
-        auto result = this->storage_begin();
-        auto first=result;
-        while (++first != this->storage_end())
+        auto result_idx = this->index_begin();
+        auto result_data= this->data_begin();
+        auto first=result_idx;
+        while (++first != this->index_end())
         {
-            if (!(this->index_val(*result) == this->index_val(*first))){
-                *(++result)=*first;
+            if (*result_idx != *first){
+                if(this->data_at(first)){
+                    *(++result_idx)=*first;
+                    *(++result_data)=this->data_at(first);
+                }
             }
             else{
 
-                this->data_val(*result)=collector(this->data_val(*result),this->data_val(*first));
+                *result_data=collector(*result_data,this->data_at(first));
             }
         }
-        ++result;
-        size_t diff=result-this->storage_begin();
+
+        size_t diff=result_idx-this->index_begin()+1;
         resize(diff);
     }
 

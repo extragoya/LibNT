@@ -86,17 +86,24 @@ public:
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
 
-    index_type depth() const
+    inline index_type depth() const
     {
         return m_depth;
     }
-    index_type width() const
+
+
+    inline index_type width() const
     {
         return m_width;
     }
-    index_type height() const
+    inline index_type height() const
     {
         return m_height;
+    }
+    std::array<index_type,3> dims() const
+    {
+        std::array<index_type,3> ret={{m_height,m_width,m_depth}};
+        return ret;
     }
 
     void set_height(index_type _height){

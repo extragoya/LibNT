@@ -731,6 +731,49 @@ public:
         return std::move(*(this->m_mia));
     }
 
+    //! When certain operations (such as multiplication) are performed using two of the same MIAs, a copy needs to be done
+    /*! Only need to even consider making a copy if the MIA_Atom doesn't own the MIA (otherwise it's a temporary) and if
+        it's a sparse MIA, because SparseMIAs are the only kind that will alter their data (through a sort) even when the
+        MIA_Atom doesn't own the MIA. An MIA Atom should not be able to accept a const SparseMIA, so the cast to void *
+        (instead of const void *) should be fine.
+    */
+    template<bool fromOwnership,class fromMIAType, class checkMIAType,
+        typename boost::enable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<!fromOwnership>,
+                boost::mpl::and_<
+                    internal::is_SparseMIA<typename std::remove_const<fromMIAType>::type>,
+                    internal::is_SparseMIA<typename std::remove_const<checkMIAType>::type>
+                >
+            >,
+            int
+        >::type=0
+    >
+    bool check_if_copy_needed(fromMIAType * _from, checkMIAType * _check){
+        if(static_cast<void*>(_from)==static_cast<void*>(_check))
+            return true;
+        return false;
+
+    }
+
+    template<bool fromOwnership,class fromMIAType, class checkMIAType,
+        typename boost::disable_if<
+            boost::mpl::and_<
+                boost::mpl::bool_<!fromOwnership>,
+                boost::mpl::and_<
+                    internal::is_SparseMIA<typename std::remove_const<fromMIAType>::type>,
+                    internal::is_SparseMIA<typename std::remove_const<checkMIAType>::type>
+                >
+            >,
+            int
+        >::type=0
+    >
+    bool check_if_copy_needed(fromMIAType * _from, checkMIAType * _check){
+
+        return false;
+
+    }
+
     //should only be enabled when we've reduce two MIAs to a single number (ie pure inner product)
     template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
                 typename boost::enable_if_c<
@@ -748,21 +791,34 @@ public:
 
 
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
-
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
 
         typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
         auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
         //std::cout << "ALat done" << std::endl;
         //aLat.print();
-        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+
         //std::cout << "BLat done" << std::endl;
         //bLat.print();
 
 
-        auto cLat=aLat*bLat;
-        auto c_data=cLat(0,0,0);
-        return c_data;
+
+        if(check_if_copy_needed<otherOwnership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
+            typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
+            bMIACopyType temp(*(Rhs.m_mia));
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);
+            auto cLat=aLat*bLat;
+
+            return *(cLat.data_begin());
+        }
+        else{
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+            auto cLat=aLat*bLat;
+            return *(cLat.data_begin());
+        }
+
+
 //        std::cout << "CLat done" << std::endl;
 //        cLat.print();
 
@@ -770,6 +826,8 @@ public:
 
 
     }
+
+
 
     //when performing a lattice product
     template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
@@ -797,33 +855,45 @@ public:
 
 
 
-        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
-            std::cout << "Entered product" << std::endl;
+
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
 
         auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
 
         typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
+
         auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
-        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
-            std::cout << "ALat done" << std::endl;
-        //aLat.print();
-        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
-        if(internal::is_DenseMIA<_MIA>::type::value && internal::is_SparseMIA<otherMIA>::type::value)
-            std::cout << "BLat done" << std::endl;
+
+        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+        MIA_return_type* cMIA;
+        if(check_if_copy_needed<otherOwnership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
+            typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
+            bMIACopyType temp(*(Rhs.m_mia));
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);
+            auto cLat=aLat*bLat;
+
+            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+        }
+        else{
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+            auto cLat=aLat*bLat;
+            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+        }
+
         //bLat.print();
 
 
-        auto cLat=aLat*bLat;
+
 //        std::cout << "CLat done" << std::endl;
 //        cLat.print();
 
 
 
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
-        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
+
+
+
         //std::cout << "Lattice product finished " << std::endl;
 
 

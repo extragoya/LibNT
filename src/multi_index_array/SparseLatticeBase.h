@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <array>
 //#include <functional>
 
 //#include <boost/mpl/assert.hpp>
@@ -35,7 +36,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/numeric/conversion/converter.hpp>
-
+#include <boost/timer/timer.hpp>
 
 
 #include "MIAConfig.h"
@@ -55,9 +56,20 @@ namespace LibMIA
 namespace internal
 {
 
+template<class Derived>
+struct Data<SparseLatticeBase<Derived> >: public Data<Derived> {};
+
+template<class Derived>
+struct Indices<SparseLatticeBase<Derived> >: public Indices<Derived> {};
 
 template<class Derived>
 struct data_type<SparseLatticeBase<Derived> >: public data_type<Derived> {};
+
+template<class Derived>
+struct data_type_ref<SparseLatticeBase<Derived> >: public data_type_ref<Derived> {};
+
+template<class Derived>
+struct const_data_type_ref<SparseLatticeBase<Derived> >: public const_data_type_ref<Derived> {};
 
 template<class Derived>
 struct index_type<SparseLatticeBase<Derived> >: public index_type<Derived> {};
@@ -66,7 +78,31 @@ template<class Derived>
 struct index_iterator<SparseLatticeBase<Derived> >: public index_iterator<Derived> {};
 
 template<class Derived>
+struct const_index_iterator<SparseLatticeBase<Derived> >: public const_index_iterator<Derived> {};
+
+template<class Derived>
 struct data_iterator<SparseLatticeBase<Derived> >: public data_iterator<Derived> {};
+
+template<class Derived>
+struct const_data_iterator<SparseLatticeBase<Derived> >: public const_data_iterator<Derived> {};
+
+template<class Derived>
+struct full_iterator_tuple<SparseLatticeBase<Derived> >: public full_iterator_tuple<Derived> {};
+
+template<class Derived>
+struct const_full_iterator_tuple<SparseLatticeBase<Derived> >: public const_full_iterator_tuple<Derived> {};
+
+template<class Derived>
+struct const_full_tuple<SparseLatticeBase<Derived> >: public const_full_tuple<Derived> {};
+
+template<class Derived>
+struct full_tuple<SparseLatticeBase<Derived> >: public full_tuple<Derived> {};
+
+template<class Derived>
+struct storage_iterator<SparseLatticeBase<Derived> >: public storage_iterator<Derived> {};
+
+template<class Derived>
+struct const_storage_iterator<SparseLatticeBase<Derived> >: public const_storage_iterator<Derived> {};
 
 }
 
@@ -90,20 +126,22 @@ class SparseLatticeBase: public Lattice<SparseLatticeBase<Derived> >
 public:
 
 
-    typedef typename internal::data_type<Derived>::type data_type;
-    typedef typename LibMIA::internal::index_type<Derived>::type index_type;
-    typedef typename LibMIA::internal::Data<Derived>::type Data;
-    typedef typename LibMIA::internal::Indices<Derived>::type Indices;
-    typedef typename LibMIA::internal::full_iterator_tuple<Derived>::type full_iterator_tuple;
-    typedef typename LibMIA::internal::const_full_iterator_tuple<Derived>::type const_full_iterator_tuple;
-    typedef typename LibMIA::internal::full_tuple<Derived>::type full_tuple;
-    typedef typename LibMIA::internal::const_full_tuple<Derived>::type const_full_tuple;
-    typedef typename LibMIA::internal::storage_iterator<Derived>::type storage_iterator;
-    typedef typename LibMIA::internal::const_storage_iterator<Derived>::type const_storage_iterator;
-    typedef typename LibMIA::internal::index_iterator<Derived>::type index_iterator;
-    typedef typename LibMIA::internal::const_index_iterator<Derived>::type const_index_iterator;
-    typedef typename LibMIA::internal::data_iterator<Derived>::type data_iterator;
-    typedef typename LibMIA::internal::const_data_iterator<Derived>::type const_data_iterator;
+    typedef typename internal::data_type<SparseLatticeBase>::type data_type;
+    typedef typename internal::data_type_ref<SparseLatticeBase>::type data_type_ref;
+    typedef typename internal::const_data_type_ref<SparseLatticeBase>::type const_data_type_ref;
+    typedef typename LibMIA::internal::index_type<SparseLatticeBase>::type index_type;
+    typedef typename LibMIA::internal::Data<SparseLatticeBase>::type Data;
+    typedef typename LibMIA::internal::Indices<SparseLatticeBase>::type Indices;
+    typedef typename LibMIA::internal::full_iterator_tuple<SparseLatticeBase>::type full_iterator_tuple;
+    typedef typename LibMIA::internal::const_full_iterator_tuple<SparseLatticeBase>::type const_full_iterator_tuple;
+    typedef typename LibMIA::internal::full_tuple<SparseLatticeBase>::type full_tuple;
+    typedef typename LibMIA::internal::const_full_tuple<SparseLatticeBase>::type const_full_tuple;
+    typedef typename LibMIA::internal::storage_iterator<SparseLatticeBase>::type storage_iterator;
+    typedef typename LibMIA::internal::const_storage_iterator<SparseLatticeBase>::type const_storage_iterator;
+    typedef typename LibMIA::internal::index_iterator<SparseLatticeBase>::type index_iterator;
+    typedef typename LibMIA::internal::const_index_iterator<SparseLatticeBase>::type const_index_iterator;
+    typedef typename LibMIA::internal::data_iterator<SparseLatticeBase>::type data_iterator;
+    typedef typename LibMIA::internal::const_data_iterator<SparseLatticeBase>::type const_data_iterator;
     typedef typename Eigen::SparseMatrix<data_type> SparseMatrix_cm;
     typedef typename Eigen::SparseMatrix<data_type,Eigen::RowMajor> SparseMatrix_rm;
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm;
@@ -203,11 +241,13 @@ public:
 
     }
 
-    bool idx_less_rowmajor(index_type a, index_type b) const
+    inline bool idx_less_rowmajor(index_type a, index_type b) const
     {
 
 
-        return (column(a)+row(a)*this->width()+tab(a)*this->width()*this->height())<(column(b)+row(b)*this->width()+tab(b)*this->width()*this->height());
+
+
+        return (column(a)+this->width()*(row(a)+tab(a)*this->height()))<(column(b)+this->width()*(row(b)+tab(b)*this->height()));
 
     }
 
@@ -228,8 +268,19 @@ public:
                 internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
             else{
-                std::function<bool(const index_type&,const index_type&)> comparator=[this](const index_type & lhs, const index_type & rhs){
-                    return this->idx_less_rowmajor(lhs,rhs);
+
+                //this is a bit of a hack to create a fast comparator when using row major ordering. Since the sparse indices are always row,column,major order, this requires
+                //a fair amount of extra calculation (ie consider the idx_less_rowmajor function)
+                //so we use the fast index shuffle methods, which uses a static FOR loop like structures. This requires some setup, that could be avoided with a more careful
+                //implementation. Also we use a lambda function directly, which avoids the virtual functions of std::function
+                std::array<index_type,3> index_order;
+                index_order[0]=1;index_order[1]=0;index_order[2]=2;
+                auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+                std::array<index_type,3> otherDims={{this->width(),this->height(),this->depth()}};
+                auto multiplier=internal::createMultiplier(otherDims);
+                auto comparator=[this,&dim_accumulator,&multiplier,&otherDims](const index_type lhs, const index_type rhs){
+                    return internal::getShuffleLinearIndex(lhs,otherDims,multiplier,dim_accumulator)<internal::getShuffleLinearIndex(rhs,otherDims,multiplier,dim_accumulator);
+
                 };
                 internal::Introsort(this->index_begin(),this->index_end(),comparator,internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
@@ -264,21 +315,21 @@ public:
 
 
 
-    index_type row(index_type lin_index) const
+    inline index_type row(index_type lin_index) const
     {
 
         return lin_index%this->height();
 
     }
 
-    index_type column(index_type lin_index) const
+    inline index_type column(index_type lin_index) const
     {
         lin_index/=this->height();
         return lin_index%this->width();
 
     }
 
-    index_type tab(index_type lin_index) const
+    inline index_type tab(index_type lin_index) const
     {
         lin_index/=this->height();
         lin_index/=this->width();
@@ -365,6 +416,20 @@ public:
         return *(data_begin()+nnz_index);
 
     }
+
+     //!returns the data value corresponding to the given index iterator
+    data_type_ref data_at(index_iterator index_it)
+    {
+        return *(this->data_begin()+(index_it-derived().index_begin()));
+
+    }
+    //!returns the data value corresponding to the given index iterator
+    const_data_type_ref data_at(const_index_iterator index_it) const
+    {
+       return *(this->data_begin()+(index_it-derived().index_begin()));
+
+    }
+
 
     const index_type& index_at(size_t nnz_index) const
     {
@@ -777,9 +842,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     typedef typename otherDerived::index_type b_index_type;
 
     typename c_type::Indices c_indices;
-    c_indices.reserve(this->size());
+    c_indices.reserve(b.dimensionality()*.8); //hard to predict size
     typename c_type::Data c_data;
-    c_data.reserve(this->size());
+    c_data.reserve(b.dimensionality()*.8); //hard to predict size
     typename internal::data_type<c_type>::type cur_c_data;
 
     this->sort(RowMajor);
@@ -797,7 +862,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
             cur_c_data=0;
             for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
-                cur_c_data+=this->data_at(a_it-this->index_begin())*b(this->column(*a_it),b_columns,cur_tab);
+                cur_c_data+=this->data_at(a_it)*b(this->column(*a_it),b_columns,cur_tab);
 
             }
             if(std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
@@ -1891,7 +1956,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
 
-
+    std::cout << "Entered mixed solve " << std::endl;
     sort(ColumnMajor); //tab/column major for A
 
     //iterators for for indices and data
@@ -1932,13 +1997,14 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             a_columns[0]=0;
             while(a_cur_it<a_temp_end){
                 if(this->column(*a_cur_it)!=cur_column){
-                    //check to make sure we didn't skip a row - if we did then we have a rank-deficient tab b/c of a zero-column
+                    //check to make sure we didn't skip a column - if we did then we have a rank-deficient tab b/c of a zero-column
                     if(this->column(*a_cur_it)-cur_column>1){
                         std::stringstream t;
                         t << "Rank deficient tab. Column " << cur_column << " in tab " << k << " of LHS has zero entries.";
                         throw RankDeficientException(t.str());
                     }
                     cur_column++;
+                    //std::cout << "Moving to column " << cur_column << std::endl;
                     a_columns[cur_column]=a_cur_it-a_temp_begin;
                 }
                 *a_cur_it=this->row(*a_cur_it); //remap indices to rows
@@ -1969,6 +2035,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 auto c_vector=c.column_vector(col_idx,k);
                 auto b_vector=b.column_vector(col_idx,k);
                 _solver._solve(b_vector,c_vector);
+
                 if(_solver.info()!=Eigen::Success)
                 {
                     this->mSolveInfo=RankDeficient;

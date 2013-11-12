@@ -115,6 +115,8 @@ public:
 
 
     typedef typename internal::data_type<SparseMIABase>::type data_type;
+    typedef typename internal::data_type_ref<SparseMIABase>::type data_type_ref;
+    typedef typename internal::const_data_type_ref<SparseMIABase>::type const_data_type_ref;
     typedef typename internal::index_type<SparseMIABase>::type index_type;
     typedef typename internal::Data<SparseMIABase>::type Data;
     typedef typename internal::data_iterator<SparseMIABase>::type data_iterator;
@@ -315,8 +317,13 @@ public:
     */
     void sort(const std::array<size_t,mOrder> & _linIdxSequence,bool _stable=false)
     {
+
+
         change_linIdx_sequence(_linIdxSequence);
+
         sort(_stable);
+
+
     }
 
     //! Sort non-zero containers based on the current sort order
@@ -344,7 +351,9 @@ public:
 
         if(!boost::is_same<Comp,std::less<index_type>>::value || !mIsSorted) //if comp is not std::less, then mIsSorted is meaningless
         {
+
             if(_stable){
+
                 //stable_sort doesn't work with permute_iterator, b/c permute_iterator violates some of the iterator requirements
                 //so we use tupleit, which is slower.
                 std::stable_sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
@@ -353,6 +362,7 @@ public:
                 } );
             }
             else{
+
                 internal::Introsort(this->index_begin(),this->index_end(),comp,
                                     internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
             }
@@ -401,6 +411,7 @@ public:
     void change_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
+
         if(_linIdx_sequence==mLinIdxSequence) //do nothing if we're already at the desired linIdxSequence
             return;
 
@@ -685,15 +696,12 @@ public:
         Will likely modify the data ordering of the SparseMIA
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder);
+    MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder=true);
 
-    MappedSparseLattice<data_type> toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices,bool columnMajor=false);
+    MappedSparseLattice<data_type> toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices,bool columnMajor=true);
 
-    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
-    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
-    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
-    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+
 
     index_type& index_val(const full_tuple & a)
     {
@@ -719,28 +727,40 @@ public:
 
     }
 
-    //!returns the data value at the internal DOK data container index
-    data_type& data_at(size_t dok_index)
+    //!returns the data value corresponding to the given index iterator
+    data_type_ref data_at(index_iterator index_it)
     {
-        return *(this->data_begin()+dok_index);
+        return *(this->data_begin()+(index_it-derived().index_begin()));
 
     }
-    //!returns the data value at the internal DOK data container index
-    const data_type& data_at(size_t dok_index) const
+    //!returns the data value corresponding to the given index iterator
+    const_data_type_ref data_at(const_index_iterator index_it) const
     {
-        return *(this->data_begin()+dok_index);
+       return *(this->data_begin()+(index_it-derived().index_begin()));
 
     }
 
-    template <class BinaryPredicate>
-    index_iterator find_start_idx(index_iterator start_it, index_iterator end_it, const index_type & idx,BinaryPredicate predicate, bool search_flag=false);
+    //!returns the linear index value corresponding to the given index iterator.
+    /*!This may be different than simply dereferencing the index iterator, as the values in the internal index array may be computed using a
+       any arbitrary ordering scheme.
+    */
+    index_type index_at(const_index_iterator index_it) const
+    {
+        return this->convert_to_default_linIdxSequence(*index_it);
 
-    template <class BinaryPredicate>
-    index_iterator find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate predicate, bool search_flag=false);
-
-    void set_linIdxSequence(const std::array<size_t,mOrder> & _linIdxSequence){
-        mLinIdxSequence=_linIdxSequence;
     }
+
+    //!returns the index values corresponding to the given index iterator.
+    /*!This may be different than simply dereferencing the index iterator and calling ind2sub, as the values in the internal index array may be computed using a
+       any arbitrary ordering scheme.
+    */
+    std::array<index_type,mOrder> indices_at(const_index_iterator index_it) const
+    {
+        return this->ind2sub(this->convert_to_default_linIdxSequence(*index_it));
+
+    }
+
+
 
     template<typename otherDerived, typename Op,typename index_param_type>
     typename MIAMergeReturnType<Derived,otherDerived>::type outside_merge(SparseMIABase<otherDerived> &b,const Op& op,const std::array<index_param_type,internal::order<SparseMIABase>::value>& index_order);
@@ -758,7 +778,38 @@ public:
     template<size_t no_con_indices,size_t no_con_partitions,size_t no_attract_indices,size_t no_attract_partitions>
     typename MIAUnaryType<Derived,internal::order<Derived>::value-no_con_indices-no_attract_indices+no_attract_partitions>::type contract_attract(const std::array<int,no_con_indices> & contract_indices,const std::array<int,no_con_partitions> & contract_partitions,const std::array<int,no_attract_indices> & attract_indices,const std::array<int,no_attract_partitions> & attract_partitions) ;
 
+
+    //!checks whether the data is under the zero tolerance
+    bool below_tolerance(const data_type & _data) const
+    {
+        if(std::abs(_data)<=SparseTolerance<data_type>::tolerance)
+            return true;
+        return false;
+    }
+
 protected:
+
+    template <class BinaryPredicate>
+    index_iterator find_start_idx(index_iterator start_it, index_iterator end_it, const index_type & idx,BinaryPredicate predicate, bool search_flag=false);
+
+    template <class BinaryPredicate>
+    index_iterator find_end_idx(index_iterator start_it, index_iterator end_it, const index_type & idx, BinaryPredicate predicate, bool search_flag=false);
+
+    void set_linIdxSequence(const std::array<size_t,mOrder> & _linIdxSequence){
+        mLinIdxSequence=_linIdxSequence;
+    }
+
+
+    //!Multiples *this with other MIA where the multiplication only consists of inter and outer products. NOTE, if &b==this, will perform a copy of b before performing multiplication
+    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+
+    //!Multiples *this with other MIA where the multiplication only consists of inter and outer products. NOTE, if &b==this, will perform a copy of b before performing multiplication
+    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type perform_noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
+
+    template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+    typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type noLatticeMult(const DenseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx);
 
     //!keeps track of the order of dims used to calculate linear indices
     std::array<size_t,mOrder> mLinIdxSequence;
@@ -790,28 +841,59 @@ protected:
 
 
 
+
+
     //!Comparison operator to another Sparse MIA. Will account for differing lexicographical precedences.
     template<class otherDerived, class Predicate>
     bool compare_with_sparse(SparseMIABase<otherDerived>& otherMIA,Predicate predicate)
     {
         if(this->dims()!=otherMIA.dims())
             return false;
-        if(this->size()!=otherMIA.size())
-            return false;
+
         this->sort();
         otherMIA.sort(mLinIdxSequence);
         auto it2=otherMIA.index_begin();
-        for(auto it=this->index_begin();it<this->index_end();++it,++it2){
-            if (*it!=*it2)
-                return false;
+        auto it1=this->index_begin();
+        while(it1<this->index_end() && it2<otherMIA.index_end()){
+            auto & data1=this->data_at(it1);
+            auto & data2=otherMIA.data_at(it2);
+            if(this->below_tolerance(data1))
+                it1++;
+            else if(otherMIA.below_tolerance(data2))
+                it2++;
+            else{
+                if (*it1!=*it2){
+                    //std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
+                    return false;
+                }
+                if (!predicate(data1,data2)){
+                    //std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
+                    return false;
+                }
+
+                it1++;
+                it2++;
+
+            }
 
         }
-        auto data_it2=otherMIA.data_begin();
-        for(auto data_it=this->data_begin();data_it<this->data_end();++data_it,++data_it2){
-            if (!predicate(*data_it,*data_it2))
+        //in case nnz of each MIA is different, both index iterators will not have reached the end
+        //so check remaining nnz are below the zero tolerance
+        while(it1++<this->index_end()){
+            if(!this->below_tolerance(this->data_at(it1))){
+                //std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
                 return false;
-
+            }
         }
+        while(it2++<otherMIA.index_end()){
+            if(!otherMIA.below_tolerance(otherMIA.data_at(it2))){
+                //std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
+                return false;
+            }
+        }
+
+
+
         return true;
 
     }
@@ -853,7 +935,11 @@ protected:
 
 private:
 
-    friend class MIA<SparseMIABase>;
+
+    template <class D1,class D2,bool D3,size_t D4> friend class MIA_Atom;
+    template <class E1> friend class SparseMIABase;
+    template <class E1> friend class DenseMIABase;
+    template <class F1> friend class MIA;
 
 };
 
@@ -884,13 +970,16 @@ SparseMIABase<Derived>::outside_merge(SparseMIABase<otherDerived> &b,const Op& o
     if(b.is_sorted() || this->is_sorted()){
         //std::cout << "Performing Scan merge " <<std::endl;
 
+
         return outside_scanMerge(b,op,converted_index_order);
+
     }
     else{
 
         //std::cout << "Performing Sort merge " <<std::endl;
         CType C(*this);
         C.sortMerge(b,op,converted_index_order);
+
         return C;
     }
 
@@ -952,9 +1041,11 @@ auto SparseMIABase<Derived>::toStraightLattice(size_t number_of_row_indices, siz
 
 
     if(columnMajor){
+
         this->sort(mDefaultLinIdxSequence);
     }
     else{
+
         auto _linIdxSequence=mDefaultLinIdxSequence;
         for(size_t i=0;i<number_of_column_indices;++i){
             _linIdxSequence[i]=number_of_row_indices+i;
@@ -1022,10 +1113,12 @@ auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_i
     std::array<size_t,mOrder> _linIdxSequence;
 
     if(columnMajor){
+
         _linIdxSequence=internal::concat_index_arrays(row_indices,column_indices,tab_indices);
         sort(_linIdxSequence);
     }
     else{
+
         _linIdxSequence=internal::concat_index_arrays(column_indices,row_indices,tab_indices);
         sort(_linIdxSequence);
         //for now lattices don't actually change index values when doing column vs. row major - they just change the sort criteria, so we change it back to column major
@@ -1187,6 +1280,23 @@ template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,
 auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
 ->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type
 {
+    if(static_cast<void*>(&b)==static_cast<void*>(this)){ //since the mult uses sort, if b is the same MIA as *this, we must make a copy
+        typedef typename internal::data_type<otherDerived>::type b_data_type;
+        SparseMIA<b_data_type,internal::order<otherDerived>::value> b_copy(b);
+        return this->perform_noLatticeMult(b_copy,l_inter_idx,l_outer_idx,r_inter_idx,r_outer_idx);
+    }
+    else
+        return this->perform_noLatticeMult(b,l_inter_idx,l_outer_idx,r_inter_idx,r_outer_idx);
+}
+
+
+
+template<typename Derived>
+template<typename otherDerived, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+auto  SparseMIABase<Derived>::perform_noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+->typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+Inter>::type
+{
+
 
 
     static_assert(Inter+L_outer==mOrder,"Both index arrays must index all indices in MIA");
@@ -1294,11 +1404,14 @@ auto  SparseMIABase<Derived>::noLatticeMult(SparseMIABase<otherDerived> &b,const
         auto c_elemwise_idx=cur_elem_wise_idx*l_outer_size*r_outer_size; //the convention is to have indices in this order: [l_outer r_outer inter]
         for(auto a_it=cur_a_idx;a_it<cur_a_end;++a_it){
             auto cur_a_data_it=this->data_begin()+(a_it-a_idx_begin);
+            auto & cur_a_data=*cur_a_data_it;
             auto l_outer_idx=(*a_it)/l_inter_size;
             for(auto b_it=cur_b_idx;b_it<cur_b_end;++b_it){
                 auto cur_b_data_it=b.data_begin()+(b_it-b_idx_begin);
+                auto & cur_b_data=*cur_b_data_it;
                 auto r_outer_idx=(*b_it)/r_inter_size;
-                C.push_back((*cur_a_data_it)*(*cur_b_data_it),l_outer_idx+r_outer_idx*l_outer_size+c_elemwise_idx);
+
+                C.push_back(cur_a_data*cur_b_data,l_outer_idx+r_outer_idx*l_outer_size+c_elemwise_idx);
             }
         }
 

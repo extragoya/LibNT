@@ -28,6 +28,11 @@
    these may or may not use temporary buffers, etc. This required using a non-STL
    implementation of heapsort, as Schawrz's code used the STL version.
 
+   Finally, from benchmarking it seemed that using a final cleanup pass of insertion
+   could be a major source of slowdown. This is likely because any memory-locality
+   gains normally enjoyed by insertion sort are lost when swapping two different
+   arrays. So, insertion sort is turned off by making the minimum block size 2.
+
    Keith Schwarz's original file header follows
 
 ***************************************************************************
@@ -167,7 +172,7 @@ namespace introsort_detail {
        * a the right-hand side or an element that's too big to be
        * on the left-hand side.
        */
-      while (lhs < rhs && comp(*lhs, *begin))
+      while (lhs < rhs && comp(*lhs,*begin))
         ++lhs;
 
       /* Now, if the two pointers have hit one another, we've found
@@ -185,7 +190,7 @@ namespace introsort_detail {
      * step.  In this case, we don't want to exchange the pivot element
      * and the crossover point.
      */
-    if (comp(*begin, *lhs))
+    if (!comp(*lhs,*begin))
       return begin;
 
     /* Otherwise, exchange the pivot and crossover, then return the
@@ -202,17 +207,17 @@ namespace introsort_detail {
    * Sifts element at current
    */
     template <typename RandomIterator, typename Comparator,typename Swapper>
-    void SiftDown( RandomIterator begin, RandomIterator end,RandomIterator current,const Comparator & comp,const Swapper &swapper)
+    void SiftDown( RandomIterator begin, ptrdiff_t _size,ptrdiff_t _curIdx,const Comparator & comp,const Swapper &swapper)
     {
-        RandomIterator root = current;
+        auto root = _curIdx;
 
-        while ( root+(root-begin)*2+1 < end ) {
-            RandomIterator child = root+2*(root-begin) + 1;
-            if ((child + 1 < end) && comp(*child,*(child+1))) {
+        while ( root*2+1 < _size ) {
+            auto child = root*2+1;
+            if ((child + 1 < _size) && comp(*(begin+child),*(begin+child+1))) {
                 child += 1;
             }
-            if (comp(*root, *child)) {
-                swapper(child, root );
+            if (comp(*(begin+root), *(begin+child))) {
+                swapper(begin+child, begin+root );
                 root = child;
             }
             else
@@ -226,18 +231,18 @@ namespace introsort_detail {
    * Main heap sort function
    */
     template <typename RandomIterator, typename Comparator,typename Swapper>
-    void HeapSort( RandomIterator begin, RandomIterator end,Comparator comp,Swapper swapper)
+    void HeapSort( RandomIterator begin, RandomIterator end,const Comparator & comp,const Swapper & swapper)
     {
         int i_start, i_end;
         int _size=end-begin;
         /* heapify */
         for (i_start = (_size-2)/2; i_start >=0; i_start--) {
-            SiftDown(begin,end,begin+i_start, comp, swapper);
+            SiftDown(begin,_size,i_start, comp, swapper);
         }
 
         for (i_end=_size-1; i_end > 0; i_end--) {
             swapper(begin+i_end,begin);
-            SiftDown(begin, begin+i_end, begin,comp,swapper);
+            SiftDown(begin, i_end,0,comp,swapper);
         }
     }
 
@@ -282,7 +287,8 @@ namespace introsort_detail {
      * the final runtime by increasing the time it takes insertion sort to
      * fix up the sequence.
      */
-    const size_t kBlockSize = 15;
+    const size_t kBlockSize = 2; //this basically turns off insertion sort
+
 
     /* Cache how many elements there are. */
     const size_t numElems = size_t(end - begin);
@@ -301,9 +307,11 @@ namespace introsort_detail {
     /* Otherwise, use a median-of-three to pick a (hopefully) good pivot,
      * and partition the input with it.
      */
+
     RandomIterator pivot = MedianOfThree(begin,                // First elem
                                          begin + numElems / 2, // Middle elem
                                          end - 1, comp);       // Last elem
+
 
     /* Swap the pivot in place. */
     swapper(pivot, begin);
@@ -359,6 +367,10 @@ namespace introsort_detail {
       for (RandomIterator test = itr; test != begin && comp(*test, *(test - 1)); --test)
         swapper(test, test - 1);
     }
+
+
+
+
   }
 }
 
@@ -372,10 +384,11 @@ void Introsort(RandomIterator begin, RandomIterator end, Comparator comp, Swappe
   /* Fire off a recursive call to introsort using the depth estimate of
    * 2 lg (|end - begin|), as suggested in the original paper.
    */
+
   IntrosortRec(begin, end, IntrosortDepth(begin, end), comp,swapper);
 
   /* Use insertion sort to clean everything else up. */
-  InsertionSort(begin, end, comp,swapper);
+  //InsertionSort(begin, end, comp,swapper);
 }
 
 /* Non-swapper version calls the swapper version. */

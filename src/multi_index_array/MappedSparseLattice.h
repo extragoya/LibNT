@@ -133,6 +133,17 @@ struct const_storage_iterator<MappedSparseLattice<T> >
     typedef typename iterators::TupleIt<typename const_full_iterator_tuple<MappedSparseLattice<T> >::type > type;
 };
 
+template<typename T>
+struct data_type_ref<MappedSparseLattice<T> >
+{
+    typedef T & type;
+};
+
+template<typename T>
+struct const_data_type_ref<MappedSparseLattice<T> >
+{
+    typedef const T & type;
+};
 
 
 

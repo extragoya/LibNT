@@ -33,36 +33,7 @@ namespace LibMIA
 {
 
 
-template<class data_type,size_t _order>
-ImplicitMIA<data_type,_order> create_delta(size_t dim){
 
-
-
-    typedef typename internal::index_type<ImplicitMIA<data_type,_order>>::type index_type;
-    std::array<index_type,_order> dims;
-    dims.fill(dim);
-    ImplicitMIA<data_type,_order> delta(dims);
-
-    auto _function=[dims](index_type idx){
-            auto indices=internal::ind2sub(idx,dims);
-            auto first=indices[0];
-            size_t i;
-            for(i=1;i<indices.size();++i){
-                if(indices[i]!=first)
-                    break;
-            }
-            if(i==indices.size())
-                return 1;
-            else
-                return 0;
-
-    };
-
-    delta.get_function()=_function;
-    return delta;
-
-
-}
 
 //!Create an implicit MIA of just ones
 template<class data_type,class... Dims>
@@ -206,6 +177,39 @@ SparseMIA<data_type,2> create_backward_diff(size_t m){
     return ret;
 }
 
+template<class data_type,size_t _order>
+SparseMIA<data_type,_order> create_delta(size_t m){
+
+
+
+    typedef SparseMIA<data_type,_order> retType;
+    typedef typename internal::index_type<retType>::type index_type;
+    std::array<index_type,_order> retDims;
+    std::fill(retDims.begin(),retDims.end(),m);
+    retType ret(retDims);
+
+    ret.reserve(m); //diagonal and off-diagonal
+
+
+    auto data_func=[](index_type idx){
+        return 1;
+    };
+
+    auto index_func=[&ret](index_type idx){
+        auto indices=ret.ind2sub(idx);
+        for (index_type& i : indices )
+        {
+            i++; // increments the value in the indices
+        }
+        return ret.sub2ind(indices);
+    };
+    make_sparse_mia_explict_from_func(ret,data_func,index_func,index_type(0),ret.dimensionality());
+    assert(ret.size()==m);
+    return ret;
+
+
+}
+
 //!Emulates a vector MIA by creating an order+1 MIA where the new index indexes the original MIA
 template<class data_type,size_t order>
 SparseMIA<data_type,order+1> concat_sparse_arrays( SparseMIA<data_type,order>& a,  SparseMIA<data_type,order>& b){
@@ -238,6 +242,9 @@ SparseMIA<data_type,order+1> concat_sparse_arrays( SparseMIA<data_type,order>& a
 
 
 }
+
+
+
 
 }//namespace LibMIA
 #endif // LIBMIAHELPERS_H_INCLUDED

@@ -11,8 +11,8 @@
 #include "SparseMIA.h"
 #include "DenseMIA.h"
 #include "Index.h"
-
-
+#include "LibMIAUtil.h"
+#include "FunctionUtil.h"
 
 
 
@@ -30,6 +30,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::DenseMIA<_data_type,4> dense_b(dim2,dim2,dim1,dim1);
     LibMIA::DenseMIA<_data_type,4> dense_c;
     LibMIA::DenseMIA<_data_type,2> dense_c2;
+    LibMIA::DenseMIA<_data_type,3> dense_c3;
     LibMIA::DenseMIA<_data_type,2> dense_b2(dim2,dim2);
     LibMIA::DenseMIA<_data_type,1> dense_d(dim2);
     LibMIA::DenseMIA<_data_type,2> dense_d2(dim2,dim2);
@@ -38,6 +39,7 @@ void mult_work(size_t dim1, size_t dim2){
     LibMIA::SparseMIA<_data_type,4> b(dim2,dim2,dim1,dim1);
     LibMIA::SparseMIA<_data_type,4> c;
     LibMIA::SparseMIA<_data_type,2> c2;
+    LibMIA::SparseMIA<_data_type,3> c3;
     LibMIA::SparseMIA<_data_type,2> b2(dim2,dim2);
     LibMIA::SparseMIA<_data_type,1> d(dim2);
     LibMIA::SparseMIA<_data_type,2> d2(dim2,dim2);
@@ -73,11 +75,13 @@ void mult_work(size_t dim1, size_t dim2){
 
     dense_c(i,k,m,n)=dense_a(i,j,k,l)*dense_b(j,l,m,n);
     c(i,k,m,n)=a(i,j,k,l)*b(j,l,m,n);
-    d(j)*b(j,l,m,n);
+
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
 
 
-
+    dense_c(l,k,m,n)=dense_a(i,j,m,n)*dense_a(k,l,i,j);
+    c(l,k,m,n)=a(i,j,m,n)*a(k,l,i,j);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 with self-multiplication for ")+typeid(_data_type).name() ); //test the self-multiplication
 
     dense_c(i,k,m,n)=dense_a(i,l,k,j)*dense_b(l,j,m,n);
     c(i,k,m,n)=a(i,l,k,j)*b(l,j,m,n);
@@ -119,6 +123,10 @@ void mult_work(size_t dim1, size_t dim2){
     c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
 
+    dense_c3(i,j,l)=dense_b2(i,!j)*dense_b2(!j,l);
+    c3(i,j,l)=b2(i,!j)*b2(!j,l);
+    BOOST_CHECK_MESSAGE(c3==dense_c3,std::string("Outer/Element-Wise Product 1 with self-multiplication for ")+typeid(_data_type).name()); //test the self-multiplication
+
     dense_c(i,j,k,l)=dense_a(k,!j,i,!l)*dense_b2(!j,!l);
     c(i,j,k,l)=a(k,!j,i,!l)*b2(!j,!l);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
@@ -143,6 +151,16 @@ void mult_work(size_t dim1, size_t dim2){
     dense_c(i,k,m,n)=~(dense_a(i,!l,k,!j)*dense_b(!j,!l,m,n))*dense_d2(l,j);
     c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
+
+    _data_type dense_data=dense_a(i,l,k,j)*dense_b(i,l,j,k);
+    _data_type sparse_data=a(i,l,k,j)*b(i,l,j,k);
+    if(dense_data!=sparse_data)
+        std::cout << "dense " << dense_data << " sparse_data " << sparse_data << std::endl;
+    BOOST_CHECK_MESSAGE(LibMIA::isEqualFuzzy(dense_data,sparse_data,test_precision<_data_type>()),std::string("Complete Inner Product test 1 for ")+typeid(_data_type).name() );
+
+    dense_data=dense_a(i,l,k,j)*dense_a(i,j,k,l);
+    sparse_data=a(i,l,k,j)*a(i,j,k,l);
+    BOOST_CHECK_MESSAGE(LibMIA::isEqualFuzzy(dense_data,sparse_data,test_precision<_data_type>()),std::string("Complete Inner Product test 1 with self-assignment for ")+typeid(_data_type).name() );
 
 }
 
