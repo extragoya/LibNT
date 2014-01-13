@@ -177,6 +177,81 @@ SparseMIA<data_type,2> create_backward_diff(size_t m){
     return ret;
 }
 
+//!creates a O(h^2) central difference operator. At the first row and last row, O(h^2) forward and backward difference is performed. Second index is meant to be the inner product index
+template<class data_type>
+SparseMIA<data_type,2> create_central_diff(size_t m){
+
+    typedef SparseMIA<data_type,2> retType;
+    retType ret(m,m);
+
+    ret.reserve(2*(m-2)+6); //central diff takes two nnzs per row, plus 3 for each of first and last row
+    typedef typename internal::index_type<retType>::type index_type;
+
+    auto data_func=[m,&ret](index_type idx){
+        auto indices=ret.ind2sub(idx); //get full indices
+        if(indices[0]==0){ //if we are on the first row
+            if(indices[1]==0) //if we are the first index, return -1,
+                return -1.5;
+            else if(indices[1]==1) //if we are on the off-diagonal, return 1
+                return data_type(2);
+            else
+                return data_type(-0.5);
+        }
+        else if(indices[0]==m-1){ //if we are on the first row
+            if(indices[1]==m-1) //if we are the first index, return -1,
+                return 1.5;
+            else if(indices[1]==m-2) //if we are on the off-diagonal, return 1
+                return data_type(-2);
+            else
+                return data_type(0.5);
+        }
+        else{ //all other rows
+            if (indices[1]==indices[0]+1)
+                return data_type(0.5);
+            else
+                return data_type(-0.5);
+        }
+    };
+
+    auto index_func=[m,&ret](index_type idx){
+        auto indices=ret.ind2sub(idx);
+        if(indices[0]==0){ //first row
+            if(indices[1]==indices[0])
+                indices[1]++;
+            else if (indices[1]==indices[0]+1)
+                indices[1]++;
+            else{
+                indices[0]++;
+                indices[1]=0;
+            }
+
+        }
+        else if (indices[0]==m-1){ //last row, just keep incrementing second index
+            indices[1]++;
+        }
+        else if(indices[0]==m-2){ //second last row needs to setup last row
+            if(indices[1]==m-1){
+                indices[0]++;
+                indices[1]=m-3;
+            }
+            else
+                indices[1]+=2;
+        }
+        else{ //typical row
+            if(indices[1]==indices[0]-1)
+                indices[1]+=2;
+            else{
+                indices[0]++;
+                indices[1]--;
+            }
+        }
+        return ret.sub2ind(indices);
+    };
+    make_sparse_mia_explict_from_func(ret,data_func,index_func,index_type(0),ret.dimensionality());
+    assert(ret.size()==2*(m-2)+6);
+    return ret;
+}
+
 template<class data_type,size_t _order>
 SparseMIA<data_type,_order> create_delta(size_t m){
 

@@ -207,7 +207,7 @@ public:
     {
 
         this->mSolveInfo=otherMIA.solveInfo();
-        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+        m_smart_raw_ptr.reset(new T[this->dimensionality()]);
 
 
         if(this->dimensionality()>=PARALLEL_TOL){
@@ -233,11 +233,11 @@ public:
 
 
     */
-    DenseMIA(DenseMIA&& otherMIA):DenseMIABase<DenseMIA<T,_order> >(),m_smart_raw_ptr(nullptr),hasOwnership(otherMIA.ownsData())
+    DenseMIA(DenseMIA&& otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),m_smart_raw_ptr(nullptr),hasOwnership(otherMIA.ownsData())
     {
 
 
-        std::swap(this->m_dims,otherMIA.m_dims);
+
 
         this->mSolveInfo=otherMIA.solveInfo();
         m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
@@ -259,7 +259,7 @@ public:
 
         this->mSolveInfo=otherMIA.solveInfo();
         static_assert(internal::order<otherMIAType>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
-        m_smart_raw_ptr.reset(new T[this->m_dimensionality]);
+        m_smart_raw_ptr.reset(new T[this->dimensionality()]);
 
 
         if(this->dimensionality()>=PARALLEL_TOL){
@@ -309,7 +309,7 @@ public:
             auto _newDims=this->dims();
             std::fill(_newDims.begin(),_newDims.end(),0);
             this->set_dims(_newDims);
-            this->m_dimensionality=0;
+
             m_smart_raw_ptr.reset(nullptr);
 
         }
@@ -328,11 +328,14 @@ public:
 
     */
     template<typename... Dims>
-    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(new T[this->m_dimensionality]),hasOwnership(true)
+    DenseMIA(Dims... dims):DenseMIABase<DenseMIA<T,_order> > {dims...}, m_smart_raw_ptr(new T[this->dimensionality()]),hasOwnership(true)
     {
+
+
 
         static_assert(internal::check_mia_constructor<DenseMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
         this->zeros();
+
 
     }
 
@@ -344,7 +347,7 @@ public:
 
     */
     template<class array_index_type>
-    DenseMIA(const std::array<array_index_type,mOrder>& _dims):DenseMIABase<DenseMIA<T,_order> > (_dims), m_smart_raw_ptr(new T[this->m_dimensionality]),hasOwnership(true)
+    DenseMIA(const std::array<array_index_type,mOrder>& _dims):DenseMIABase<DenseMIA<T,_order> > (_dims), m_smart_raw_ptr(new T[this->dimensionality()]),hasOwnership(true)
     {
 
 
@@ -452,6 +455,7 @@ public:
 
 
 
+
         if(this==&otherMIA)
             return *this;
 
@@ -464,8 +468,7 @@ public:
 
 
             std::swap(this->hasOwnership,otherMIA.hasOwnership);
-            this->m_dimensionality=otherMIA.dimensionality();
-            std::swap(this->m_dims,otherMIA.m_dims);
+            this->set_dims(otherMIA.dims());
             this->mSolveInfo=otherMIA.solveInfo();
 
             return *this;
@@ -766,7 +769,7 @@ void DenseMIA<T,_order>::inplace_permute(const std::array<index_param_type,inter
 
 
     }
-    this->m_dims=new_dims;
+    this->set_dims(new_dims);
 
 
 }
@@ -893,6 +896,7 @@ template<class T, size_t _order>
 template<typename other_data_type>
 DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<other_data_type,mOrder>& otherMIA)
 {
+
     return this->straight_assign(otherMIA);
 
 }
@@ -924,11 +928,10 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_dat
 
 
 
-    if(this->m_dimensionality!=otherMIA.dimensionality()){
+    if(this->dimensionality()!=otherMIA.dimensionality()){
         if(hasOwnership){
-            this->m_dimensionality=otherMIA.dimensionality();
-            this->m_dims=otherMIA.dims();
-            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            this->set_dims(otherMIA.dims());
+            smart_raw_pointer temp_ptr(new T[this->dimensionality()]);
             m_smart_raw_ptr.swap(temp_ptr);
             temp_ptr.release();
 
@@ -936,8 +939,8 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_dat
         else
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
-    else if(this->m_dims!=otherMIA.dims())
-        this->m_dims=otherMIA.dims();
+    else if(this->dims()!=otherMIA.dims())
+        this->set_dims(otherMIA.dims());
 
     this->mSolveInfo=otherMIA.solveInfo();
 
@@ -958,11 +961,11 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const SparseMIABase<othe
 
     static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
 
-    if(this->m_dimensionality!=otherMIA.dimensionality()){
+    if(this->dimensionality()!=otherMIA.dimensionality()){
         if(hasOwnership){
-            this->m_dimensionality=otherMIA.dimensionality();
-            this->m_dims=otherMIA.dims();
-            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+
+            this->set_dims(otherMIA.dims());
+            smart_raw_pointer temp_ptr(new T[this->dimensionality()]);
             m_smart_raw_ptr.swap(temp_ptr);
             temp_ptr.release();
 
@@ -970,8 +973,8 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const SparseMIABase<othe
         else
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
-    else if(this->m_dims!=otherMIA.dims()){
-            this->m_dims=otherMIA.dims();
+    else if(this->dims()!=otherMIA.dims()){
+        this->set_dims(otherMIA.dims());
     }
     this->zeros();
     this->mSolveInfo=otherMIA.solveInfo();
@@ -1024,11 +1027,13 @@ void DenseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,cons
     static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Must use an array convertable to index_type");
     static_assert(internal::order<otherDerived>::value==mOrder,"Order of MIAs must be the same to perform copy construction.");
 
-    if(this->m_dimensionality!=otherMIA.dimensionality()){
+    if(this->dimensionality()!=otherMIA.dimensionality()){
         if(hasOwnership){
-            internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
-            this->m_dimensionality=otherMIA.dimensionality();
-            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            auto new_dims=this->dims();
+            internal::reorder_from(otherMIA.dims(),index_order,new_dims);
+            this->set_dims(new_dims);
+
+            smart_raw_pointer temp_ptr(new T[this->dimensionality()]);
             m_smart_raw_ptr.swap(temp_ptr);
             temp_ptr.release();
 
@@ -1037,8 +1042,10 @@ void DenseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,cons
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
      else{
+        auto new_dims=otherMIA.dims();
+        internal::reorder_from(otherMIA.dims(),index_order,new_dims);
+        this->set_dims(new_dims);
 
-        internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
     }
 
     this->zeros();
@@ -1078,11 +1085,12 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
         return;
     }
 
-    if(this->m_dimensionality!=otherMIA.dimensionality()){
+    if(this->dimensionality()!=otherMIA.dimensionality()){
         if(hasOwnership){
-            internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
-            this->m_dimensionality=otherMIA.dimensionality();
-            smart_raw_pointer temp_ptr(new T[this->m_dimensionality]);
+            auto new_dims=otherMIA.dims();
+            internal::reorder_from(otherMIA.dims(),index_order,new_dims);
+            this->set_dims(new_dims);
+            smart_raw_pointer temp_ptr(new T[this->dimensionality()]);
             m_smart_raw_ptr.swap(temp_ptr);
             temp_ptr.release();
 
@@ -1090,8 +1098,11 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
         else
             throw new MIAMemoryException("Cannot assign to MIA that doesn't own underlying data if dimensionality is different");
     }
-    else
-        internal::reorder_from(otherMIA.dims(),index_order,this->m_dims);
+    else{
+        auto new_dims=otherMIA.dims();
+        internal::reorder_from(otherMIA.dims(),index_order,new_dims);
+        this->set_dims(new_dims);
+    }
 
     this->mSolveInfo=otherMIA.solveInfo();
     index_type curIdx=0;
@@ -1131,8 +1142,7 @@ void DenseMIA<T,_order>::assign(DenseMIA<T,_order>&& otherMIA,const std::array<i
     m_smart_raw_ptr.swap(otherMIA.m_smart_raw_ptr);
 
     this->hasOwnership=otherMIA.ownsData();
-    this->m_dimensionality=otherMIA.dimensionality();
-    this->m_dims=otherMIA.dims();
+    this->set_dims(otherMIA.dims());
     this->mSolveInfo=otherMIA.solveInfo();
 
 
@@ -1157,7 +1167,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
 
     if(this->dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
-        for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
             this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
 
@@ -1165,7 +1175,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
         }
     }
     else{
-       for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+       for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
             this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
 
@@ -1195,7 +1205,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
 
     if(this->dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
-        for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+        for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
             this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(curIdx)));
 
@@ -1203,7 +1213,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
         }
     }
     else{
-       for(index_type curIdx=0; curIdx<this->m_dimensionality; ++curIdx)
+       for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
             this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(curIdx)));
 

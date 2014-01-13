@@ -76,86 +76,89 @@ void mult_work(size_t dim1, size_t dim2){
     dense_c(i,k,m,n)=dense_a(i,j,k,l)*dense_b(j,l,m,n);
     c(i,k,m,n)=a(i,j,k,l)*b(j,l,m,n);
 
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 1 for ")+typeid(_data_type).name() );
+//    std::cout << "Sparse " << std::endl;
+//    c.print();
+//    std::cout << "Dense " << std::endl;
+//    dense_c.print();
 
 
     dense_c(l,k,m,n)=dense_a(i,j,m,n)*dense_a(k,l,i,j);
     c(l,k,m,n)=a(i,j,m,n)*a(k,l,i,j);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 1 with self-multiplication for ")+typeid(_data_type).name() ); //test the self-multiplication
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 1 with self-multiplication for ")+typeid(_data_type).name() ); //test the self-multiplication
 
     dense_c(i,k,m,n)=dense_a(i,l,k,j)*dense_b(l,j,m,n);
     c(i,k,m,n)=a(i,l,k,j)*b(l,j,m,n);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 2 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 2 for ")+typeid(_data_type).name());
 
     dense_c(i,k,m,n)=dense_a(i,l,k,j)*dense_b(l,j,m,n);
     c(i,k,m,n)=a(i,l,k,j)*b(l,j,m,n);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Inner/Outer Product 3 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 3 for ")+typeid(_data_type).name());
 
 
     dense_c2(i,j)=dense_a(!i,k,!j,l)*dense_b(k,l,!i,!j);
     c2(i,j)=a(!i,k,!j,l)*b(k,l,!i,!j);
-    BOOST_CHECK_MESSAGE(c2==dense_c2,std::string("Inner/Element-Wise Product 1 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c2.fuzzy_equals(dense_c2,test_precision<_data_type>()),std::string("Inner/Element-Wise Product 1 for ")+typeid(_data_type).name());
 
     dense_c2(i,j)=dense_a(!i,l,!j,k)*dense_b(k,l,!i,!j);
     c2(i,j)=a(!i,l,!j,k)*b(k,l,!i,!j);
-    BOOST_CHECK_MESSAGE(c2==dense_c2,std::string("Inner/Element-Wise Product 2 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c2.fuzzy_equals(dense_c2,test_precision<_data_type>()),std::string("Inner/Element-Wise Product 2 for ")+typeid(_data_type).name());
 
     dense_c2(j,i)=dense_a(!j,l,!i,k)*dense_b(k,l,!j,!i);
     c2(j,i)=a(!j,l,!i,k)*b(k,l,!j,!i);
-    BOOST_CHECK_MESSAGE(c2==dense_c2,std::string("Inner/Element-Wise Product 3 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c2.fuzzy_equals(dense_c2,test_precision<_data_type>()),std::string("Inner/Element-Wise Product 3 for ")+typeid(_data_type).name());
 
 
     dense_c(i,j,k,l)=dense_b2(i,j)*dense_d2(k,l);
     c(i,j,k,l)=b2(i,j)*d2(k,l);
     //dense_c.print();
     //c.print();
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Outer Product 1 for ")+typeid(_data_type).name());
 
     dense_c(i,k,l,j)=dense_b2(k,j)*dense_d2(l,i);
     c(i,k,l,j)=b2(k,j)*d2(l,i);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 2 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Outer Product 2 for ")+typeid(_data_type).name());
 
     dense_c(i,k,l,j)=dense_d2(l,i)*dense_b2(k,j);
     c(i,k,l,j)=d2(l,i)*b2(k,j);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Outer Product 3 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Outer Product 3 for ")+typeid(_data_type).name());
 
     dense_c(i,j,k,l)=dense_a(i,!j,k,!l)*dense_b2(!j,!l);
     c(i,j,k,l)=a(i,!j,k,!l)*b2(!j,!l);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Element-Wise Product 1 for ")+typeid(_data_type).name());
 
     dense_c3(i,j,l)=dense_b2(i,!j)*dense_b2(!j,l);
     c3(i,j,l)=b2(i,!j)*b2(!j,l);
-    BOOST_CHECK_MESSAGE(c3==dense_c3,std::string("Outer/Element-Wise Product 1 with self-multiplication for ")+typeid(_data_type).name()); //test the self-multiplication
+    BOOST_CHECK_MESSAGE(c3.fuzzy_equals(dense_c3,test_precision<_data_type>()),std::string("Outer/Element-Wise Product 1 with self-multiplication for ")+typeid(_data_type).name()); //test the self-multiplication
 
     dense_c(i,j,k,l)=dense_a(k,!j,i,!l)*dense_b2(!j,!l);
     c(i,j,k,l)=a(k,!j,i,!l)*b2(!j,!l);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Element-Wise Product 2 for ")+typeid(_data_type).name());
 
     dense_c(i,j,k,l)=dense_a(k,!l,i,!j)*dense_b2(!j,!l);
     c(i,j,k,l)=a(k,!l,i,!j)*b2(!j,!l);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Outer/Element-Wise Product 3 for ")+typeid(_data_type).name());
 
     dense_c(i,j,k,l)=~(dense_a(i,!j,k,!!l)*dense_b2(!j,!!l))*dense_d(!l);
     c(i,j,k,l)=~(a(i,!j,k,!!l)*b2(!j,!!l))*d(!l);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Repeated Element-Wise Product 1 for ")+typeid(_data_type).name());
 
 
     dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(j,l);
     c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(j,l);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 1 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Ternary Inner Product 1 for ")+typeid(_data_type).name() );
 
     dense_c(i,k,m,n)=~(dense_a(i,!j,k,!l)*dense_b(!j,!l,m,n))*dense_d2(l,j);
     c(i,k,m,n)=~(a(i,!j,k,!l)*b(!j,!l,m,n))*d2(l,j);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Ternary Inner Product 2 for ")+typeid(_data_type).name() );
 
     dense_c(i,k,m,n)=~(dense_a(i,!l,k,!j)*dense_b(!j,!l,m,n))*dense_d2(l,j);
     c(i,k,m,n)=~(a(i,!l,k,!j)*b(!j,!l,m,n))*d2(l,j);
-    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
+    BOOST_CHECK_MESSAGE(c.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Ternary Inner Product 3 for ")+typeid(_data_type).name() );
 
     _data_type dense_data=dense_a(i,l,k,j)*dense_b(i,l,j,k);
     _data_type sparse_data=a(i,l,k,j)*b(i,l,j,k);
-    if(dense_data!=sparse_data)
-        std::cout << "dense " << dense_data << " sparse_data " << sparse_data << std::endl;
+
     BOOST_CHECK_MESSAGE(LibMIA::isEqualFuzzy(dense_data,sparse_data,test_precision<_data_type>()),std::string("Complete Inner Product test 1 for ")+typeid(_data_type).name() );
 
     dense_data=dense_a(i,l,k,j)*dense_a(i,j,k,l);

@@ -77,6 +77,8 @@ struct index_iterator<SparseLattice<T> >
     typedef typename Indices<SparseLattice<T> >::type::iterator type;
 };
 
+
+
 template<typename T>
 struct data_iterator<SparseLattice<T> >
 {
@@ -308,9 +310,10 @@ public:
     //!  Copy constructor from a dense lattice
     SparseLattice(const DenseLattice<T>& dlat)
     {
+
         clear();
         this->init(dlat.height(),dlat.width(),dlat.depth(),dlat.solveInfo());
-        this->sparse_init(false,ColumnMajor);
+        this->sparse_init(true,ColumnMajor);
         for (int k=0; k<dlat.depth(); k++)
         {
             for (int j=0; j<dlat.width(); j++)
@@ -336,8 +339,23 @@ public:
     {
 
 
-        clear();
-        std::copy(b.begin(),b.end(),this->begin());
+
+        this->resize(b.size());
+        std::copy(b.index_begin(),b.index_end(),this->index_begin());
+        std::copy(b.data_begin(),b.data_end(),this->data_begin());
+        this->init(b.height(),b.width(),b.depth(),b.solveInfo());
+        this->sparse_init(b.is_sorted(),b.linIdxSequence());
+    }
+
+
+    SparseLattice& operator=(const SparseLattice &b)
+    {
+
+
+
+        this->resize(b.size());
+        std::copy(b.index_begin(),b.index_end(),this->index_begin());
+        std::copy(b.data_begin(),b.data_end(),this->data_begin());
         this->init(b.height(),b.width(),b.depth(),b.solveInfo());
         this->sparse_init(b.is_sorted(),b.linIdxSequence());
 
@@ -483,6 +501,11 @@ public:
     data_iterator data_begin();
     data_iterator data_end();
 
+    const_index_iterator index_begin() const ;
+    const_index_iterator index_end() const;
+    const_data_iterator data_begin()const;
+    const_data_iterator data_end()const;
+
 
 protected:
     Data m_data;
@@ -500,7 +523,51 @@ protected:
 
 };
 
+template<typename T>
+inline typename SparseLattice<T>::const_index_iterator
+SparseLattice<T>::index_begin() const
+{
 
+
+    return m_indices.begin();
+
+
+}
+
+
+template<typename T>
+inline typename SparseLattice<T>::const_index_iterator
+SparseLattice<T>::index_end() const
+{
+
+
+    return m_indices.end();
+
+
+}
+
+template<typename T>
+inline typename SparseLattice<T>::const_data_iterator
+SparseLattice<T>::data_begin() const
+{
+
+
+    return m_data.begin();
+
+
+}
+
+
+template<typename T>
+inline typename SparseLattice<T>::const_data_iterator
+SparseLattice<T>::data_end() const
+{
+
+
+    return m_data.end();
+
+
+}
 
 
 

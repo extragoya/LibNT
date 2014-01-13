@@ -226,7 +226,7 @@ public:
 
     }
 
-    //!  Constructs empty ImplicitMIA
+    //!  Copy constructor
     ImplicitMIA(const ImplicitMIA& otherMIA):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(otherMIA.dims())
     {
         mFunction=otherMIA.mFunction;
@@ -265,9 +265,9 @@ public:
     }
 
     ImplicitMIA& operator=(const ImplicitMIA & otherMIA){
-        this->m_dims=otherMIA.dims();
+        this->set_dims(otherMIA.dims());
         this->mFunction=otherMIA.get_function();
-        this->m_dimensionality=otherMIA.dimensionality();
+
         return *this;
     }
 

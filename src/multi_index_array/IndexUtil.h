@@ -94,12 +94,11 @@ void concat_arrays(const std::array<array_type1,size1>& _array1, const std::arra
 
 }
 
-//!
-template<class array_type1,class array_type2, class array_type3,size_t size1, size_t size2, size_t size3>
-std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3)
+template<class array_type1,class array_type2, class array_type3,size_t size1, size_t size2 >
+void concat_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,std::array<array_type3,size1+size2>& to_array)
 {
 
-    std::array<size_t,size1+size2+size3> to_array;
+
     size_t idx=0;
     for(auto _elem: _array1)
     {
@@ -111,10 +110,31 @@ std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_
 
         to_array[idx++]=_elem;
     }
-    for(auto _elem: _array3)
+
+
+
+}
+
+//!
+template<class array_type1,class array_type2, class array_type3,size_t size1, size_t size2, size_t size3>
+std::array<size_t,size1+size2+size3> concat_index_arrays(const std::array<array_type1,size1>& _array1, const std::array<array_type2,size2>& _array2,const std::array<array_type3,size3>& _array3)
+{
+
+    std::array<size_t,size1+size2+size3> to_array;
+    for(size_t idx=0;idx<size1;++idx)
     {
 
-        to_array[idx++]=_elem;
+        to_array[idx]=_array1[idx];
+    }
+    for(size_t idx=0;idx<size2;++idx)
+    {
+
+        to_array[idx+size1]=_array2[idx];
+    }
+    for(size_t idx=0;idx<size3;++idx)
+    {
+
+        to_array[idx+size1+size2]=_array3[idx];
     }
     return to_array;
 
@@ -126,16 +146,16 @@ std::array<size_t,size1+size2> concat_index_arrays(const std::array<array_type1,
 {
 
     std::array<size_t,size1+size2> to_array;
-    size_t idx=0;
-    for(auto _elem: _array1)
+
+    for(size_t idx=0;idx<size1;++idx)
     {
 
-        to_array[idx++]=_elem;
+        to_array[idx]=_array1[idx];
     }
-    for(auto _elem: _array2)
+    for(size_t idx=0;idx<size2;++idx)
     {
 
-        to_array[idx++]=_elem;
+        to_array[idx+size1]=_array2[idx];
     }
 
     return to_array;
@@ -563,20 +583,22 @@ std::array<arrayType1,_size> reOrderArray(const std::array<arrayType1,_size> & _
     return new_array;
 }
 
-
+//!Given a shuffle array of _size, with non-duplicates entries ranging from 0 to _size-1, will output the reverse shuffle
 template<class index_param_type,size_t _size>
 std::array<index_param_type,_size> reverseOrder(const std::array<index_param_type,_size>& init_order)
 {
     std::array<index_param_type,_size> output_order;
     for(size_t i=0;i<_size;++i)
     {
+        output_order[i]=_size; //should never get here, this can be considered a way to check for erroneous input
         for(size_t j=0;j<_size;++j)
         {
             if (init_order[j]==(index_param_type)i){
-                 output_order[i]=j;
+                output_order[i]=j;
                 break;
             }
         }
+
 
     }
     return output_order;
@@ -634,7 +656,26 @@ std::array<size_t,_size> createAscendingIndex(size_t _start=0){
 
 
 }
+//!If _old={2,3,1} and _new={3,1,2}, will return shuffleSequence={1,2,0}, ie _old[shuffleSequence[i]]=new[i]
+template<size_t _size,typename index_type>
+std::array<index_type,_size> getShuffleSequence(const std::array<index_type,_size>& _old,const std::array<index_type,_size>& _new ){
+    std::array<index_type,_size> shuffleSequence;
+    for(size_t idx=0;idx<_size;++idx){
+        shuffleSequence[idx]=_size;// should be overwritten, if not, erroneous input was provided
+        for(size_t shufIdx=0;shufIdx<_size;++shufIdx){
+            if(_old[shufIdx]==_new[idx]){
+                shuffleSequence[idx]=shufIdx;
+                break;
+            }
 
+        }
+
+
+    }
+    return shuffleSequence;
+
+
+}
 
 /*! @} */
 /*! @} */

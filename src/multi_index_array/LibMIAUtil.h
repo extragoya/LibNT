@@ -627,7 +627,7 @@ struct MIANoLatticeProductReturnType<L_MIA,R_MIA,order,
     >::type
 >
 {
-    typedef ImplicitMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
+    typedef DenseMIA<typename ScalarPromoteType<L_MIA,R_MIA>::type,order> type;
 
 };
 

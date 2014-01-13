@@ -33,6 +33,7 @@
 #include <boost/mpl/and.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/type_traits/is_floating_point.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <Eigen/Dense>
 
@@ -412,8 +413,8 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & rest
 
 
     typedef typename DenseProductReturnType<Derived,otherDerived>::type RType;
-    typedef typename RType::matrix_type return_matrix_type;
-    typedef typename otherDerived::const_matrix_type b_matrix_type;
+
+
     RType c(this->height(),b.width(),this->depth());
 
     for (int i=0; i<this->depth(); i++)
@@ -437,6 +438,7 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict 
 
 
 
+    boost::timer::cpu_timer timer,timer_minor;
     this->check_mult_dims(b);
     auto & a=*this;
     typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
@@ -447,6 +449,7 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict 
     typename c_type::Data c_data;
     c_data.reserve(b.size());
     typename internal::data_type<c_type>::type cur_c_data;
+    timer_minor=boost::timer::cpu_timer();
 
     b.sort();
 
@@ -466,13 +469,16 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict 
                 cur_c_data+=b.data_at(b_it-b.index_begin())*a(a_rows,b.row(*b_it),cur_tab);
 
             }
-            c_data.push_back(cur_c_data);
-            c_indices.push_back(a_rows+(cur_col+cur_tab*b.width())*a.height());
+            if(std::abs(cur_c_data)>SparseTolerance<decltype(cur_c_data)>::tolerance){
+                c_data.push_back(cur_c_data);
+                c_indices.push_back(a_rows+(cur_col+cur_tab*b.width())*a.height());
+            }
         }
         b_temp_begin=b_temp_end;
     }
     c_type ret(std::move(c_data),std::move(c_indices),a.height(),b.width(),this->depth());
     ret.set_linIdxSequence(ColumnMajor);
+    //std::cout << "dense x sparse time " << boost::timer::format(timer.elapsed()) << std::endl;
     return ret;
 
 
@@ -485,11 +491,13 @@ template <class Derived>
 auto DenseLatticeBase<Derived>::transpose()  const->DenseLattice<data_type>{
 
 
+
     DenseLattice<data_type> c(this->width(),this->height(),this->depth());
 
 
     for (int i=0; i<this->depth(); i++)
     {
+
         c.derived().tab_matrix(i)=tab_matrix(i).transpose();
 
     }
@@ -618,11 +626,13 @@ template <class Derived>
 template<class otherDerived,bool LSQR>
 inline void DenseLatticeBase<Derived>::perform_solve(SparseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
 
-    typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
-    typedef typename otherDerived::MappedSparseMatrix_cm MappedSparseMatrix_cm; //Sparse Matrix type for A
+
+
     typedef Eigen::Matrix<data_type, Eigen::Dynamic, 1> temp_vector_type;
 
     b.sort();
+
+
     SolveInfo _solveInfo;
     c.setSolveInfo(FullyRanked);
     auto b_temp_tab_begin=b.index_begin();
@@ -632,10 +642,14 @@ inline void DenseLatticeBase<Derived>::perform_solve(SparseLatticeBase<otherDeri
     for (index_type cur_tab=0; cur_tab<this->depth(); ++cur_tab)
     {
 
+
         b_temp_tab_begin=b.find_tab_start_idx(cur_tab,b_temp_tab_begin,b_index_end);
-        b_temp_tab_end=b.find_tab_end_idx(cur_tab,b_temp_tab_begin,b_index_end);
         if(b_temp_tab_begin==b_index_end)
             break;
+
+        b_temp_tab_end=b.find_tab_end_idx(cur_tab,b_temp_tab_begin,b_index_end);
+
+
         if(b_temp_tab_end==b_temp_tab_begin)
             continue;
 
@@ -652,12 +666,14 @@ inline void DenseLatticeBase<Derived>::perform_solve(SparseLatticeBase<otherDeri
                 ++b_temp_col_end;
             }
             c.derived().tab_matrix(cur_tab).col(cur_col)=_solver.solve(temp_column);
+
             b_temp_col_begin=b_temp_col_end;
         }
 
         b_temp_tab_begin=b_temp_tab_end;
 
     }
+
 
 
 }
@@ -669,9 +685,8 @@ template <class Derived>
 template<class otherDerived,bool LSQR>
 inline void DenseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<otherDerived> &b, typename DenseSolveReturnType<Derived,otherDerived>::type & c) const{
 
-    typedef typename DenseSolveReturnType<Derived,otherDerived>::type RType;
-    typedef typename RType::matrix_type return_matrix_type;
-    typedef typename otherDerived::const_matrix_type b_matrix_type;
+
+
 
     c.setSolveInfo(FullyRanked);
     SolveInfo _solveInfo;

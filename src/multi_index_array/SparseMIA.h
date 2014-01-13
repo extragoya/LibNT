@@ -257,7 +257,7 @@ public:
     {
 
 
-        this->mLinIdxSequence=otherMIA.linIdxSequence();
+        this->setLinIdxSequence(otherMIA.linIdxSequence());
         this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
@@ -360,8 +360,15 @@ public:
 
     */
     template<class array_index_type>
-    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIA(std::move(_lat.data()),std::move(_lat.indices()),_dims,(_lat.is_sorted()&&_lat.linIdxSequence()==ColumnMajor))
+    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat):SparseMIABase<SparseMIA<T,_order> >(_dims,_lat.is_sorted()&&_lat.linIdxSequence()==ColumnMajor),m_data(),m_indices()
     {
+
+
+        _lat.change_sort_order(ColumnMajor); //make sure lattice is columnmajor, so that indices are calculated in the expected linIdxSequence
+        m_data.swap(_lat.data());
+        m_indices.swap(_lat.indices());
+
+
     }
 
     //!  Constructs SparseMIA of specified size with a given raw scalar data and index data.
@@ -442,9 +449,9 @@ public:
 
     //!  Sparse move assignment
     SparseMIA & operator=(SparseMIA&& otherMIA){
-        this->m_dims=otherMIA.dims();
-        this->m_dimensionality=otherMIA.dimensionality();
-        this->mLinIdxSequence=otherMIA.linIdxSequence();
+        this->set_dims(otherMIA.dims());
+
+        this->setLinIdxSequence(otherMIA.linIdxSequence());
         this->setSorted(otherMIA.is_sorted());
         m_data.swap(otherMIA.m_data);
         m_indices.swap(otherMIA.m_indices);
@@ -596,20 +603,20 @@ public:
     }
 
     //! Removes data with duplicated indices - conflicts are solved by always choosing the first data entry encountered
-    void collect_duplicates(bool _stable=false)
+    void collect_duplicates()
     {
         select_first<data_type> selector;
-        collect_duplicates(selector,_stable);
+        collect_duplicates(selector);
     }
 
     //! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
     template<class Collector>
-    void collect_duplicates(Collector collector,bool _stable=false)
+    void collect_duplicates(Collector collector)
     {
 
 
 
-        this->sort(_stable);
+        this->sort();
 
 
         auto result_idx = this->index_begin();
@@ -631,6 +638,7 @@ public:
 
         size_t diff=result_idx-this->index_begin()+1;
         resize(diff);
+        this->setSorted(true);
     }
 
 
@@ -654,10 +662,9 @@ protected:
     {
 
         //std::cout << "copy other MIA with sparse " << std::endl;
-        this->m_dims=otherMIA.dims();
-        this->m_dimensionality=otherMIA.dimensionality();
-        this->mLinIdxSequence=otherMIA.linIdxSequence();
-        this->mIsSorted=otherMIA.is_sorted();
+        this->set_dims(otherMIA.dims());
+        this->setLinIdxSequence(otherMIA.linIdxSequence());
+
         this->mSolveInfo=otherMIA.solveInfo();
         this->resize(otherMIA.size());
 
@@ -666,6 +673,7 @@ protected:
             this->data_val(cur_tuple)=this->convert(std::get<0>(*otherIt)); //need 'this' due to bug in gcc compiler
             this->index_val(cur_tuple)=std::get<1>(*otherIt++);
         });
+        this->mIsSorted=otherMIA.is_sorted();
 
     }
 
@@ -676,10 +684,10 @@ protected:
 
 
         this->reset_linIdx_sequence();
-        this->mIsSorted=true;
+
         this->mSolveInfo=denseMIA.solveInfo();
-        this->m_dims=denseMIA.dims();
-        this->m_dimensionality=denseMIA.dimensionality();
+        this->set_dims(denseMIA.dims());
+
         //count the number of nnzs
         size_t nnz=0;
         for(auto it=denseMIA.data_begin();it<denseMIA.data_end();++it)
@@ -700,6 +708,7 @@ protected:
             }
 
         }
+        this->mIsSorted=true;
 
     }
 
@@ -792,7 +801,7 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
         //std::cout << "this is bigger " << std::endl;
         auto b_linIdxSequence=b.linIdxSequence();
 
-        internal::reorder_from(index_order,this->mLinIdxSequence,b_linIdxSequence);
+        internal::reorder_from(index_order,this->linIdxSequence(),b_linIdxSequence);
 
         b.change_linIdx_sequence(b_linIdxSequence); //change b's sort order to it matches the index order, and also *this's current sort order
     }
@@ -800,7 +809,7 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
         //std::cout << "b is bigger " << std::endl;
         //get the order of lhs indices in terms of rhs
         auto lhsOrder=internal::reverseOrder(index_order);
-        auto temp_linIdxSequence=this->mLinIdxSequence;
+        auto temp_linIdxSequence=this->linIdxSequence();
         internal::reorder_from(lhsOrder,b.linIdxSequence(),temp_linIdxSequence);
         this->change_linIdx_sequence(temp_linIdxSequence);
     }
@@ -846,29 +855,31 @@ void SparseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,con
 
     //otherMIA.print();
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
-    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //don't bother to re-sort, just change the linIdxSequence
+    auto new_dims=otherMIA.dims();
+    internal::reorder_from(otherMIA.dims(),index_order,new_dims); //don't bother to re-sort, just change the linIdxSequence
+    this->set_dims(new_dims);
     //print_array(index_order,"index_order");
     //print_array(otherMIA.linIdxSequence(),"otherMIA.linIdxSequence()");
 
     //get the order of lhs indices in terms of rhs
     auto lhsOrder=internal::reverseOrder(index_order);
     //if b is also is not sorted using the default sort order, we also need to change lhsOrder to reflect this
-    internal::reorder_from(lhsOrder,otherMIA.linIdxSequence(),this->mLinIdxSequence);
+    internal::reorder_from(lhsOrder,otherMIA.linIdxSequence(),this->linIdxSequence());
     //print_array(this->mLinIdxSequence,"this->mLinIdxSequence");
-    if(otherMIA.linIdxSequence()!=this->mLinIdxSequence)
-        this->mIsSorted=false;
-    else
-        this->mIsSorted=otherMIA.is_sorted();
+//    if(otherMIA.linIdxSequence()!=this->linIdxSequence())
+//        this->mIsSorted=false;
+//    else
+
+
 
     this->resize(otherMIA.size());
-    this->m_dimensionality=otherMIA.dimensionality();
     this->mSolveInfo=otherMIA.solveInfo();
     auto otherDataIt=otherMIA.data_begin();
     std::for_each(this->data_begin(),this->data_end(),[&](data_type & cur_data){
         cur_data=this->convert(*(otherDataIt++));
     });
     std::copy(otherMIA.index_begin(),otherMIA.index_end(),this->index_begin());
-
+    this->mIsSorted=otherMIA.is_sorted();
 
 
 
@@ -882,14 +893,14 @@ void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,cons
 
     //std::cout << "Dense assign" << std::endl;
     static_assert(_order==internal::order<otherDerived>::value,"Array specifying index shuffle must be the same size as the order of the operand array");
-    internal::reorder_from(otherMIA.dims(),index_order,this->m_dims); //shuffle the dimensions around based on index_order
-    internal::reverseOrder(index_order,this->mLinIdxSequence); //don't bother to re-sort, just change the linIdxSequence
-    this->m_dimensionality=otherMIA.dimensionality();
+    auto new_dims=this->dims();
+    internal::reorder_from(otherMIA.dims(),index_order,new_dims); //shuffle the dimensions around based on index_order
+    this->set_dims(new_dims);
+    internal::reverseOrder(index_order,this->linIdxSequence()); //don't bother to re-sort, just change the linIdxSequence
+
     this->mSolveInfo=otherMIA.solveInfo();
-    if(this->mLinIdxSequence!=this->mDefaultLinIdxSequence)
-        this->mIsSorted=false;
-    else
-        this->mIsSorted=true;
+
+
 
     size_t nnz=0;
     for(auto it=otherMIA.data_begin();it<otherMIA.data_end();++it)
@@ -910,7 +921,7 @@ void SparseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,cons
         }
 
     }
-
+    this->setSorted(true);
 
 }
 

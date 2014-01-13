@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE( MixedLatticeSolveTests )
 
     //multwork<double>(3,3,3,3);
     //solvework<double>(5,5,5,5);
-    solvework<double>(20,20,10,20);
+    //solvework<double>(20,20,10,20);
     solvework<float>(20,20,10,20);
 
 

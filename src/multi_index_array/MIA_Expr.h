@@ -791,7 +791,12 @@ public:
 
 
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
-        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+#ifdef LIBMIA_CHECK_DIMS
+
+        check_dims_match(m_mia->dims(),mia_expr_helper::left_inner_product_order(),Rhs.m_mia->dims(),mia_expr_helper::right_inner_product_order(),"An inner-product index is matched with a different sized index.");
+        check_dims_match(m_mia->dims(),mia_expr_helper::left_inter_product_order(),Rhs.m_mia->dims(),mia_expr_helper::right_inter_product_order(),"An inter-product index is matched with a different sized index.");
+
+#endif
 
         typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
@@ -857,6 +862,12 @@ public:
 
 
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+#ifdef LIBMIA_CHECK_DIMS
+
+        check_dims_match(m_mia->dims(),mia_expr_helper::left_inner_product_order(),Rhs.m_mia->dims(),mia_expr_helper::right_inner_product_order(),"An inner-product index is matched with a different sized index.");
+        check_dims_match(m_mia->dims(),mia_expr_helper::left_inter_product_order(),Rhs.m_mia->dims(),mia_expr_helper::right_inter_product_order(),"An inter-product index is matched with a different sized index.");
+
+#endif
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
 
         auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
@@ -935,20 +946,22 @@ public:
         typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         typedef solve_product_expr_helper<m_Seq,r_Seq> helper;
 
+#ifdef LIBMIA_CHECK_DIMS
 
+        check_dims_match(m_mia->dims(),helper::left_inner_product_order(),Rhs.m_mia->dims(),helper::right_inner_product_order(),"An inner-product index is matched with a different sized index.");
+        check_dims_match(m_mia->dims(),helper::left_inter_product_order(),Rhs.m_mia->dims(),helper::right_inter_product_order(),"An inter-product index is matched with a different sized index.");
+
+#endif
 
         MIA_return_type* cMIA(new MIA_return_type(m_mia->noLatticeMult(*Rhs.m_mia,helper::left_inter_product_order(),
                                                                        helper::left_outer_product_order(),
                                                                        helper::right_inter_product_order(),
                                                                        helper::right_outer_product_order())));
+
         constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
 
-        //std::cout << "Pure outer/inter finished " << std::endl;
         //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
-
-
-
 
     }
 
@@ -973,23 +986,37 @@ public:
 
 
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
-
+        typedef typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
         auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
         typedef lattice_expr_helper<solve_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 
         auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
 
+        MIA_return_type* cMIA;
+        if(check_if_copy_needed<other_ownership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
+            typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
+            bMIACopyType temp(*(Rhs.m_mia));
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);
+            auto cLat=aLat.solve(bLat);
+
+            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+        }
+        else{
+            auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,other_ownership>(*(Rhs.m_mia));
+
+            auto cLat=aLat.solve(bLat);
+            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+        }
 
 
-        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,other_ownership>(*(Rhs.m_mia));
-
-        auto cLat=aLat.solve(bLat);
 
 
 
-        typedef typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+
+
+
         constexpr size_t _inter_product_number=MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-        MIA_return_type* cMIA(new MIA_return_type(cMIA_dims,std::move(cLat)));
+
 
 
         //create an MIA from cLat
@@ -1276,7 +1303,17 @@ public:
 
 private:
 
+    //!Helper function to help check whether inner or inter product dimensions match.
+    template<size_t size1,size_t size2,size_t shared_size,class index_type1, class index_type2,class index_type3>
+    void check_dims_match(const std::array<index_type1,size1> & dims1,const std::array<index_type3,shared_size> & order1,
+                     const std::array<index_type2,size2> & dims2,const std::array<index_type3,shared_size> & order2, const std::string & message){
 
+        for(size_t idx=0;idx<shared_size;++idx){
+            if (dims1[order1[idx]]!=dims2[order2[idx]])
+                throw MIAParameterException(message);
+        }
+
+    }
 
 
 };

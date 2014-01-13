@@ -120,6 +120,54 @@ typename MIANonlinearFuncType<MIA_Type>::type negate(const MIA_Type& mia){
     return do_func(mia,std::negate<data_type>());
 }
 
+//!Helper structure to ensure that anytime dimensions are changed, the dimensionality is automatically recalculated
+template<typename index_type,size_t order>
+struct dimsContainer{
+    std::array<index_type,order> m_dims;
+    index_type m_dimensionality;
+    dimsContainer(){
+        m_dims.fill(0);
+        m_dimensionality=0;
+    }
+    void calculate_dimensionality(){
+        m_dimensionality=1;
+        for(auto i=this->m_dims.begin();i<this->m_dims.end();i++){
+            m_dimensionality*=*i;
+
+        }
+    }
+
+    dimsContainer(const std::array<index_type,order> & _dims){
+        m_dims=_dims;
+        calculate_dimensionality();
+
+    }
+
+
+    template<typename ...E>
+    dimsContainer(E...e):m_dims{{e...}}{
+
+        calculate_dimensionality();
+    }
+    bool operator==(const std::array<index_type,order> & _dims)const{
+        return m_dims==_dims;
+    }
+    bool operator!=(const std::array<index_type,order> & _dims)const{
+        return !(m_dims==_dims);
+    }
+    index_type& operator[](int idx) {
+        return m_dims[idx];
+    }
+    const index_type& operator[](int idx) const {
+        return m_dims[idx];
+    }
+    const std::array<index_type,order> &  dims() const{
+        return m_dims;
+    }
+    index_type dimensionality() const{
+        return m_dimensionality;
+    }
+};
 
 /** \addtogroup mia Multi-Index Array Classes
 *  @{
@@ -181,24 +229,22 @@ public:
 
     }
 
-    MIA(){
-        for(auto & i:m_dims)
-            i=0;
-        m_dimensionality=0;
+    MIA():m_dims(){
+
     }
 
 
     template<typename index_param_type>
-    MIA(const std::array<index_param_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo):mSolveInfo(_solveInfo){
+    MIA(const std::array<index_param_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo):m_dims(_dims),mSolveInfo(_solveInfo){
         static_assert(internal::check_index_compatibility<index_type,index_param_type>::type::value,"Dimensions must be given in a data type convertable to index_type");
-        std::copy(_dims.begin(),_dims.end(),m_dims.begin());
-        m_dimensionality=compute_dimensionality();
+
+
     }
 
-    MIA(const std::array<index_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo): m_dims(_dims),m_dimensionality(compute_dimensionality()),mSolveInfo(_solveInfo) {}
+    MIA(const std::array<index_type,mOrder > &_dims, SolveInfo _solveInfo=NoInfo): m_dims(_dims),mSolveInfo(_solveInfo) {}
 
     template<typename... Dims>
-    MIA(Dims... dims):m_dims{{dims...}},m_dimensionality(compute_dimensionality()) {
+    MIA(Dims... dims):m_dims(dims...) {
         static_assert(internal::check_mia_constructor<MIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
     }
 
@@ -211,7 +257,6 @@ public:
 
     void init(const std::array<index_type,mOrder> _dims,SolveInfo _solveInfo=NoInfo){
         m_dims(_dims);
-        m_dimensionality(compute_dimensionality());
         mSolveInfo(_solveInfo);
     }
 
@@ -318,13 +363,14 @@ public:
     }
 
     const std::array<index_type,internal::order<MIA>::value>& dims() const{
-        return m_dims;
+        return m_dims.dims();
     }
     index_type dimensionality() const{
-        return m_dimensionality;
+        return m_dims.dimensionality();
     }
     void set_dims(const std::array<index_type,mOrder>& _dims){
         m_dims=_dims;
+
     }
 
     index_type sub2ind(const std::array<index_type,mOrder> & indices) const{
@@ -425,28 +471,21 @@ public:
     void setSolveInfo(SolveInfo _solveInfo){
         mSolveInfo=_solveInfo;
     }
+private:
+    dimsContainer<index_type,mOrder> m_dims;
+
+
 protected:
 
 
 
-    index_type compute_dimensionality(){
-        index_type running_product=1;
-        for(auto i=this->m_dims.begin();i<this->m_dims.end();i++){
-
-            running_product*=*i;
-
-        }
-        return running_product;
-    };
-
-    void init(){
-        m_dimensionality=compute_dimensionality();
-
-    }
 
 
-    std::array<index_type,mOrder> m_dims;
-    index_type m_dimensionality=0;
+
+
+
+
+
     SolveInfo mSolveInfo=NoInfo;
 
 

@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-#include <boost/operators.hpp>
+
 
 
 #include "LibMIAException.h"
@@ -184,7 +184,7 @@ protected:
         if (rhs.derived().depth()!=derived().depth())
             throw LatticeParameterException("Lattice depths must the same to be multipled.");
         if (derived().width()!=rhs.derived().height())
-            throw LatticeParameterException("LHS Lattice height must be the same as RHS Lattice width.");
+            throw LatticeParameterException("LHS Lattice width must be the same as RHS Lattice height.");
 
     }
 

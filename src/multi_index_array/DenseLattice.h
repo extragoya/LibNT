@@ -133,8 +133,10 @@ public:
     DenseLattice(int _height, int _width, int _depth) : DenseLatticeBase<DenseLattice<T> >(),m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
     {
 
+
         this->zeros();
         this->init( _height,  _width,  _depth);
+
     }
 
     //!  Constructs empty DenseLattice.

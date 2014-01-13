@@ -13,11 +13,12 @@
 // *This work originated as part of a Ph.D. project under the supervision of Dr. Dileepan Joseph at the Electronic Imaging Lab, University of Alberta.
 
 /***************************************************************************
-   The code for introsort is a modified version of Keith Schwarz's version.
+   The code for introsort and natural mergesort is modified from Keith Schwarz's versions.
    Original code can be found online at:
      http://www.keithschwarz.com/interesting/code/?dir=introsort
+     http://www.keithschwarz.com/interesting/code/?dir=natural-mergesort
 
-   This is an implementation of introsort, that accepts a user-defined swapper.
+   1. This is an implementation of introsort, that accepts a user-defined swapper.
    This is necessary for sorting index and data arrays (based on only the index
    arrays), which is a necessary operation in sparse MIAs and lattices. Unlike
    the STL version, this code will only use iter_swap (and not create temp
@@ -28,12 +29,9 @@
    these may or may not use temporary buffers, etc. This required using a non-STL
    implementation of heapsort, as Schawrz's code used the STL version.
 
-   Finally, from benchmarking it seemed that using a final cleanup pass of insertion
-   could be a major source of slowdown. This is likely because any memory-locality
-   gains normally enjoyed by insertion sort are lost when swapping two different
-   arrays. So, insertion sort is turned off by making the minimum block size 2.
+   2. natural mergesort, modified along the lines of above
 
-   Keith Schwarz's original file header follows
+   Keith Schwarz's original file headers are included before each sort implementation
 
 ***************************************************************************
  *
@@ -74,7 +72,7 @@
 
 #ifndef LIBMIAALGORITHM
 #define LIBMIAALGORITHM
-
+#include <boost/timer/timer.hpp>
 
 namespace LibMIA
 {
@@ -92,6 +90,8 @@ namespace internal
 template<typename MainIterator, typename FollowerIterator>
 struct DualSwapper
 {
+    typedef FollowerIterator FollowerItType;
+    typedef MainIterator MainItType;
     const MainIterator _mainBegin;
     const FollowerIterator _followBegin;
     DualSwapper(MainIterator _mainIt,FollowerIterator _followIt): _mainBegin(_mainIt),_followBegin(_followIt)
@@ -102,8 +102,211 @@ struct DualSwapper
         std::iter_swap(_followBegin+(it1-_mainBegin),_followBegin+(it2-_mainBegin));
         std::iter_swap(it1,it2);
     }
+    FollowerItType getFollowIt(MainIterator it) const
+    {
+         return  _followBegin+(it-_mainBegin);
+
+    }
 
 };
+
+
+/**
+ * Function: InterpolationSearch(RandomIterator begin, RandomIterator end,
+ *                               Element elem);
+ * ------------------------------------------------------------------------
+ * Performs interpolation search on the sorted range [begin, end).  It is
+ * assumed that this range consists of finite integral values and that the
+ * input is sorted in ascending order.  Returns whether the element was
+ * located.
+ */
+template <typename RandomIterator, typename Element >
+RandomIterator InterpolationSearchUpperBound(RandomIterator begin, RandomIterator end,
+                                   const typename std::iterator_traits<RandomIterator>::value_type val,const Element & elemGetter) {
+
+
+    RandomIterator it;
+
+    typename std::iterator_traits<RandomIterator>::value_type temp;
+    typedef typename std::iterator_traits<RandomIterator>::difference_type diffT;
+    diffT  step;
+
+    while (begin<end)
+    {
+        if(elemGetter(*begin)>val)
+            return begin;
+        it = begin;
+        temp=elemGetter(*(end - 1));
+        if(temp==val)
+            return end;
+        //std::cout << "end val is " << elemGetter(*(end - 1)) << " with distance " << end - begin << std::endl;
+        if(temp==val+1)
+            step=(end-begin)/2;
+        else{
+            const double interpolation = 1 / (double(temp) - double(val));
+            step=diffT(interpolation * (double(end - begin) - 1));
+        }
+        //std::cout << "step is " << step << std::endl;
+        std::advance (it,step);
+        //std::cout << "new elem is " << elemGetter(*it) << std::endl;
+        if (!(val<elemGetter(*it)))                 // or: if (!comp(val,*it)), for version (2)
+        { begin=++it;   }
+        else {end=it;
+        }
+
+    }
+
+    return begin;
+
+
+
+}
+
+template <typename RandomIterator>
+RandomIterator InterpolationSearchUpperBound(RandomIterator begin, RandomIterator end,
+                                   const typename std::iterator_traits<RandomIterator>::value_type val) {
+        RandomIterator it;
+
+    typename std::iterator_traits<RandomIterator>::value_type temp;
+    typedef typename std::iterator_traits<RandomIterator>::difference_type diffT;
+    diffT  step;
+
+    while (begin<end)
+    {
+        if(*begin>val)
+            return begin;
+        it = begin;
+        temp=*(end - 1);
+        if(temp==val)
+            return end;
+        //std::cout << "end val is " << elemGetter(*(end - 1)) << " with distance " << end - begin << std::endl;
+        if(temp==val+1)
+            step=(end-begin)/2;
+        else{
+            const double interpolation = 1 / (double(temp) - double(val));
+            step=diffT(interpolation * (double(end - begin) - 1));
+        }
+        //std::cout << "step is " << step << std::endl;
+        std::advance (it,step);
+        //std::cout << "new elem is " << elemGetter(*it) << std::endl;
+        if (!(val<*it))                 // or: if (!comp(val,*it)), for version (2)
+        { begin=++it;   }
+        else {end=it;
+        }
+
+    }
+
+    return begin;
+
+
+}
+
+template <typename RandomIterator>
+RandomIterator InterpolationSearchUpperBound(RandomIterator begin, RandomIterator end) {
+    return InterpolationSearchUpperBound(begin, end, *begin);
+
+
+}
+
+/**
+ * Function: InterpolationSearch(RandomIterator begin, RandomIterator end,
+ *                               Element elem);
+ * ------------------------------------------------------------------------
+ * Performs interpolation search on the sorted range [begin, end).  It is
+ * assumed that this range consists of finite integral values and that the
+ * input is sorted in ascending order.  Returns whether the element was
+ * located.
+ */
+template <typename RandomIterator, typename Element >
+RandomIterator InterpolationSearchLowerBound(RandomIterator begin, RandomIterator end,
+                                   typename std::iterator_traits<RandomIterator>::value_type val,const Element & elemGetter) {
+
+
+    RandomIterator it;
+
+    typename std::iterator_traits<RandomIterator>::value_type temp;
+    typedef typename std::iterator_traits<RandomIterator>::difference_type diffT;
+    diffT  step;
+
+    while (begin<end)
+    {
+        if(elemGetter(*begin)==val)
+            return begin;
+        it = begin;
+        temp=elemGetter(*(end - 1));
+
+        if(temp<=val+1)
+            step=(end-begin)/2;
+        else{
+            const double interpolation = 1 / (double(temp) - double(val));
+            step=diffT(interpolation * (double(end - begin) - 1));
+        }
+        //std::cout << "step is " << step << std::endl;
+        std::advance (it,step);
+        //std::cout << "new elem is " << elemGetter(*it) << std::endl;
+        if (elemGetter(*it)<val)                 // or: if (!comp(val,*it)), for version (2)
+        { begin=++it;   }
+        else {end=it;
+        }
+
+    }
+
+
+    return begin;
+
+
+
+}
+
+/**
+ * Function: InterpolationSearch(RandomIterator begin, RandomIterator end,
+ *                               Element elem);
+ * ------------------------------------------------------------------------
+ * Performs interpolation search on the sorted range [begin, end).  It is
+ * assumed that this range consists of finite integral values and that the
+ * input is sorted in ascending order.  Returns whether the element was
+ * located.
+ */
+template <typename RandomIterator, typename Element >
+RandomIterator InterpolationSearchLowerBound(RandomIterator begin, RandomIterator end,
+                                   typename std::iterator_traits<RandomIterator>::value_type val) {
+
+
+    RandomIterator it;
+
+    typename std::iterator_traits<RandomIterator>::value_type temp;
+    typedef typename std::iterator_traits<RandomIterator>::difference_type diffT;
+    diffT  step;
+
+    while (begin<end)
+    {
+        if(*begin==val)
+            return begin;
+        it = begin;
+        temp=*(end - 1);
+
+        if(temp<=val+1)
+            step=(end-begin)/2;
+        else{
+            const double interpolation = 1 / (double(temp) - double(val));
+            step=diffT(interpolation * (double(end - begin) - 1));
+        }
+
+        std::advance (it,step);
+
+        if (*it<val)                 // or: if (!comp(val,*it)), for version (2)
+        { begin=++it;   }
+        else {end=it;
+        }
+
+    }
+
+
+    return begin;
+
+
+
+}
 
 
 /**
@@ -287,7 +490,7 @@ namespace introsort_detail {
      * the final runtime by increasing the time it takes insertion sort to
      * fix up the sequence.
      */
-    const size_t kBlockSize = 2; //this basically turns off insertion sort
+    const size_t kBlockSize = 24;
 
 
     /* Cache how many elements there are. */
@@ -342,6 +545,8 @@ namespace introsort_detail {
     return lg2 * 2;
   }
 
+
+}
   /**
    * Function: InsertionSort(RandomIterator begin, RandomIterator end,
    *                         Comparator comp);
@@ -349,8 +554,8 @@ namespace introsort_detail {
    * Sorts the range [begin, end) into ascending order (according to comp)
    * using insertion sort.
    */
-  template <typename RandomIterator, typename Comparator, typename Swapper>
-  void InsertionSort(RandomIterator begin, RandomIterator end,
+template <typename RandomIterator, typename Comparator, typename Swapper>
+void InsertionSort(RandomIterator begin, RandomIterator end,
                      Comparator comp,Swapper swapper) {
     /* Edge case check - if there are no elements or exactly one element,
      * we're done.
@@ -371,9 +576,7 @@ namespace introsort_detail {
 
 
 
-  }
 }
-
 
 /* Implementation of introsort. */
 template <typename RandomIterator, typename Comparator, typename Swapper>
@@ -388,7 +591,7 @@ void Introsort(RandomIterator begin, RandomIterator end, Comparator comp, Swappe
   IntrosortRec(begin, end, IntrosortDepth(begin, end), comp,swapper);
 
   /* Use insertion sort to clean everything else up. */
-  //InsertionSort(begin, end, comp,swapper);
+  InsertionSort(begin, end, comp,swapper);
 }
 
 /* Non-swapper version calls the swapper version. */
@@ -406,11 +609,279 @@ void Introsort(RandomIterator begin, RandomIterator end) {
 }
 
 
+
+/**************************************************************************
+ * File: NaturalMergesort.hh
+ * Author: Keith Schwarz (htiek@cs.stanford.edu)
+ *
+ * An implementation of the natural mergesort algorithm.  Natural mergesort
+ * is a bottom-up mergesort algorithm that works by implicitly splitting the
+ * input up into a sequence of ascending subranges, then merging adjacent
+ * subranges together until the entire input is sorted.  Since at each stage
+ * the number of sorted subranges decreases by a factor of two, and there
+ * are at most n sorted subranges in the initial input, there can be at most
+ * O(lg n) rounds of merging.  Moreover, each merge of two sequences takes
+ * at most O(n) time, since the maximum size of any two sequences to merge
+ * is at most the size of the input array.  This gives a worst-case upper
+ * bound of O(n lg n) runtime.  The merging is done out-of-place for
+ * simplicity and thus the algorithm uses O(n) auxiliary storage space.
+ *
+ * However, this algorithm runs very quickly if the input is already sorted
+ * to some initial extent.  In the best case, if the input is already
+ * fully-sorted, the algorithm will terminate after running one pass over
+ * the input, using only O(n) time.  In this sense, natural mergesort is
+ * an adaptive sorting algorithm.
+ */
+
+/**
+ * Function: NaturalMergesort(ForwardIterator begin, ForwardIterator end);
+ * ------------------------------------------------------------------------
+ * Sorts the range specified by [begin, end) using the natural mergesort
+ * algorithm.  Auxiliary storage space is placed into a temporary vector.
+ */
+template <typename ForwardIterator>
+void NaturalMergesort(ForwardIterator begin, ForwardIterator end);
+
+/**
+ * Function: NaturalMergesort(ForwardIterator begin, ForwardIterator end,
+ *                            Comparator comp);
+ * ------------------------------------------------------------------------
+ * Sorts the range specified by [begin, end) using the natural mergesort
+ * algorithm.  Auxiliary storage space is placed into a temporary vector,
+ * and the sequence is ordered by the strict weak ordering comp.
+ */
+template <typename ForwardIterator, typename FollowIt,typename Comparator>
+void NaturalMergesort(ForwardIterator begin, ForwardIterator end,FollowIt followBegin, std::vector<typename std::iterator_traits<ForwardIterator>::value_type> & mainScratch,
+                      std::vector<typename std::iterator_traits<FollowIt>::value_type> & followScratch,
+                      Comparator  comp);
+
+/* * * * * Implementation Below This Point * * * * */
+namespace naturalmergesort_detail {
+  /**
+   * Function: SortedRangeEnd(ForwardIterator begin, ForwardIterator end,
+   *                          Comparator comp);
+   * ---------------------------------------------------------------------
+   * Returns an iterator to the end of the longest nondecreasing range
+   * starting at begin in the range [begin, end), according to comparison
+   * comp.  If the entire sequence is sorted, end is returned.
+   */
+  template <typename ForwardIterator, typename Comparator>
+  ForwardIterator SortedRangeEnd(ForwardIterator begin, ForwardIterator end,
+                                 const Comparator & comp) {
+    /* Edge case - if the input is empty, we're done. */
+    if (begin == end) return end;
+//    if(finder(*(end-1))==finder(*begin)) return end;
+//    //if(log2((unsigned)(end-begin))< (end-begin)/(finder(*(end-1))-finder(*begin))){
+//        InterpolationSearch(begin,end,finder);
+//        std::exit(1);
+//        return begin;
+//
+////    }
+//    else{
+        /* Get an iterator that's one step ahead of begin. */
+        ForwardIterator next = begin; ++next;
+
+        /* Keep marching these iterators forward until we find a mismatch or
+        * hit the end.  A mismatch occurs when the element after the current
+        * is strictly less than the current element.
+        */
+        for (; next != end && !comp(*next, *begin); ++next, ++begin)
+        ;
+
+        /* The above loop stops either when next is the end of the sequence or
+        * when next is the crossover point.  In either case, return next.
+        */
+        return next;
+//    }
+  }
+
+
+
+  /**
+   * Function: Merge(ForwardIterator begin, ForwardIterator mid,
+   *                 ForwardIterator end, Comparator comp);
+   * ---------------------------------------------------------------------
+   * Merges the sorted ranges [begin, mid) and [mid, end) together into
+   * one sorted range, using comp as the comparator.
+   */
+  template<typename MainIterator,typename FollowIterator,typename ScratchIterator,typename ScratchIterator2,typename  Comp>
+  void Merge(MainIterator begin, MainIterator mid,MainIterator end, FollowIterator followIt,ScratchIterator scratchIt1, ScratchIterator2 scratchIt2,
+             const Comp & comp) {
+
+
+
+    const size_t kBlockSize = 24;
+    if((size_t)(end-begin)<kBlockSize){
+        InsertionSort(begin,end,comp,internal::DualSwapper<MainIterator,FollowIterator>(begin,followIt));
+        std::copy(begin, end, scratchIt1);
+        std::copy(followIt, followIt+(end-begin), scratchIt2);
+        return;
+    }
+
+    /* Continuously choose the smaller of the two to go in front until some
+     * range is consumed.
+     */
+
+
+
+    MainIterator one = begin, two = mid;
+    FollowIterator followOne=followIt, followTwo=followIt+(mid-begin);
+    while (one != mid && two != end) {
+      if (comp(*one, *two)) { // First sequence has smaller element
+        *scratchIt1++=*one;
+        *scratchIt2++=*followOne;
+        ++one;
+        ++followOne;
+      } else { // Second sequence has smaller element.
+        *scratchIt1++=*two;
+        *scratchIt2++=*followTwo;
+        ++two;
+        ++followTwo;
+      }
+
+
+    }
+    //std::cout << " finished initial merge one: " <<one-begin << " two: " << two-begin << std::endl;
+    /* Once one of the sequences has been exhausted, one of two cases holds:
+     *
+     * 1. The first sequence was consumed.  In that case, the rest of the
+     *    second sequence is valid and we can just copy the merged sequence
+     *    in front of it.
+     * 2. The second sequence was consumed.  In that case, we copy the rest
+     *    of the first sequence into the merged sequence, then write the
+     *    merged sequence back.
+     */
+    if (two == end){
+        std::copy(one, mid, scratchIt1);
+        std::copy(followOne, followIt+(mid-begin), scratchIt2);
+
+    }
+    else{
+        std::copy(two, end, scratchIt1);
+        std::copy(followTwo, followIt+(end-begin), scratchIt2);
+
+    }
+
+//    std::copy(scratchSpace1.begin(), sIt1, begin);
+//    std::copy(scratchSpace2.begin(), sIt2, swapper.getFollowIt(begin));
+
+  }
+
+
+template<typename MainIterator,typename FollowIterator,typename ScratchIterator,typename ScratchIterator2,typename  Comp>
+bool MergeSortLoop(MainIterator begin, MainIterator end, FollowIterator followBegin, ScratchIterator scratchBegin1, ScratchIterator2 scratchBegin2,const Comp& comp, boost::timer::cpu_timer& findtimer){
+
+    bool haveMerged=false;
+    auto scratchIt1=scratchBegin1;
+    auto scratchIt2=scratchBegin2;
+    auto followIt=followBegin;
+
+    for (auto itr = begin; itr != end; ) {
+      /* See how far this range extends. */
+      //findtimer.resume();
+      auto rangeEnd = SortedRangeEnd(itr, end, comp);
+      //findtimer.stop();
+      /* If we hit the end of the range, we're done with this iteration. */
+      if (rangeEnd == end){
+        if(haveMerged){
+            std::copy(itr,end,scratchIt1);
+            std::copy(followIt,followBegin+(end-begin),scratchIt2);
+
+        }
+        break;
+      }
+      /* See where the end of that range is. */
+      //findtimer.resume();
+      auto nextRangeEnd = SortedRangeEnd(rangeEnd, end, comp);
+      //findtimer.stop();
+      /* Merge this range with the range after it. */
+      Merge(itr, rangeEnd, nextRangeEnd,followIt, scratchIt1,scratchIt2,comp);
+
+      /* Flag that we did at least one merge so we don't stop early. */
+      haveMerged = true;
+
+      /* Advance the iterator to the start of the next sequence, which is
+       * directly after the end of the second sorted range.
+       */
+      itr = nextRangeEnd;
+      scratchIt1=scratchBegin1+(itr-begin);
+      scratchIt2=scratchBegin2+(itr-begin);
+      followIt=followBegin+(itr-begin);
+    }
+
+
+    return haveMerged;
+
+
+}
+}
+
+/* Main implementation of the algorithm. */
+template <typename ForwardIterator, typename FollowIt,typename Comparator>
+void NaturalMergesort(ForwardIterator begin, ForwardIterator end,FollowIt followBegin, std::vector<typename std::iterator_traits<ForwardIterator>::value_type> & mainScratch,
+                      std::vector<typename std::iterator_traits<FollowIt>::value_type> & followScratch,
+                      Comparator  comp) {
+  /* Make utility functions implicitly available. */
+  using namespace naturalmergesort_detail;
+
+  const size_t kBlockSize = 24;
+  /* As an edge case, if the input range is empty, we're trivially done. */
+  if (end-begin<2) return;
+
+  if((size_t)(end-begin)<kBlockSize){
+    InsertionSort(begin,end,comp,internal::DualSwapper<ForwardIterator,FollowIt>(begin,followBegin));
+    return;
+  }
+  /* Determine the type of the element being iterated over. */
+
+    mainScratch.resize(end-begin);
+    followScratch.resize(end-begin);
+
+
+
+    /* Create a vector of Ts that will hold the merged sequence. */
+
+  /* Track whether the current iteration of the algorithm has made any
+   * changes.  If it didn't, then we can finish early.
+   */
+  bool haveMerged;
+
+
+  /* Continuously loop, merging together ranges until the input is fully
+   * sorted.
+   */
+   boost::timer::cpu_timer findtimer;
+  size_t ctr=0;
+  do {
+    /* We have not yet merged anything, so clear this flag. */
+
+    //std::cout << "Iteration " << ctr++ << std::endl;
+    /* Scan forward in the loop, looking for adjacent pairs of sorted ranges
+     * and merging them.
+     */
+     //we alternate whether we use the original container or the scrathspace to hold the merged lists
+    if(ctr%2==0){
+        haveMerged=MergeSortLoop(begin, end, followBegin, mainScratch.begin(), followScratch.begin(),comp, findtimer);
+    }
+    else
+        haveMerged=MergeSortLoop(mainScratch.begin(), mainScratch.end(), followScratch.begin(), begin, followBegin,comp, findtimer);
+
+
+    if(!haveMerged && ctr%2){ //if we are done, and the scratchspace holds the final merged lists, we need a final copy back
+        std::copy(mainScratch.begin(), mainScratch.end(),begin);
+        std::copy(followScratch.begin(), followScratch.end(),followBegin);
+    }
+    ctr++;
+  } while (haveMerged);
+  //std::cout << "finding time in sort " << boost::timer::format(findtimer.elapsed()) << std::endl;
+
+}
+
+
+
+
+
 } // namespace internal
-
-
-
-
 
 }// namespace LibMIA
 

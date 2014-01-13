@@ -186,11 +186,11 @@ public:
     \param[in] _indices Raw pointer of index memory. Must have have been allocated to same size as _size. No checking is done to ensure this requirement is met. Must be linear index of column/row major ordering
     \param[in] _size Number of nonzeros contained in the sparse lattice. Undefined behaviour if this is different than size of _data and _indices.
     */
-    MappedSparseLattice(Data _data,Indices _indices,index_type _size, index_type _height,index_type _width,index_type _depth,bool _linIdxSequence=ColumnMajor):  m_data(_data),m_indices(_indices), m_size(_size)
+    MappedSparseLattice(Data _data,Indices _indices,index_type _size, index_type _height,index_type _width,index_type _depth,bool _linIdxSequence=ColumnMajor, bool _isSorted=true):  m_data(_data),m_indices(_indices), m_size(_size)
     {
 
         this->init(_height,_width,_depth);
-        this->sparse_init(false,_linIdxSequence);
+        this->sparse_init(_isSorted,_linIdxSequence);
         //this->sort(ColumnMajor);
 
     }

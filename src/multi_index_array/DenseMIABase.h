@@ -393,10 +393,13 @@ protected:
     template<typename otherDerived, typename array_type,size_t L_inter,size_t L_outer,size_t R_inter,size_t R_outer>
     typename MIANoLatticeProductReturnType<Derived,otherDerived,L_outer+R_outer+L_inter>::type
     noLatticeMult(SparseMIABase<otherDerived> &b,const std::array<array_type,L_inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,R_inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx) const{
-            auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx);
+            auto c= b.noLatticeMult(*this,r_inter_idx,r_outer_idx,l_inter_idx,l_outer_idx); //perform the operation using the SparseMIA functionality
             auto c_reorder=internal::concat_index_arrays(internal::createAscendingIndex<L_outer>(R_outer),internal::createAscendingIndex<R_outer>(),internal::createAscendingIndex<R_inter>(L_outer+R_outer));
             //print_array(c.linIdxSequence(),"Old sort order");
-            c.set_linIdxSequence(c_reorder);
+            //rearrange the linear Index Sequence
+            decltype(c_reorder) newIdxSequence;
+            internal::reorder_from(c.linIdxSequence(),c_reorder,newIdxSequence);
+            c.setLinIdxSequence(newIdxSequence);
             //print_array(c.linIdxSequence(),"New sort order");
             //print_array(c.dims(),"Old dims");
             auto new_c_dims=c.dims();
@@ -474,7 +477,7 @@ auto  DenseMIABase<Derived>::noLatticeMult(const MIA<otherDerived> &b,const std:
 
 
 
-    return internal::implicitNoLatticeMult(this->final_derived(),b.final_derived(),l_inter_idx,l_outer_idx,r_inter_idx,r_outer_idx);
+    return internal::noLatticeMult(this->final_derived(),b.final_derived(),l_inter_idx,l_outer_idx,r_inter_idx,r_outer_idx);
 
 
 }
@@ -518,7 +521,7 @@ template<typename otherDerived,typename boost::enable_if< internal::is_DenseMIA<
 bool DenseMIABase<Derived>::operator==(const MIA<otherDerived> & otherMIA ) const
 {
 
-    if(this->m_dims!=otherMIA.dims())
+    if(this->dims()!=otherMIA.dims())
         return false;
 
     for(size_t idx=0;idx<this->dimensionality();++idx)
@@ -534,7 +537,7 @@ template<typename Derived>
 template<typename otherDerived,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
 bool DenseMIABase<Derived>::fuzzy_equals(const MIA<otherDerived> & otherMIA,data_type precision ) const
 {
-    if(this->m_dims!=otherMIA.dims())
+    if(this->dims()!=otherMIA.dims())
         return false;
 
     for(size_t idx=0;idx<this->dimensionality();++idx)
@@ -577,6 +580,7 @@ auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges
     typedef ImplicitMIA<data_type,new_order,true> retType; //the true tparam ensures that it returns references to the same raw data as *true
     //calculate returing dimensions
     std::array<index_type,new_order> retDims;
+    retDims.fill(0);
     //calculate returing dimensions
     std::array<size_t,new_order> retDimIndices;
     //holds the indices that remain constant (ie Range is only 1)
@@ -592,6 +596,7 @@ auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges
         else if(ranges[idx].mEnd==ranges[idx].mBegin)
             baseline_indices[idx]=ranges[idx].mBegin; //store the constant-valued index
     }
+
     //now create a lambda function that returns a reference to this's data based on the ranges provided
     typedef typename internal::function_type<retType>::type function_type;
 
@@ -756,7 +761,8 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
 
     }
     //add the attraction index ranges to the otherDims to get the returning dimensionality
-    auto retDims=internal::concat_index_arrays(otherDims,attract_index_ranges);
+    std::array<index_type,other_indices.size()+no_attract_partition>  retDims;
+    internal::concat_arrays(otherDims,attract_index_ranges,retDims);
 
     //print_array(other_indices,"other_indices");
     //print_array(retDims,"retDims");

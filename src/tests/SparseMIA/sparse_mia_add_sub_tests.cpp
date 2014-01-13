@@ -74,6 +74,12 @@ void do_work(size_t dim1,size_t dim2){
     c(i,j,k,l)=b(i,j,k,l)+a(j,l,i,k);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1c for ")+typeid(_data_type).name());
 
+
+    c(i,j,k,l)=b(i,j,k,l)+b(k,l,i,j);
+    dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_b(j,l,i,k);
+    BOOST_CHECK_MESSAGE(c==dense_c,std::string("Self addition check 1 for ")+typeid(_data_type).name());
+
+
     //test when a is not sorted (uses a different merge algorithm)
     a.reset_linIdx_sequence();
     a.sort();

@@ -214,9 +214,9 @@ public:
 
 
 
-        sort(m_linIdxSequence);
+        //sort(m_linIdxSequence);
         std::cout << "Val\t" ;
-        std::cout << "Row\t"<< "Column\t" << "Tab\n";
+        std::cout << "Row\t"<< "Column\t" << "Tab\t" << "Index Val\n";
         for (storage_iterator i=storage_begin(); i<storage_end(); i++)
         {
 
@@ -224,7 +224,7 @@ public:
             //T temp2=std::get<0>(temp);
 
             std::cout << std::get<0>(temp) <<"\t" ;
-            std::cout << row(index_val(temp)) << "\t"<< column(index_val(temp)) << "\t" << tab(index_val(temp)) <<std::endl;;
+            std::cout << row(index_val(temp)) << "\t"<< column(index_val(temp)) << "\t" << tab(index_val(temp)) <<"\t" << index_val(temp) << std::endl;;
         }
     }
 
@@ -241,15 +241,7 @@ public:
 
     }
 
-    inline bool idx_less_rowmajor(index_type a, index_type b) const
-    {
 
-
-
-
-        return (column(a)+this->width()*(row(a)+tab(a)*this->height()))<(column(b)+this->width()*(row(b)+tab(b)*this->height()));
-
-    }
 
 
     void sort(bool linIdxSequence=ColumnMajor)
@@ -259,36 +251,50 @@ public:
 
 
 
-        storage_iterator temp=storage_begin();
 
-        if (m_linIdxSequence!=linIdxSequence || !is_sorted())
+        if(!is_sorted()) //if *this is not sorted, we need to do a straight-up sort
         {
 
-            if (linIdxSequence==ColumnMajor)
-                internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+//            std::cout << "normal sort " << std::endl;
+//             boost::timer::cpu_timer ltensor;
+            if(m_linIdxSequence!=linIdxSequence)
+                this->change_sort_order(linIdxSequence);
 
-            else{
+//            std::cout << "change sort order time " << boost::timer::format(ltensor.elapsed()) << std::endl;
+//            ltensor=boost::timer::cpu_timer();
+            internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+             //std::cout << "sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
 
-                //this is a bit of a hack to create a fast comparator when using row major ordering. Since the sparse indices are always row,column,major order, this requires
-                //a fair amount of extra calculation (ie consider the idx_less_rowmajor function)
-                //so we use the fast index shuffle methods, which uses a static FOR loop like structures. This requires some setup, that could be avoided with a more careful
-                //implementation. Also we use a lambda function directly, which avoids the virtual functions of std::function
-                std::array<index_type,3> index_order;
-                index_order[0]=1;index_order[1]=0;index_order[2]=2;
-                auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-                std::array<index_type,3> otherDims={{this->width(),this->height(),this->depth()}};
-                auto multiplier=internal::createMultiplier(otherDims);
-                auto comparator=[this,&dim_accumulator,&multiplier,&otherDims](const index_type lhs, const index_type rhs){
-                    return internal::getShuffleLinearIndex(lhs,otherDims,multiplier,dim_accumulator)<internal::getShuffleLinearIndex(rhs,otherDims,multiplier,dim_accumulator);
 
-                };
-                internal::Introsort(this->index_begin(),this->index_end(),comparator,internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
+
+
+        }
+        else if(m_linIdxSequence!=linIdxSequence && is_sorted()){ //is *this is already sorted, but in a different sort order, we can take advantage of the partial ordering
+            //std::cout << "special sort " << std::endl;
+
+            this->change_sort_order(linIdxSequence);
+           // boost::timer::cpu_timer ltensor;
+            auto start_it=this->index_begin();
+
+
+
+            std::vector<index_type> scracth1;
+            std::vector<data_type> scracth2;
+            while(start_it < this->index_end()){
+                auto end_it=find_tab_end_idx(this->tab(*start_it),start_it, this->index_end());
+                //internal::Introsort(start_it,end_it,std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+                //internal::NaturalMergesort(start_it,end_it,std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()),linIdxSequence==ColumnMajor?this->height():this->width());
+                internal::NaturalMergesort(start_it,end_it,this->data_begin()+(start_it-this->index_begin()),scracth1,scracth2,std::less<index_type>());
+                start_it=end_it;
             }
 
-            m_is_sorted=true;
-            m_linIdxSequence=linIdxSequence;
+            //std::cout << "sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
+
+
+
         }
+        this->set_sorted(true);
 
 
     }
@@ -318,22 +324,29 @@ public:
     inline index_type row(index_type lin_index) const
     {
 
-        return lin_index%this->height();
+        if(this->linIdxSequence()==ColumnMajor){
+            return this->firstIdx(lin_index);
+        }
+        else
+            return this->secondIdx(lin_index);
 
     }
 
     inline index_type column(index_type lin_index) const
     {
-        lin_index/=this->height();
-        return lin_index%this->width();
+        if(this->linIdxSequence()==ColumnMajor){
+            return this->secondIdx(lin_index);
+        }
+        else
+            return this->firstIdx(lin_index);
 
     }
 
     inline index_type tab(index_type lin_index) const
     {
-        lin_index/=this->height();
-        lin_index/=this->width();
-        return lin_index%this->depth();
+
+        return (((unsigned)lin_index)/((unsigned)(this->height()*this->width())))%((unsigned)this->depth());
+
 
     }
 
@@ -504,15 +517,31 @@ public:
 
     const_storage_iterator storage_end() const;
 
+    void transpose(bool do_sort=false){
+        inPlaceTranspose(do_sort);
+    }
     void inPlaceTranspose(bool do_sort=false);
 
-    //non constant b/c a sort may be involved
+
     template<class otherDerived>
     bool operator==(const DenseLatticeBase<otherDerived>& otherLat);
 
     //non constant b/c a sort may be involved
     template<class otherDerived>
+    bool operator==(SparseLatticeBase<otherDerived>& otherLat);
+
+
+
+    template<class otherDerived>
     bool fuzzy_equals(const DenseLatticeBase<otherDerived>& otherLat,data_type precision);
+
+    //non constant b/c a sort may be involved
+    template<class otherDerived>
+    bool fuzzy_equals(SparseLatticeBase<otherDerived>& otherLat,data_type precision);
+
+    bool below_tolerance(const data_type & _data) const;
+
+
 
     //non constant b/c a sort may be involved
     template<class otherDerived>
@@ -520,25 +549,39 @@ public:
         return !(*this==otherLat);
     }
 
-    //!  Utility function for mapping tabs to column-major matrices to use in lattice mulitplication
-    /*!
-    \param[in] row_map A sorted vector mapping compressed indices to full row indices of the current tab
-    \param[in] inner_indices A sorted vector mapping shared column indices to full column indices of the current tab
-    \param[in] t_begin t_end Storage iterator to the nonzeros of the current tab
-    \param[out] mat Resulting CSC matrix. The CSC matrix should already have allocated vectors for data and indices.
-    */
-
-    void to_matrix(const std::vector<index_type> &row_map,const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const;
-
-
-    //!  Utility function for mapping tabs to row-major matrices to use in lattice mulitplication. See to_matrix for more information.
-
-    void to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
+//    //!  Utility function for mapping tabs to column-major matrices to use in lattice mulitplication
+//    /*!
+//    \param[in] row_map A sorted vector mapping compressed indices to full row indices of the current tab
+//    \param[in] inner_indices A sorted vector mapping shared column indices to full column indices of the current tab
+//    \param[in] t_begin t_end Storage iterator to the nonzeros of the current tab
+//    \param[out] mat Resulting CSC matrix. The CSC matrix should already have allocated vectors for data and indices.
+//    */
+//
+//    //void to_matrix(const std::vector<index_type> &row_map,const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const;
+//
+//
+//    //!  Utility function for mapping tabs to row-major matrices to use in lattice mulitplication. See to_matrix for more information.
+//
+//    //void to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const;
 
     index_iterator find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag);
     index_iterator find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag);
     index_iterator find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it);
     index_iterator find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it);
+
+    void change_sort_order(bool _linIdxSequence){
+
+
+        if(this->linIdxSequence()==_linIdxSequence)
+            return;
+        if(_linIdxSequence==ColumnMajor)
+            changeToColumnMajor();
+        else
+            changeToRowMajor();
+
+        this->set_linIdxSequence(_linIdxSequence,false);
+
+    }
 
 protected:
 
@@ -546,9 +589,31 @@ protected:
     index_iterator mult_scatter(std::vector<size_t>::iterator & a_column_idx_begin,std::vector<size_t>::iterator a_column_idx_end,index_iterator a_cur_it,index_iterator a_end, b_index_type b_row,b_index_type b_column,b_data_type beta,
                                                         std::vector<size_t>& row_marker,std::vector<super_data_type> & data_collector,std::vector<ret_index_type> & c_indices);
 
+    void changeToColumnMajor(){
+
+        auto divisor=(unsigned)(this->width()*this->height());
+        for(auto it=this->index_begin();it<this->index_end();++it){
+            auto rem=((unsigned)(*it))%divisor;
+            *it-=rem;
+            *it+=rem/((unsigned)this->width())+(rem%((unsigned)this->width()))*this->height();
+        }
+    }
+
+    void changeToRowMajor(){
+
+        auto divisor=(unsigned)(this->width()*this->height());
+        for(auto it=this->index_begin();it<this->index_end();++it){
+            auto rem=((unsigned)(*it))%divisor;
+            *it-=rem;
+            *it+=rem/((unsigned)this->height())+(rem%((unsigned)this->height()))*this->width();
+        }
+    }
 
     template<class otherDerived, class BinaryPredicate>
     bool compare_with_dense(const DenseLatticeBase<otherDerived>& otherLat,BinaryPredicate predicate);
+
+    template<class otherDerived, class BinaryPredicate>
+    bool compare_with_sparse(SparseLatticeBase<otherDerived>& otherLat,BinaryPredicate predicate);
 
     index_type full2lin_index(index_type _row, index_type _column, index_type _tab) const;
 
@@ -560,6 +625,30 @@ protected:
 
 
     }
+
+    //! Returns the firstIdx - if lattice is sorted columnmajor, will return row, otherwise column
+    inline index_type firstIdx(index_type _idx) const{
+        if(this->linIdxSequence()==ColumnMajor){
+            return ((unsigned)_idx)%((unsigned)this->height());
+        }
+        else
+            return ((unsigned)_idx)%((unsigned)this->width());
+    }
+    //! Returns the second index - if lattice is sorted columnmajor, will return column, otherwise row
+    inline index_type secondIdx(index_type _idx) const{
+        if(this->linIdxSequence()==ColumnMajor){
+
+            return (((unsigned)_idx)/((unsigned)this->height()))%((unsigned)this->width());
+
+        }
+        else{
+            return (((unsigned)_idx)/((unsigned)this->width()))%((unsigned)this->height());
+        }
+    }
+
+
+
+
 
 
     template <class otherDerived, bool LSQR>
@@ -579,7 +668,10 @@ inline typename SparseLatticeBase<Derived>::index_type
 SparseLatticeBase<Derived>::full2lin_index(index_type _row, index_type _column, index_type _tab) const
 {
 
-    return _row+_column*this->height()+_tab*this->height()*this->width();
+    if(this->linIdxSequence()==ColumnMajor)
+        return _row+_column*this->height()+_tab*this->height()*this->width();
+    else
+        return _column+_row*this->width()+_tab*this->height()*this->width();
 
 }
 
@@ -649,20 +741,36 @@ SparseLatticeBase<Derived>::storage_end() const
 
 }
 
+
+//!checks whether the data is under the zero tolerance
+template<typename Derived>
+bool SparseLatticeBase<Derived>::below_tolerance(const data_type & _data) const
+{
+    if(std::abs(_data)<=SparseTolerance<data_type>::tolerance)
+        return true;
+    return false;
+}
+
 template<typename Derived>
 void SparseLatticeBase<Derived>::inPlaceTranspose(bool do_sort)
 {
 
 
-    for(auto it=this->index_begin();it<this->index_end();++it)
-        *it=this->column(*it)+this->width()*(this->row(*it)+this->height()*this->tab(*it));
 
-
-    std::swap(this->m_height,this->m_width);
     if(do_sort)
-        this->sort(this->linIdxSequence());
+    {
+
+        this->sort(!this->linIdxSequence());
+
+
+    }
     else
-        this->set_sorted(false);
+        this->change_sort_order(!this->linIdxSequence()); //switch second and first indices
+
+
+
+    this->set_linIdxSequence(!this->linIdxSequence(),do_sort); //now switch back to old linIdxSequence, making a transpose
+    std::swap(this->m_height,this->m_width); //switch second and first dimensions
 
 
 }
@@ -677,6 +785,84 @@ bool SparseLatticeBase<Derived>::operator==(const DenseLatticeBase<otherDerived>
         return a==b;
     };
     return compare_with_dense(otherLat,pred);
+}
+
+template<class Derived>
+template<class otherDerived>
+bool SparseLatticeBase<Derived>::operator==(SparseLatticeBase<otherDerived>& otherLat)
+{
+    typedef typename SparseLatticeBase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[](data_type a,other_data_type b){
+        return a==b;
+    };
+    return compare_with_sparse(otherLat,pred);
+}
+
+template<class Derived>
+template<class otherDerived>
+bool SparseLatticeBase<Derived>::fuzzy_equals(SparseLatticeBase<otherDerived>& otherLat,data_type precision)
+{
+    typedef typename SparseLatticeBase<otherDerived>::data_type other_data_type;
+    std::function<bool(data_type,other_data_type)> pred=[precision](data_type a,other_data_type b){
+        return isEqualFuzzy(a,b,precision);
+    };
+    return compare_with_sparse(otherLat,pred);
+}
+
+template<class Derived>
+template<class otherDerived, class BinaryPredicate>
+bool SparseLatticeBase<Derived>::compare_with_sparse(SparseLatticeBase<otherDerived>& otherLat,BinaryPredicate predicate)
+{
+    if(this->dims()!=otherLat.dims())
+        return false;
+
+    this->sort();
+    otherLat.sort(this->linIdxSequence());
+    auto it2=otherLat.index_begin();
+    auto it1=this->index_begin();
+    while(it1<this->index_end() && it2<otherLat.index_end()){
+        auto & data1=this->data_at(it1);
+        auto & data2=otherLat.data_at(it2);
+        if(this->below_tolerance(data1))
+            it1++;
+        else if(otherLat.below_tolerance(data2))
+            it2++;
+        else{
+            if (*it1!=*it2){
+                //std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
+                return false;
+            }
+            if (!predicate(data1,data2)){
+                //std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
+                return false;
+            }
+
+            it1++;
+            it2++;
+
+        }
+
+    }
+    //in case nnz of each MIA is different, both index iterators will not have reached the end
+    //so check remaining nnz are below the zero tolerance
+    while(it1++<this->index_end()){
+        if(!this->below_tolerance(this->data_at(it1))){
+            //std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
+            return false;
+        }
+    }
+    while(it2++<otherLat.index_end()){
+        if(!otherLat.below_tolerance(otherLat.data_at(it2))){
+            //std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
+            return false;
+        }
+    }
+
+
+
+    return true;
+
+
 }
 
 template<class Derived>
@@ -697,7 +883,7 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
 
     if(this->height()!=otherLat.height() || this->width()!=otherLat.width() || this->depth()!=otherLat.depth())
         return false;
-    typedef typename DenseLatticeBase<otherDerived>::data_type other_data_type;
+
 
     if (!this->size())
     {
@@ -712,13 +898,13 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
         this->sort(ColumnMajor);
         auto it=this->storage_begin();
         if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it))){
-            std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
+            //std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
             return false;
         }
 
         for(index_type idx=0; idx<index_val(*(it)); idx++)
              if(!predicate(otherLat.atIdx(idx),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
+                //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                 return false;
              }
 
@@ -727,13 +913,13 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
         {
             if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it)))
             {
-                std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
+                //std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
 
                 return false;
             }
             for(auto idx=index_val(*(it-1))+1; idx<index_val(*(it)); idx++)
                 if(!predicate(otherLat.atIdx(idx),0)){
-                    std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
+                    //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                     return false;
                 }
 
@@ -741,7 +927,7 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
 
         for(index_type idx=*(this->index_end()-1)+1; idx<this->height()*this->width()*this->depth(); idx++)
              if(!predicate(otherLat.atIdx(idx),0)){
-                std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
+                //std::cout << "Trigered not-zero " << idx << " " << otherLat.atIdx(idx) << std::endl;
                 return false;
             }
 
@@ -768,20 +954,30 @@ auto SparseLatticeBase<Derived>::find_tab_start_idx(index_type _tab,index_iterat
 template <class Derived>
 auto SparseLatticeBase<Derived>::find_tab_start_idx(index_type _tab,index_iterator start_it, index_iterator end_it)->index_iterator
 {
+    if(start_it==end_it)
+        return start_it;
+    if(this->tab(*start_it)==_tab)
+        return start_it;
     bool search_flag=false;
-    if(this->depth()*log2(this->size())<this->size())
+    if(log2((unsigned)(end_it-start_it))< (end_it-start_it)/(this->tab(*(end_it-1))-this->tab(*start_it)))
         search_flag=true;
     return find_tab_start_idx(_tab,start_it,end_it,search_flag);
-
+//if(this->depth()*log2((unsigned)(end_it-start_it))<this->size())
 }
 
 template <class Derived>
 auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it, bool search_flag)->index_iterator
 {
+
     if(search_flag)
-        start_it= std::upper_bound(start_it,end_it,_tab,[this](index_type lhs, index_type rhs){
-                return lhs<this->tab(rhs);
-            });
+        start_it= internal::InterpolationSearchUpperBound(start_it, end_it,_tab,
+            [this](const index_type & lhs){
+                return this->tab(lhs);
+            }
+        );
+//        std::upper_bound(start_it,end_it,_tab,[this](index_type lhs, index_type rhs){
+//                return lhs<this->tab(rhs);
+//            });
     else{
         while(start_it<end_it && this->tab(*start_it)<=_tab)
             start_it++;
@@ -793,8 +989,12 @@ auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator
 template <class Derived>
 auto SparseLatticeBase<Derived>::find_tab_end_idx(index_type _tab,index_iterator start_it, index_iterator end_it)->index_iterator
 {
+    if(start_it==end_it)
+        return start_it;
+    if(this->tab(*(end_it-1))==_tab)
+        return end_it;
     bool search_flag=false;
-    if(this->depth()*log2(this->size())<this->size())
+    if(log2((unsigned)(end_it-start_it))< (end_it-start_it)/(this->tab(*(end_it-1))-this->tab(*start_it)))
         search_flag=true;
     return find_tab_end_idx(_tab,start_it,end_it,search_flag);
 
@@ -837,45 +1037,60 @@ template <class Derived>
 template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
+    boost::timer::cpu_timer timer,timer_minor;
+    //std::cout << "Entered sparse*dense " << std::endl;
     this->check_mult_dims(b);
-    typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
-    typedef typename otherDerived::index_type b_index_type;
 
-    typename c_type::Indices c_indices;
-    c_indices.reserve(b.dimensionality()*.8); //hard to predict size
-    typename c_type::Data c_data;
-    c_data.reserve(b.dimensionality()*.8); //hard to predict size
-    typename internal::data_type<c_type>::type cur_c_data;
-
-    this->sort(RowMajor);
-
-    auto a_temp_begin=this->index_begin();
-    auto a_temp_end=a_temp_begin;
-
-    while(a_temp_begin<this->index_end()){
-        auto cur_tab=this->tab(*a_temp_begin);
-        auto cur_row=this->row(*a_temp_begin);
-        a_temp_end=a_temp_begin+1;
-        while(a_temp_end<this->index_end()&&this->tab(*a_temp_end)==cur_tab && this->row(*a_temp_end)==cur_row){
-            a_temp_end++;
-        }
-        for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
-            cur_c_data=0;
-            for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
-                cur_c_data+=this->data_at(a_it)*b(this->column(*a_it),b_columns,cur_tab);
-
-            }
-            if(std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
-                c_data.push_back(cur_c_data);
-                c_indices.push_back(cur_row+(b_columns+cur_tab*b.width())*this->height());
-            }
-        }
-        a_temp_begin=a_temp_end;
-    }
-    c_type ret(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth());
-    ret.set_linIdxSequence(RowMajor);
-
+    this->transpose(true);
+    //std::cout << "Finished transpose " << std::endl;
+    typename SparseProductReturnType<Derived,otherDerived>::type ret=b.transpose()*(*this);
+    this->transpose(false);
+    ret.transpose(false);
+    //std::cout << "Sparse x dense time " << boost::timer::format(timer.elapsed()) << std::endl;
     return ret;
+//    typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
+//    typedef typename otherDerived::index_type b_index_type;
+//
+//    timer_minor=boost::timer::cpu_timer();
+//    typename c_type::Indices c_indices;
+//    c_indices.reserve(b.dimensionality()*.8); //hard to predict size
+//    typename c_type::Data c_data;
+//    c_data.reserve(b.dimensionality()*.8); //hard to predict size
+//    typename internal::data_type<c_type>::type cur_c_data;
+//    std::cout << "Did reserve " << boost::timer::format(timer_minor.elapsed()) << std::endl;
+//    timer_minor=boost::timer::cpu_timer();
+//    this->print();
+//    this->sort(RowMajor);
+//    this->print();
+//    std::cout << "Did sort " << boost::timer::format(timer_minor.elapsed()) << std::endl;
+//    auto a_temp_begin=this->index_begin();
+//    auto a_temp_end=a_temp_begin;
+//
+//    while(a_temp_begin<this->index_end()){
+//        auto cur_tab=this->tab(*a_temp_begin);
+//        auto cur_row=this->row(*a_temp_begin);
+//        a_temp_end=a_temp_begin+1;
+//        while(a_temp_end<this->index_end()&&this->tab(*a_temp_end)==cur_tab && this->row(*a_temp_end)==cur_row){
+//            a_temp_end++;
+//        }
+//        for(b_index_type b_columns=0;b_columns<b.width();++b_columns){
+//            cur_c_data=0;
+//            for(auto a_it=a_temp_begin;a_it<a_temp_end;++a_it){
+//                cur_c_data+=this->data_at(a_it)*b(this->column(*a_it),b_columns,cur_tab);
+//
+//            }
+//            if(std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
+//                c_data.push_back(cur_c_data);
+//                c_indices.push_back(b_columns +(cur_row+cur_tab*this->height())*b.width());
+//            }
+//        }
+//        a_temp_begin=a_temp_end;
+//    }
+//    c_type ret(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth());
+//    ret.set_linIdxSequence(RowMajor);
+//    std::cout << "Sparse x dense time " << boost::timer::format(timer.elapsed()) << std::endl;
+//    this->sort(ColumnMajor);
+//    return ret;
 
 
 }
@@ -1507,108 +1722,108 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     return RType(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth());
 }
 #endif
-template <class Derived>
-inline void SparseLatticeBase<Derived>::to_matrix(const std::vector<index_type> &row_map, const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const
-{
-
-
-
-
-
-    index_type outer_val=0;
-    auto mat_rows=mat.innerIndexPtr();
-    auto mat_columns=mat.outerIndexPtr();
-    typename std::vector<index_type>::const_iterator cur_row;
-    for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
-    {
-
-        //std::cout << "Cur inner index " << *cur_it << "column of lattice " << column(index(*t_begin)) << std::endl;
-        *mat_columns=outer_val;
-        //std::cout << "column set to " << *mat_columns << std::endl;
-        mat_columns++;
-        cur_row=row_map.begin();
-        while (t_end-t_begin>0 && column(index_val(*t_begin))<*cur_it){
-
-            t_begin++;
-        }
-
-        //less than greater than operators don't seem to work with tupleit (id3eally this function should just use index/data iterators instead.
-        while (t_end-t_begin>0 && column(index_val(*t_begin))==*cur_it)
-        {
-            cur_row=std::lower_bound(cur_row,row_map.end(),row(index_val(*t_begin)));
-            *mat_rows=cur_row-row_map.begin();
-            //std::cout << "seting row to " << *mat_rows << std::endl;
-            mat_rows++;
-            outer_val++;
-            t_begin++;
-
-
-        }
-        if(t_end-t_begin<1){
-
-            break;
-        }
-
-
-
-    }
-
-    while(mat_columns<=mat.outerIndexPtr()+mat.outerSize()){
-        //std::cout << "final column " << mat_columns-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
-        *mat_columns=mat.nonZeros();
-        mat_columns++;
-    }
-
-
-}
-
-
-template <class Derived>
-inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const
-{
-
-
-
-
-    index_type outer_val=0;
-    auto mat_columns=mat.innerIndexPtr();
-    auto mat_rows=mat.outerIndexPtr();
-    typename std::vector<index_type>::const_iterator cur_column;
-    for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
-    {
-
-        //std::cout << "Cur inner index " << *cur_it << "row of lattice " << row(index(*t_begin)) << std::endl;
-        *mat_rows=outer_val;
-        //std::cout << "row set to " << *mat_rows << std::endl;
-        mat_rows++;
-        cur_column=column_map.begin();
-
-
-        while (t_end-t_begin>0 && row(index_val(*t_begin))<*cur_it)
-            t_begin++;
-
-        while (t_end-t_begin>0 && row(index_val(*t_begin))==*cur_it)
-        {
-            cur_column=std::lower_bound(cur_column,column_map.end(),column(index_val(*t_begin)));
-            *mat_columns=cur_column-column_map.begin();
-            //std::cout << "seting column to " << *mat_columns << std::endl;
-            outer_val++;
-            mat_columns++;
-            t_begin++;
-        }
-        if(t_end-t_begin<1)
-            break;
-
-
-    }
-    while(mat_rows<=mat.outerIndexPtr()+mat.outerSize()){
-        //std::cout << "final row " << mat_rows-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
-        *mat_rows=mat.nonZeros();
-        mat_rows++;
-    }
-
-
-}
+//template <class Derived>
+//inline void SparseLatticeBase<Derived>::to_matrix(const std::vector<index_type> &row_map, const std::vector<index_type> &inner_indices,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_cm& mat) const
+//{
+//
+//
+//
+//
+//
+//    index_type outer_val=0;
+//    auto mat_rows=mat.innerIndexPtr();
+//    auto mat_columns=mat.outerIndexPtr();
+//    typename std::vector<index_type>::const_iterator cur_row;
+//    for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
+//    {
+//
+//        //std::cout << "Cur inner index " << *cur_it << "column of lattice " << column(index(*t_begin)) << std::endl;
+//        *mat_columns=outer_val;
+//        //std::cout << "column set to " << *mat_columns << std::endl;
+//        mat_columns++;
+//        cur_row=row_map.begin();
+//        while (t_end-t_begin>0 && column(index_val(*t_begin))<*cur_it){
+//
+//            t_begin++;
+//        }
+//
+//        //less than greater than operators don't seem to work with tupleit (id3eally this function should just use index/data iterators instead.
+//        while (t_end-t_begin>0 && column(index_val(*t_begin))==*cur_it)
+//        {
+//            cur_row=std::lower_bound(cur_row,row_map.end(),row(index_val(*t_begin)));
+//            *mat_rows=cur_row-row_map.begin();
+//            //std::cout << "seting row to " << *mat_rows << std::endl;
+//            mat_rows++;
+//            outer_val++;
+//            t_begin++;
+//
+//
+//        }
+//        if(t_end-t_begin<1){
+//
+//            break;
+//        }
+//
+//
+//
+//    }
+//
+//    while(mat_columns<=mat.outerIndexPtr()+mat.outerSize()){
+//        //std::cout << "final column " << mat_columns-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
+//        *mat_columns=mat.nonZeros();
+//        mat_columns++;
+//    }
+//
+//
+//}
+//
+//
+//template <class Derived>
+//inline void SparseLatticeBase<Derived>::to_matrix_rowmajor(const std::vector<index_type> &inner_indices,const std::vector<index_type> &column_map,storage_iterator t_begin, storage_iterator t_end, MappedSparseMatrix_rm& mat) const
+//{
+//
+//
+//
+//
+//    index_type outer_val=0;
+//    auto mat_columns=mat.innerIndexPtr();
+//    auto mat_rows=mat.outerIndexPtr();
+//    typename std::vector<index_type>::const_iterator cur_column;
+//    for(auto cur_it=inner_indices.begin(); cur_it<inner_indices.end(); cur_it++)
+//    {
+//
+//        //std::cout << "Cur inner index " << *cur_it << "row of lattice " << row(index(*t_begin)) << std::endl;
+//        *mat_rows=outer_val;
+//        //std::cout << "row set to " << *mat_rows << std::endl;
+//        mat_rows++;
+//        cur_column=column_map.begin();
+//
+//
+//        while (t_end-t_begin>0 && row(index_val(*t_begin))<*cur_it)
+//            t_begin++;
+//
+//        while (t_end-t_begin>0 && row(index_val(*t_begin))==*cur_it)
+//        {
+//            cur_column=std::lower_bound(cur_column,column_map.end(),column(index_val(*t_begin)));
+//            *mat_columns=cur_column-column_map.begin();
+//            //std::cout << "seting column to " << *mat_columns << std::endl;
+//            outer_val++;
+//            mat_columns++;
+//            t_begin++;
+//        }
+//        if(t_end-t_begin<1)
+//            break;
+//
+//
+//    }
+//    while(mat_rows<=mat.outerIndexPtr()+mat.outerSize()){
+//        //std::cout << "final row " << mat_rows-mat.outerIndexPtr() << "set to " << mat.nonZeros() << std::endl;
+//        *mat_rows=mat.nonZeros();
+//        mat_rows++;
+//    }
+//
+//
+//}
 
 
 namespace{
@@ -1722,7 +1937,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
 
-    typedef typename SparseSolveReturnType<Derived,otherDerived>::type RType;
+
 
 
     if (this->width()==this->height()){
@@ -1754,7 +1969,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
 
-    typedef typename SparseSolveReturnType<Derived,otherDerived>::type RType;
+
 
 
     if (this->width()==this->height()){
@@ -1780,6 +1995,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 {
 
 
+    std::cout << "Entered sparse solve sparse " << std::endl;
     this->check_solve_dims(b);
 
 
@@ -1787,9 +2003,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
     typedef typename c_type::vector_type c_vector_type;
 
-    typedef typename internal::index_type<otherDerived>::type b_index_type;
-    typedef typename internal::storage_iterator<otherDerived>::type other_storage_iterator;
-    typedef typename internal::index_iterator<otherDerived>::type other_index_iterator;
+
 
 
     //determine whether we want to binary search or just scan through elements
@@ -1942,7 +2156,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     }
 
 
-
+    std::cout << "Exited sparse solve sparse " << std::endl;
     return c;
 }
 template <class Derived>
@@ -1950,15 +2164,19 @@ template <class otherDerived,bool LSQR>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<otherDerived> &b)
 {
 
+    std::cout << "Entered sparse solve with dense " << std::endl;
+
     this->check_solve_dims(b);
     typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
-    typedef typename c_type::matrix_type c_matrix_type;
 
 
 
-    std::cout << "Entered mixed solve " << std::endl;
+
+
     sort(ColumnMajor); //tab/column major for A
 
+
+    std::cout << "Finished sort" << std::endl;
     //iterators for for indices and data
     index_iterator a_temp_begin=this->index_begin();
     auto a_index_end=this->index_end();
@@ -1974,7 +2192,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
-
+    std::cout << "Allocated" << std::endl;
 
     for (int k=0; k<this->depth(); k++) //loop through every tab
     {
@@ -2016,7 +2234,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
-
+            std::cout << "Made ccs matrix" << std::endl;
             //compute LU decomposition
             //get solver
             typedef sparse_lattice_solver<LSQR,MappedSparseMatrix_cm> solverType;
@@ -2035,7 +2253,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 auto c_vector=c.column_vector(col_idx,k);
                 auto b_vector=b.column_vector(col_idx,k);
                 _solver._solve(b_vector,c_vector);
-
+                std::cout << "solved" << std::endl;
                 if(_solver.info()!=Eigen::Success)
                 {
                     this->mSolveInfo=RankDeficient;
@@ -2073,7 +2291,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     }
 
 
-
+    std::cout << "Finished sparse solve with dense " << std::endl;
     return c;
 }
 

@@ -41,7 +41,7 @@ perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const O
     typedef typename MIAMergeReturnType<Derived,otherDerived>::type retMIAType;
 
 
-    typedef typename internal::index_type<retMIAType>::type index_type;
+
     typedef typename internal::index_type<otherDerived>::type b_index_type;
     retMIAType c(a.dims());
 
@@ -246,6 +246,59 @@ auto implicitNoLatticeMult(const MIA &a,const otherMIA &b,const std::array<array
         return a.atIdx(l_idx)*b.atIdx(r_idx);
     };
     c.get_function()=_function;
+    return c;
+
+
+
+}
+
+
+
+template<typename MIA,typename otherMIA, typename array_type,size_t Inter,size_t L_outer,size_t R_outer>
+auto noLatticeMult(const MIA &a,const otherMIA &b,const std::array<array_type,Inter>&l_inter_idx,const std::array<array_type,L_outer>&l_outer_idx,const std::array<array_type,Inter>&r_inter_idx,const std::array<array_type,R_outer>&r_outer_idx)
+->typename MIANoLatticeProductReturnType<MIA,otherMIA,L_outer+R_outer+Inter>::type
+{
+
+    typedef typename MIANoLatticeProductReturnType<MIA,otherMIA,L_outer+R_outer+Inter>::type RetType;
+    typedef typename internal::index_type<RetType>::type index_type;
+    typedef typename internal::index_type<MIA>::type a_index_type;
+    typedef typename internal::index_type<otherMIA>::type b_index_type;
+
+    static_assert(internal::check_index_compatibility<index_type,array_type>::type::value,"Must use an array convertable to index_type");
+    std::array<a_index_type, Inter> l_inter_dims;
+    std::array<a_index_type, L_outer> l_outer_dims;
+    std::array<b_index_type, Inter> r_inter_dims;
+    std::array<b_index_type, R_outer> r_outer_dims;
+
+
+
+
+    //get inter and outer dimensionality and the individual dimensions that make up that number - should default to one if any of the arrays are empty
+    size_t l_inter_size=internal::reorder_from(a.dims(), l_inter_idx,l_inter_dims);
+    size_t r_inter_size= internal::reorder_from(b.dims(), r_inter_idx,r_inter_dims);
+    if(l_inter_size!=r_inter_size || !std::equal(l_inter_dims.begin(),l_inter_dims.end(),r_inter_dims.begin()))
+        throw DimensionMismatchException("Element-wise dimensions must match during MIA multiplication");
+    internal::reorder_from(a.dims(), l_outer_idx,l_outer_dims);
+    internal::reorder_from(b.dims(), r_outer_idx,r_outer_dims);
+
+    std::array<index_type,L_outer+R_outer+Inter> retDims;
+    concat_arrays(l_outer_dims, r_outer_dims,l_inter_dims,retDims);
+    RetType c(retDims);
+
+    for(index_type idx=0;idx<c.dimensionality();++idx){
+        auto full_indices=c.ind2sub(idx);
+        a_index_type l_idx(0);
+        b_index_type r_idx(0);
+        l_idx+=internal::sub2ind(full_indices.begin(),full_indices.begin()+L_outer,l_outer_idx,a.dims());
+        l_idx+=internal::sub2ind(full_indices.begin()+L_outer+R_outer,full_indices.end(),l_inter_idx,a.dims());
+        r_idx+=internal::sub2ind(full_indices.begin()+L_outer,full_indices.begin()+L_outer+R_outer,r_outer_idx,b.dims());
+        r_idx+=internal::sub2ind(full_indices.begin()+L_outer+R_outer,full_indices.end(),r_inter_idx,b.dims());
+        c.atIdx(idx)=a.atIdx(l_idx)*b.atIdx(r_idx);
+
+
+    }
+
+
     return c;
 
 
