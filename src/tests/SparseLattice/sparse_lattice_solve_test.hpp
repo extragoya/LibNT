@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE SparseLatticeSolveTests
+
 
 
 
@@ -114,19 +114,4 @@ void solvework(size_t m1, size_t n1, size_t n2, size_t p){
 
 }
 
-BOOST_AUTO_TEST_CASE( SparseLatticeSolveTests )
-{
 
-
-    //multwork<double>(3,3,3,3);
-
-    //solvework<double>(10,10,10,1);
-
-    solvework<double>(20,20,10,20);
-
-    solvework<float>(20,20,10,20);
-
-
-
-
-}

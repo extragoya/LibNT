@@ -1023,11 +1023,11 @@ protected:
                 it2++;
             else{
                 if (*it1!=*it2){
-                    //std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
+                    std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
                     return false;
                 }
                 if (!predicate(data1,data2)){
-                    //std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
+                    std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
                     return false;
                 }
 
@@ -1039,15 +1039,15 @@ protected:
         }
         //in case nnz of each MIA is different, both index iterators will not have reached the end
         //so check remaining nnz are below the zero tolerance
-        while(it1++<this->index_end()){
-            if(!this->below_tolerance(this->data_at(it1))){
-                //std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
+        while(it1<this->index_end()){
+            if(!this->below_tolerance(this->data_at(it1++))){
+                std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
                 return false;
             }
         }
-        while(it2++<otherMIA.index_end()){
-            if(!otherMIA.below_tolerance(otherMIA.data_at(it2))){
-                //std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
+        while(it2<otherMIA.index_end()){
+            if(!otherMIA.below_tolerance(otherMIA.data_at(it2++))){
+                std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
                 return false;
             }
         }

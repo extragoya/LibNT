@@ -31,7 +31,7 @@
 #include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "DenseMIABase.h"
-
+#include "FunctionUtil.h"
 
 
 //\defgroup
@@ -186,9 +186,6 @@ public:
     typedef typename internal::const_data_iterator<ImplicitMIA>::type const_data_iterator;
 
 
-private:
-
-    function_type mFunction;
 
 
 public:
@@ -199,11 +196,12 @@ public:
     {
         return *this;
     }
-    /** \returns a const reference to the derived object */
+    //! \returns a const reference to the derived object
     const FinalDerived& final_derived() const
     {
         return *this;
     }
+
 
     //!  Constructs empty ImplicitMIA
     ImplicitMIA():DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >()
@@ -211,7 +209,7 @@ public:
         mFunction=this->zero_function();
     }
 
-    //!  Constructs ImplicitMIA of specified size with a given raw data pointer.
+    //!  Constructs ImplicitMIA of specified size
     /*!
         \tparam[in] _dims The dimensions size of data. Will assert a compile failure is size is different than _order
 
@@ -229,23 +227,38 @@ public:
     //!  Copy constructor
     ImplicitMIA(const ImplicitMIA& otherMIA):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(otherMIA.dims())
     {
-        mFunction=otherMIA.mFunction;
+        mFunction=otherMIA.get_function();
+    }
+
+    //!  Move constructor
+    ImplicitMIA(ImplicitMIA&& otherMIA):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(otherMIA.dims())
+    {
+        mFunction=otherMIA.get_function();
+    }
+
+    ImplicitMIA& operator=(const ImplicitMIA & otherMIA){
+        this->set_dims(otherMIA.dims());
+        this->mFunction=otherMIA.get_function();
+
+        return *this;
     }
 
 
-    //!  Constructs ImplicitMIA of specified size with a given raw data pointer.
+    //!  Constructs ImplicitMIA of specified size
     /*!
         \tparam[in] _dims The dimensions size of data. Will assert a compile failure is size is different than _order
 
 
     */
     template<class array_index_type>
-    ImplicitMIA(const function_type &_function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(_dims)
+    ImplicitMIA( function_type& _function,const std::array<array_index_type,_order> &_dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> >(_dims)
     {
 
 
         mFunction=_function;
     }
+
+
 
 
     //!  Constructs DenseMIA of specified size.
@@ -256,7 +269,7 @@ public:
 
     */
     template<typename... Dims>
-    ImplicitMIA(const function_type &_function,Dims... dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> > {dims...}
+    ImplicitMIA(function_type &_function,Dims... dims):DenseMIABase<ImplicitMIA<_data_type,_order,isRef> > {dims...}
     {
 
         static_assert(internal::check_mia_constructor<ImplicitMIA,Dims...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
@@ -264,12 +277,7 @@ public:
 
     }
 
-    ImplicitMIA& operator=(const ImplicitMIA & otherMIA){
-        this->set_dims(otherMIA.dims());
-        this->mFunction=otherMIA.get_function();
 
-        return *this;
-    }
 
 
 
@@ -506,6 +514,9 @@ protected:
     }
 
 private:
+
+    function_type mFunction;
+
 
 
 

@@ -24,6 +24,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "LibMIAUtil.h"
+#include "ImplicitMIA.h"
 #include "LibMIARanges.h"
 #include "FunctionUtil.h"
 #include "MIA.h"
@@ -295,11 +296,14 @@ public:
     */
     template<typename... Ranges>
     ImplicitMIA<data_type,internal::get_range_count<Ranges...>::range_count::value,true> view(Ranges... ranges) const {
+
+
         static_assert(internal::check_ranges<DenseMIABase,Ranges...>::type::value,"Range or integral datatypes must be passed to MIA when creating a view. Number of arguments must be equal to MIA order.");
         typedef typename internal::get_range_count<Ranges...>::range_count range_count;
 
         std::array<Range<index_type>,mOrder> range_array;
         internal::get_range_array(range_array.begin(),ranges...);
+
         return view<(size_t)(range_count::value)>(range_array);
     }
 
@@ -667,6 +671,7 @@ auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges
         //a less hacky solution would be nicer
         return const_cast<data_type&>(this->at(indices)); //return the corresponding data from *this
     };
+
 
     return retType(func,retDims);
 }

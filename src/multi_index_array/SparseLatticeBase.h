@@ -172,6 +172,13 @@ public:
     template <class otherDerived>
     typename SparseSolveReturnType<Derived,otherDerived>::type solve(const DenseLatticeBase<otherDerived> &b);
 
+    //only enable for operands that have the same index_type
+    template <class otherDerived>
+    typename SparseSolveReturnType<Derived,otherDerived>::type lsqr_solve(SparseLatticeBase<otherDerived> &b);
+
+    template <class otherDerived>
+    typename SparseSolveReturnType<Derived,otherDerived>::type lsqr_solve(const DenseLatticeBase<otherDerived> &b);
+
     data_type operator()(index_type _row, index_type _column, index_type _tab) const;
 
 
@@ -1263,8 +1270,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 #endif
             while(cur_b<b_temp_end && b.column(*cur_b)==cur_column)
             {
-                //should be the
-
+                //see Tim Davis' book on Direct Sparse Methods for an explanation of mult_scatter (although this one is slightly different as CSC format isn't used)
                 a_cur_it=mult_scatter(a_cur_column_idx,a_column_idx.end(),a_cur_it,a_temp_end,b.row(*cur_b),cur_column,b.data_at(cur_b-b.index_begin()),
                                           row_marker,data_collector,c_indices);
                 cur_b++;
@@ -1948,7 +1954,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     }
     else
-        throw LatticeParameterException("Only square or over-determined systems are supported");
+        throw LatticeParameterException("Only square or overdetermined systems are supported");
 
 
 
@@ -1958,6 +1964,36 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 }
 
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::lsqr_solve(SparseLatticeBase<otherDerived> &b)
+{
+
+
+    this->check_solve_dims(b);
+
+
+
+
+
+
+    if (this->width()<this->height()){
+        return perform_solve<otherDerived,true>(b);
+    }
+//    else if(this->width()<this->height()){
+//        return perform_solve<otherDerived,true>(b);
+//
+//    }
+    else
+        throw LatticeParameterException("Only over-determined systems are supported");
+
+
+
+
+
+
+
+}
 
 template <class Derived>
 template <class otherDerived>
@@ -1980,7 +2016,34 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     }
     else
-        throw LatticeParameterException("Only square or over-determined systems are supported");
+        throw LatticeParameterException("Only square or overdetermined systems are supported");
+
+
+
+
+
+
+}
+
+template <class Derived>
+template <class otherDerived>
+typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::lsqr_solve(const DenseLatticeBase<otherDerived> &b)
+{
+
+
+    this->check_solve_dims(b);
+
+
+
+
+
+
+    if (this->width()<this->height()){
+        return perform_solve<otherDerived,true>(b);
+    }
+
+    else
+        throw LatticeParameterException("Only over-determined systems are supported");
 
 
 

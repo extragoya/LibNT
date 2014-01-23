@@ -13,6 +13,7 @@
 #endif
 #include "LibMIAUtil.h"
 #include "DenseMIA.h"
+#include "ImplicitMIA.h"
 #include "LibMIARanges.h"
 using namespace LibMIA;
 template<class _data_type>
@@ -20,8 +21,10 @@ void do_work(size_t dim1,size_t dim2){
 
     DenseMIA<_data_type,2> a(dim1,dim2);
     DenseMIA<_data_type,3> b(dim1,dim2,dim1);
+
     size_t _start=2,_end=2;
     a.randu(-10,10);
+
     auto implicit_a=a.view(Range<long long>(_start,dim1-_end),Range<long long>(_start,dim2-_end));
     bool passed=true;
 

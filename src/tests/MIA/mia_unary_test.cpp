@@ -172,7 +172,8 @@ void sparse_unary_work(){
     c(i,k,m)=a(!i,j,!i,j,k,m); //attraction
     other_c(i,k,m)=a(n,l,!i,j,k,m)*delta(!i,n)*delta2(j,l); //attraction
     BOOST_CHECK_MESSAGE(c.fuzzy_equals(other_c,test_precision<data_type>()),std::string("Combined Contraction/Attraction 1 for Sparse ")+typeid(data_type).name());
-//
+
+
     b=LibMIA::SparseMIA<data_type,4>(_dim,_dim+1,_dim,_dim+1); //now try with non-uniform dimensions
     b.resize(a.dimensionality()/3);
     b.randu(-5,5);

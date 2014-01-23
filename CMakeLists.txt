@@ -8,8 +8,8 @@ set(LibMIA_VERSION ${LibMIA_VERSION_MAJOR}.${LibMIA_VERSION_MINOR})
 #set C++11 flag
 # GCC specifics
 if(CMAKE_COMPILER_IS_GNUCXX OR MINGW OR CYGWIN)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict=__restrict__ -ftrack-macro-expansion=0 -save-temps -fno-keep-inline-dllexport")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -ggdb -std=gnu++0x -Drestrict=__restrict__ -ftrack-macro-expansion=0 -save-temps -fno-keep-inline-dllexport")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict=__restrict__ -ftrack-macro-expansion=0 -save-temps -finline-functions -ftemplate-depth-128")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
   
 endif()
 

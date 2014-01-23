@@ -26,6 +26,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 	set(Boost_USE_STATIC_LIBS        ON)
 	set(Boost_USE_MULTITHREADED      OFF)
 	set(Boost_USE_STATIC_RUNTIME    OFF)
+	set (Boost_USE_DEBUG_RUNTIME OFF)
 	find_package(Boost 1.55.0 REQUIRED EXACT COMPONENTS unit_test_framework timer system chrono)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 

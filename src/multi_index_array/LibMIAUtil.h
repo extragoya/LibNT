@@ -358,10 +358,7 @@ struct check_mia_dim_args<index_type>:public boost::true_type {};
 template<class index_type,typename arg,typename...Args>
 struct check_mia_dim_args<index_type,arg,Args...> :
         boost::mpl::and_<
-        boost::is_same<
-        typename boost::numeric::conversion_traits<index_type,arg >::supertype,
-        index_type
-        >,
+        std::is_integral<arg>,
         check_mia_dim_args<index_type,Args...>
         >
     {};
@@ -462,10 +459,7 @@ struct get_range_count{
 
 template<class index_type1,class index_type2>
 struct check_index_compatibility:
-    boost::is_same<
-        typename boost::numeric::conversion_traits<index_type1,index_type2 >::supertype,
-        index_type1
-    >
+    std::is_integral<index_type2>
 {};
 
 

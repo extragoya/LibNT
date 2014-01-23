@@ -24,9 +24,14 @@ set (MULT_SOURCES mixed_mia_mult_test.cpp)
 add_executable(MixedMIAMultTests ${MULT_SOURCES})
 ADD_TEST(MixedMIAMultTests ${CMAKE_CURRENT_BINARY_DIR}/MixedMIAMultTests)
 
-set (SOLVE_SOURCES mixed_mia_solve_test.cpp)
-	add_executable(MixedMIASolveTests ${SOLVE_SOURCES})
-	ADD_TEST(MixedMIASolveTests ${CMAKE_CURRENT_BINARY_DIR}/MixedMIASolveTests)
+#need to do separate tests for float and double because the of section limits in obj files when compiling using MinGw. 
+set (SOLVE_SOURCES_FLOAT mixed_mia_solve_test.hpp mixed_mia_solve_test_float.cpp)
+add_executable(MixedMIASolveTestsFloat ${SOLVE_SOURCES_FLOAT})
+ADD_TEST(MixedMIASolveTestsFloat ${CMAKE_CURRENT_BINARY_DIR}/MixedMIASolveTestsFloat)
+
+set (SOLVE_SOURCES_DOUBLE mixed_mia_solve_test.hpp mixed_mia_solve_test_double.cpp)
+add_executable(MixedMIASolveTestsDouble ${SOLVE_SOURCES_DOUBLE})
+ADD_TEST(MixedMIASolveTestsDouble ${CMAKE_CURRENT_BINARY_DIR}/MixedMIASolveTestsDouble)
 
 if(NOT MIA_USE_HEADER_ONLY_TESTS)
 	target_link_libraries(MIAAssignTests ${Boost_LIBRARIES})
@@ -35,6 +40,7 @@ if(NOT MIA_USE_HEADER_ONLY_TESTS)
 	target_link_libraries(MIAConstrTests ${Boost_LIBRARIES})
 	target_link_libraries(MixedMIAMergeTests ${Boost_LIBRARIES})
 	target_link_libraries(MixedMIAMultTests ${Boost_LIBRARIES})
-	target_link_libraries(MixedMIASolveTests ${Boost_LIBRARIES})
+	target_link_libraries(MixedMIASolveTestsFloat ${Boost_LIBRARIES})
+	target_link_libraries(MixedMIASolveTestsDouble ${Boost_LIBRARIES})
 endif()
 

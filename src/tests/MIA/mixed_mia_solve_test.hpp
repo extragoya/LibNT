@@ -1,6 +1,6 @@
 #include <iostream>
 #include <typeinfo>
-#define BOOST_TEST_MODULE MixedMIASolveTests
+
 #include "MIAConfig.h"
 #ifdef MIA_USE_HEADER_ONLY_TESTS
 #include <boost/test/included/unit_test.hpp>
@@ -149,14 +149,4 @@ void solve_work(size_t dim1, size_t dim2){
 
 }
 
-BOOST_AUTO_TEST_CASE( MixedMIASolveTests )
-{
 
-
-
-    solve_work<double>(10,10);
-    solve_work<float>(10,10);
-
-
-
-}
