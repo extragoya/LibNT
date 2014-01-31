@@ -106,13 +106,14 @@ class DenseLattice: public DenseLatticeBase<DenseLattice<T> > //, boost::multipl
 public:
 
     typedef typename internal::data_type<DenseLattice>::type data_type;
+	typedef typename internal::index_type<DenseLattice>::type index_type;
     typedef typename internal::Data<DenseLattice>::type Data;
     typedef typename internal::storage_iterator<DenseLattice>::type storage_iterator;
     typedef typename internal::const_storage_iterator<DenseLattice>::type const_storage_iterator;
     typedef typename internal::data_iterator<DenseLattice>::type data_iterator;
     typedef typename internal::const_data_iterator<DenseLattice>::type const_data_iterator;
     typedef T* raw_pointer;
-    typedef typename DenseLatticeBase<DenseLattice<T> >::index_type index_type;
+    
 
 private:
     typedef std::unique_ptr<T []> smart_raw_pointer;
@@ -130,7 +131,7 @@ public:
     };
 
     //!  Constructs DenseLattice of specified size, initialized to all zeros.
-    DenseLattice(int _height, int _width, int _depth) : DenseLatticeBase<DenseLattice<T> >(),m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
+	DenseLattice(index_type _height, index_type _width, index_type _depth) : DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(), boost::extents[_height][_width][_depth], boost::fortran_storage_order()))
     {
 
 
@@ -151,7 +152,7 @@ public:
     \param[in] rawdata Pointer of memory.
 
     */
-    DenseLattice(T*rawdata,int _height, int _width, int _depth): DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[_height*_width*_depth]),m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[_height][_width][_depth],boost::fortran_storage_order()))
+	DenseLattice(T*rawdata, index_type _height, index_type _width, index_type _depth) : DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[_height*_width*_depth]), m_Data(new Data(m_smart_raw_ptr.get(), boost::extents[_height][_width][_depth], boost::fortran_storage_order()))
     {
 
 

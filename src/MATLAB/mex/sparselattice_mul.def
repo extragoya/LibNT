@@ -1,2 +1,0 @@
-LIBRARY sparselattice_mul.mexw32
-EXPORTS mexFunction

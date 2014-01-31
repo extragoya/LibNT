@@ -8,16 +8,21 @@ set(LibMIA_VERSION ${LibMIA_VERSION_MAJOR}.${LibMIA_VERSION_MINOR})
 #set C++11 flag
 # GCC specifics
 if(CMAKE_COMPILER_IS_GNUCXX OR MINGW OR CYGWIN)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict=__restrict__ -ftrack-macro-expansion=0 -save-temps -finline-functions -ftemplate-depth-128")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict_libmia=__restrict__ -ftrack-macro-expansion=0 -save-temps -finline-functions -ftemplate-depth-128")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
   
 endif()
 
 # Visual Studio specifics - C++11 is on automatically
 if(MSVC)
-  # Warning Level 4 for Debug builds
-  list(APPEND CMAKE_CXX_FLAGS_DEBUG " /W4")
-  list(REMOVE_DUPLICATES CMAKE_CXX_FLAGS_DEBUG)
+  #msvc doesn't support constexpr yet, so we need to define an empty macro and also add an appropriate compiler flag
+  add_definitions(-Drestrict_libmia=_restrict)
+  add_definitions(-DNO_CONST_EXPR_LIBMIA)
+  add_definitions(-D_ALLOW_KEYWORD_MACROS)
+  message("MSVC compiler used. No support for MIA Functions, but MATLAB wrapper can be built")
+  # Warning Level 4 for Debug builds 
+  list(APPEND CMAKE_CXX_FLAGS_DEBUG "/W4")
+  list(REMOVE_DUPLICATES CMAKE_CXX_FLAGS)
 endif()
 
 
@@ -52,6 +57,7 @@ COMMENT "Generating API documentation with Doxygen" VERBATIM
 MESSAGE("Doxygen found, use make doc to build class api documentation")
 
 endif(DOXYGEN_FOUND)
+
 
 
 add_subdirectory (src)

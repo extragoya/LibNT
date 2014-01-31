@@ -1,3 +1,0 @@
-LIBRARY sparselattice_solve.mexw32
-EXPORTS mexFunction
-

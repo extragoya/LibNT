@@ -1,13 +1,12 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-
+#include "SparseLatticeMultMex_Export.h" //must include before mex.h so mex.h can use macro definitions
 #include "mex.h"
 #include "check_sparse.h"
 #include "SparseLattice.h"
 #include "MappedSparseLattice.h"
-#include "SparseUtil.h"
-#include "LatticeException.h"
+#include "LibMIAException.h"
 
 
 typedef long long index_type;

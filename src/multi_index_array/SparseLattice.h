@@ -21,11 +21,13 @@
 #include <boost/operators.hpp>
 #include <boost/assert.hpp>
 #include <boost/array.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/iterator/zip_iterator.hpp>
 
 #include "LibMIAUtil.h"
 #include "SparseLatticeBase.h"
 #include "DenseLattice.h"
-#include "tupleit.hh"
+//#include "tupleit.hh"
 
 
 
@@ -100,38 +102,38 @@ struct const_data_iterator<SparseLattice<T> >
 template<typename T>
 struct full_iterator_tuple<SparseLattice<T> >
 {
-    typedef typename std::pair<typename data_iterator<SparseLattice<T> >::type,typename index_iterator<SparseLattice<T> >::type> type;
+    typedef typename boost::tuple<typename data_iterator<SparseLattice<T> >::type,typename index_iterator<SparseLattice<T> >::type> type;
 };
 
 template<typename T>
 struct const_full_iterator_tuple<SparseLattice<T> >
 {
-    typedef typename std::pair<typename const_data_iterator<SparseLattice<T> >::type,typename const_index_iterator<SparseLattice<T> >::type> type;
+	typedef typename boost::tuple<typename const_data_iterator<SparseLattice<T> >::type, typename const_index_iterator<SparseLattice<T> >::type> type;
 
 };
 
 template<typename T>
 struct full_tuple<SparseLattice<T> >
 {
-    typedef std::pair<T&,typename index_type<SparseLattice<T> >::type &> type;
+	typedef boost::tuple<T&, typename index_type<SparseLattice<T> >::type &> type;
 };
 
 template<typename T>
 struct const_full_tuple<SparseLattice<T> >
 {
-    typedef std::pair< const T&,const typename index_type<SparseLattice<T> >::type &> type;
+	typedef boost::tuple< const T&, const typename index_type<SparseLattice<T> >::type &> type;
 };
 
 template<typename T>
 struct storage_iterator<SparseLattice<T> >
 {
-    typedef typename iterators::TupleIt<typename full_iterator_tuple<SparseLattice<T> >::type > type;
+    typedef typename boost::zip_iterator<typename full_iterator_tuple<SparseLattice<T> >::type > type;
 };
 
 template<typename T>
 struct const_storage_iterator<SparseLattice<T> >
 {
-    typedef typename iterators::TupleIt<typename const_full_iterator_tuple<SparseLattice<T> >::type > type;
+	typedef typename boost::zip_iterator<typename const_full_iterator_tuple<SparseLattice<T> >::type > type;
 };
 
 template<typename T>
@@ -239,7 +241,7 @@ public:
         for(typename internal::const_storage_iterator<otherDerived>::type other_begin=other.derived().begin(); other_begin<other.derived().end();other_begin++){
 
 
-            push_back(other.data_val(*other_begin),other.index(*other_begin));
+            push_back(other.data_val(*other_begin),other.index_val(*other_begin));
 
         }
 
@@ -381,6 +383,11 @@ public:
         this->m_indices.resize(_size);
     }
 
+	void reserve(size_t _size){
+		this->m_data.reserve(_size);
+		this->m_indices.reserve(_size);
+	}
+
 
     //!  Performs *this-=b.
     /*!
@@ -496,6 +503,23 @@ public:
         return m_indices;
     }
 
+
+	/*data_type  & data_val(storage_iterator it){
+		return (*it).get<0>();
+	}
+
+	index_type  & index_val(storage_iterator it){
+		return (*it).get<1>();
+	}
+
+	const data_type  & data_val(storage_iterator it) const {
+		return (*it).get<0>();
+	}
+
+	const index_type  & index_val(storage_iterator it) const {
+		return (*it).get<1>();
+	}*/
+
     index_iterator index_begin() ;
     index_iterator index_end() ;
     data_iterator data_begin();
@@ -505,6 +529,11 @@ public:
     const_index_iterator index_end() const;
     const_data_iterator data_begin()const;
     const_data_iterator data_end()const;
+
+	storage_iterator begin();
+	const_storage_iterator begin() const;
+	storage_iterator end();
+	const_storage_iterator end() const;
 
 
 protected:
@@ -522,6 +551,54 @@ protected:
 
 
 };
+
+
+template<typename T>
+inline typename SparseLattice<T>::const_storage_iterator
+SparseLattice<T>::begin() const
+{
+
+
+	return boost::make_zip_iterator(boost::make_tuple(this->data_begin(), this->index_begin()));
+
+
+}
+
+
+template<typename T>
+inline typename SparseLattice<T>::const_storage_iterator
+SparseLattice<T>::end() const
+{
+
+
+	return boost::make_zip_iterator(boost::make_tuple(this->data_end(), this->index_end()));
+
+
+}
+
+template<typename T>
+inline typename SparseLattice<T>::storage_iterator
+SparseLattice<T>::begin() 
+{
+
+
+	return boost::make_zip_iterator(boost::make_tuple(this->data_begin(), this->index_begin()));
+
+
+}
+
+
+template<typename T>
+inline typename SparseLattice<T>::storage_iterator
+SparseLattice<T>::end() 
+{
+
+
+	return boost::make_zip_iterator(boost::make_tuple(this->data_end(), this->index_end()));
+
+
+}
+
 
 template<typename T>
 inline typename SparseLattice<T>::const_index_iterator
@@ -625,12 +702,15 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
 
     otherDerived& b_derived=b.derived();
     this->sort();
-    b.sort();
+    b.sort(this->linIdxSequence());
 
 
     typedef  typename internal::data_type<otherDerived >::type b_data_type;
-    typedef boost::numeric::converter<data_type,b_data_type> to_mdata_type;
-    typedef typename internal::storage_iterator<otherDerived >::type other_storage_iterator;
+	
+	SparseLattice<data_type> C(this->height(), this->width(), this->depth());
+	internal::outside_merge_sparse_storage_containers(C, *this, b, op); //don't bother doing an inplace_merge, as even std::algorithm uses an out-of-place copy for this
+	*this = std::move(C);
+	/*typedef typename internal::storage_iterator<otherDerived >::type other_storage_iterator;
     other_storage_iterator b_begin=b.begin();
     other_storage_iterator b_end=b.end();
 
@@ -640,11 +720,11 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
     storage_iterator a_end=this->end();
 
     while(a_begin<a_end && b_begin<b_end){
-        if (idx_less(index(*a_begin),b.index(*b_begin))){
+        if (idx_less(index_val(*a_begin),b.index_val(*b_begin))){
             a_begin++;
         }
-        else if  (idx_less(b.index(*b_begin),index(*a_begin))){
-            push_back(b.data_val(*b_begin),b.index(*b_begin));
+		else if (idx_less(b.index_val(*b_begin), index_val(*a_begin))){
+			push_back(b.data_val(*b_begin), b.index_val(*b_begin));
             b_begin++;
 
         }
@@ -656,15 +736,15 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
 
     }
     if (a_begin==a_end)
-        while (idx_less(b.index(*b_begin),b.index(*b_end))){
-            push_back(b.data_val(*b_begin),b.index(*b_begin));
+	while (idx_less(b.index_val(*b_begin), b.index_val(*b_end))){
+		push_back(b.data_val(*b_begin), b.index_val(*b_begin));
             b_begin++;
         }
 
     m_data.reserve(m_data.size());
     m_indices.reserve(m_data.size());
-    const index_type& (SparseLattice::*index)(const_full_tuple) const = &SparseLattice::index;
-    std::inplace_merge(this->begin(),a_end,this->end(),boost::bind(&SparseLattice::idx_less, this,boost::bind(index,this,std::placeholders::_1),boost::bind(index,this,std::placeholders::_2)));
+	const index_type& (SparseLattice::*index_val)(const_full_tuple) const = &SparseLattice::index_val;
+    std::inplace_merge(this->begin(),a_end,this->end(),boost::bind(&SparseLattice::idx_less, this,boost::bind(index_val,this,std::placeholders::_1),boost::bind(index_val,this,std::placeholders::_2)));*/
 
     return *this;
 }

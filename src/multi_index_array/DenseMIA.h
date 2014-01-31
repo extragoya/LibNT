@@ -77,13 +77,13 @@ struct order<DenseMIA<T,_order> >
 template<typename T,size_t _order>
 struct data_iterator<DenseMIA<T,_order> >
 {
-    typedef T* restrict type;
+    typedef T* restrict_libmia type;
 };
 
 template<typename T,size_t _order>
 struct const_data_iterator<DenseMIA<T,_order> >
 {
-    typedef const T* restrict type;
+    typedef const T* restrict_libmia type;
 };
 
 template<typename T,size_t _order>
@@ -134,7 +134,7 @@ public:
     //! order of the MIA
     constexpr static size_t mOrder=_order;
     //! smart pointer type used to reference raw data
-    typedef std::unique_ptr<T restrict [] > smart_raw_pointer;
+    typedef std::unique_ptr<T restrict_libmia [] > smart_raw_pointer;
 
 
     //! final derived type
@@ -203,7 +203,7 @@ public:
 
 
     */
-    DenseMIA(const DenseMIA& restrict otherMIA)  :DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
+    DenseMIA(const DenseMIA& restrict_libmia otherMIA)  :DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
         this->mSolveInfo=otherMIA.solveInfo();
@@ -253,7 +253,7 @@ public:
 
     */
     template<class otherMIAType, typename boost::enable_if<typename internal::is_DenseMIA<otherMIAType>::type,int>::type=0>
-    DenseMIA(const otherMIAType& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
+    DenseMIA(const otherMIAType& restrict_libmia otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
 
@@ -288,7 +288,7 @@ public:
 
     */
     template<class otherMIAType, typename boost::enable_if<typename internal::is_SparseMIA<otherMIAType>::type,int>::type=0>
-    DenseMIA(const otherMIAType& restrict otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
+    DenseMIA(const otherMIAType& restrict_libmia otherMIA):DenseMIABase<DenseMIA<T,_order> >(otherMIA.dims()),hasOwnership(true)
     {
 
 
@@ -409,7 +409,7 @@ public:
     void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
     template<typename other_data_type,typename index_param_type>
-    void assign(const ImplicitMIA<other_data_type,mOrder>& restrict otherMIA,const std::array<index_param_type,_order>& index_order);
+    void assign(const ImplicitMIA<other_data_type,mOrder>& restrict_libmia otherMIA,const std::array<index_param_type,_order>& index_order);
 
     //!  Assignment based on given order using an rvalue reference.
     /*!
@@ -435,7 +435,7 @@ public:
     DenseMIA& operator=(const DenseMIA<other_data_type,mOrder>& otherMIA);
 
     template<typename other_data_type>
-    DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& restrict otherMIA);
+    DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& restrict_libmia otherMIA);
 
     template<typename otherDerived>
     DenseMIA& operator=(const SparseMIABase<otherDerived>& otherMIA);
@@ -450,7 +450,7 @@ public:
 //            return *this;
 //    }
     //!Move assignment
-    DenseMIA& operator=(DenseMIA&& restrict otherMIA) restrict
+    DenseMIA& operator=(DenseMIA&& restrict_libmia otherMIA) restrict_libmia
     {
 
 
@@ -487,12 +487,12 @@ public:
     }
 
     //! Returns a raw pointer to the scalar data
-    inline T* restrict raw_data_ptr() const{
+    inline T* restrict_libmia raw_data_ptr() const{
         return m_smart_raw_ptr.get();
     }
 
     //! Returns a raw pointer to the scalar data and releases ownership - caller must deallocate data using delete[]
-    inline T* restrict release_raw_data() {
+    inline T* restrict_libmia release_raw_data() {
         hasOwnership=false;
         return raw_data_ptr();
     }
@@ -1151,7 +1151,7 @@ void DenseMIA<T,_order>::assign(DenseMIA<T,_order>&& otherMIA,const std::array<i
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op,const std::array<index_param_type,_order>& index_order) restrict
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,const Op& op,const std::array<index_param_type,_order>& index_order) restrict_libmia
 {
 
     #ifdef LIBMIA_CHECK_DIMS
@@ -1190,7 +1190,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op) restrict
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,const Op& op) restrict_libmia
 {
 
     #ifdef LIBMIA_CHECK_DIMS
@@ -1285,7 +1285,7 @@ auto DenseMIA<T,_order>::toLatticePermute(const std::array<idx_typeR,R_size> & r
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op,const std::array<index_param_type,_order>& index_order)
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,const Op& op,const std::array<index_param_type,_order>& index_order)
 {
 
 
@@ -1309,7 +1309,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& 
 
 template<class T, size_t _order>
 template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_SparseMIA<otherDerived>, int >::type>
-void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict b,const Op& op)
+void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,const Op& op)
 {
 
 

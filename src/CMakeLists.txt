@@ -7,6 +7,10 @@ SET(Eigen_ROOT  CACHE PATH /path/to/eigen)
 #only change this flag if you've built the boost::test libs
 SET(MIA_USE_HEADER_ONLY_TESTS TRUE CACHE BOOL "use the single header option in boost::test, which will work universally but will compile slowly")
 
+SET(MIA_BUILD_TESTS FALSE CACHE BOOL "if you would like to build tests")
+
+SET(MIA_BUILD_MATLAB TRUE CACHE BOOL "if you would like to build MATLAB mex files")
+
 SET(BOOST_ROOT  CACHE PATH /path/to/boost)
 set(Boost_DIR ${BOOST_ROOT})
 
@@ -30,7 +34,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 	find_package(Boost 1.55.0 REQUIRED EXACT COMPONENTS unit_test_framework timer system chrono)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
-		#message(${Boost_LIBRARIES})
+		message(${Boost_LIBRARIES})
 	endif()
 endif(MIA_USE_HEADER_ONLY_TESTS)
 set(Boost_install_include "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
@@ -49,4 +53,10 @@ INCLUDE_DIRECTORIES(${Eigen_ROOT})
 
 add_subdirectory(multi_index_array)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src/multi_index_array)
-add_subdirectory(tests)
+if(MIA_BUILD_TESTS)
+	add_subdirectory(tests)
+endif(MIA_BUILD_TESTS)
+
+if(MIA_BUILD_MATLAB)
+	add_subdirectory(MATLAB)
+endif(MIA_BUILD_MATLAB)

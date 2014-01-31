@@ -16,7 +16,7 @@
 
 #ifndef FUNCTION_UTIL_H
 #define FUNCTION_UTIL_H
-
+#define LIBMIA_LOG2E 1.44269504088896340736
 
 #include <boost/numeric/conversion/converter.hpp>
 
@@ -305,12 +305,13 @@ auto noLatticeMult(const MIA &a,const otherMIA &b,const std::array<array_type,In
 
 }
 
-//assumes C, A, and B are of the same dimensions and in the same sort order (and A and B are sorted)
-template<class ADerived, class BDerived, class c_data_type,size_t c_order,class Op>
-void outside_merge_sparse_storage_containers(SparseMIA<c_data_type,c_order> & C , const SparseMIABase<ADerived> & A,const SparseMIABase<BDerived> & B,Op op)
+//assumes C, A, and B are of the same dimensions and in the same sort order (and A and B are sorted), should work for either SparseLattices or SparseMIAs
+template<class C_Class, class B_Class, class A_Class,class Op>
+void outside_merge_sparse_storage_containers(C_Class & C, const A_Class & A, const B_Class & B, Op op)
 {
-    using namespace boost::numeric;
-    typedef typename ADerived::data_type a_data_type;
+
+	using namespace boost::numeric;
+    typedef typename internal::data_type<A_Class>::type a_data_type;
 
     C.clear();
     C.reserve(A.size()+B.size());
@@ -521,7 +522,7 @@ struct print_class_name {
 };
 
 inline long double log2(const long double x){
-    return  std::log(x) * M_LOG2E;
+	return  std::log(x) * LIBMIA_LOG2E;
 }
 
 

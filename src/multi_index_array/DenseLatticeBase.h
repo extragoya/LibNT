@@ -33,7 +33,7 @@
 #include <boost/mpl/and.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/type_traits/is_floating_point.hpp>
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 
 #include <Eigen/Dense>
 
@@ -405,7 +405,7 @@ template <class Derived>
 template<class otherDerived>
 inline
 typename DenseProductReturnType<Derived,otherDerived>::type
-DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & restrict b) const restrict
+DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & restrict_libmia b) const restrict_libmia
 {
 
 
@@ -433,12 +433,12 @@ template <class Derived>
 template<class otherDerived>
 inline
 typename SparseProductReturnType<Derived,otherDerived>::type
-DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict b) const restrict
+DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_libmia b) const restrict_libmia
 {
 
 
 
-    boost::timer::cpu_timer timer,timer_minor;
+    //boost::timer::cpu_timer timer,timer_minor;
     this->check_mult_dims(b);
     auto & a=*this;
     typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
@@ -449,7 +449,7 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict 
     typename c_type::Data c_data;
     c_data.reserve(b.size());
     typename internal::data_type<c_type>::type cur_c_data;
-    timer_minor=boost::timer::cpu_timer();
+    //timer_minor=boost::timer::cpu_timer();
 
     b.sort();
 

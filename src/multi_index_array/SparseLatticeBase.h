@@ -36,7 +36,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/numeric/conversion/converter.hpp>
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 
 
 #include "MIAConfig.h"
@@ -47,7 +47,8 @@
 #include "Lattice.h"
 #include "LibMIAAlgorithm.h"
 #include "LibMIAUtil.h"
-#include "tupleit.hh"
+//#include "tupleit.hh" //tuple that supports simultaneous sorting of index and data arrays, based on the former. Quite slow, so ideally best to leave it out
+
 //#define LM_CSC_TIMES 1 //define to perform old compressed column lattice multiplication - should be off
 //#define LM_COLUMN_SEARCH 1 //define to perform column search during mult_scatter operation (not as efficient)
 namespace LibMIA
@@ -224,7 +225,7 @@ public:
         //sort(m_linIdxSequence);
         std::cout << "Val\t" ;
         std::cout << "Row\t"<< "Column\t" << "Tab\t" << "Index Val\n";
-        for (storage_iterator i=storage_begin(); i<storage_end(); i++)
+        for (storage_iterator i=this->begin(); i<this->end(); i++)
         {
 
             full_tuple temp=*i;
@@ -402,28 +403,42 @@ public:
 
     index_type& index_val(full_tuple a)
     {
-        return std::get<1>(a);
+		return boost::get<1>(a);
 
     }
 
     const index_type& index_val(const_full_tuple a) const
     {
-        return std::get<1>(a);
+        return boost::get<1>(a);
 
     }
 
-
-
     data_type& data_val(full_tuple a)
     {
-        return std::get<0>(a);
+		return boost::get<0>(a);
 
     }
     const data_type& data_val(const_full_tuple a) const
     {
-        return std::get<0>(a);
+		return boost::get<0>(a);
 
     }
+
+	storage_iterator begin(){
+		return derived().begin();
+	}
+
+	const_storage_iterator begin() const{
+		return derived().begin();
+	}
+
+	storage_iterator end(){
+		return derived().end();
+	}
+
+	const_storage_iterator end() const{
+		return derived().end();
+	}
 
     const data_type& data_at(size_t nnz_index) const
     {
@@ -516,13 +531,9 @@ public:
 
 
 
-    storage_iterator storage_begin();
 
-    const_storage_iterator storage_begin() const;
 
-    storage_iterator storage_end();
 
-    const_storage_iterator storage_end() const;
 
     void transpose(bool do_sort=false){
         inPlaceTranspose(do_sort);
@@ -697,56 +708,7 @@ SparseLatticeBase<Derived>::operator()(index_type _row, index_type _column, inde
 
 }
 
-template<typename Derived>
-inline typename SparseLatticeBase<Derived>::storage_iterator
-SparseLatticeBase<Derived>::storage_begin()
-{
 
-
-    return iterators::makeTupleIterator(data_begin(),index_begin());
-
-
-
-}
-
-
-template<typename Derived>
-inline typename SparseLatticeBase<Derived>::const_storage_iterator
-SparseLatticeBase<Derived>::storage_begin() const
-{
-
-
-    return iterators::makeTupleIterator(data_begin(),index_begin());
-
-
-
-}
-
-
-template<typename Derived>
-inline typename SparseLatticeBase<Derived>::storage_iterator
-SparseLatticeBase<Derived>::storage_end()
-{
-
-
-    return iterators::makeTupleIterator(data_end(),index_end());
-
-
-
-}
-
-
-template<typename Derived>
-inline typename SparseLatticeBase<Derived>::const_storage_iterator
-SparseLatticeBase<Derived>::storage_end() const
-{
-
-
-
-    return iterators::makeTupleIterator(data_end(),index_end());
-
-
-}
 
 
 //!checks whether the data is under the zero tolerance
@@ -903,7 +865,7 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
     else{
 
         this->sort(ColumnMajor);
-        auto it=this->storage_begin();
+        auto it=this->begin();
         if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it))){
             //std::cout << "Trigered " << index_val(*it) << " " << data_val(*it) << " " << otherLat.atIdx(index_val(*it)) << " " << data_val(*it)-otherLat.atIdx(index_val(*it)) << std::endl;
             return false;
@@ -916,7 +878,7 @@ bool SparseLatticeBase<Derived>::compare_with_dense(const DenseLatticeBase<other
              }
 
 
-        for(it=this->storage_begin()+1; it<this->storage_end(); ++it)
+        for(it=this->begin()+1; it<this->end(); ++it)
         {
             if (!predicate(otherLat.atIdx(index_val(*it)),data_val(*it)))
             {
@@ -1044,7 +1006,7 @@ template <class Derived>
 template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
-    boost::timer::cpu_timer timer,timer_minor;
+    //boost::timer::cpu_timer timer,timer_minor;
     //std::cout << "Entered sparse*dense " << std::endl;
     this->check_mult_dims(b);
 

@@ -18,7 +18,7 @@
 #define INDEXUTIL_H
 
 
-
+#include<array>
 
 #include "LibMIAUtil.h"
 
@@ -342,7 +342,7 @@ dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
 //}
 
 template<class indexType1,class indexType2,size_t _size>
-inline std::array<size_t,_size> createDimAccumulator(const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict index_order)
+inline std::array<size_t, _size> createDimAccumulator(const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia index_order)
 {
 
     std::array<size_t,_size> dim_accumulator;
@@ -376,7 +376,7 @@ inline std::array<size_t,_size> createMultiplier(const std::array<indexType1,_si
 }
 
 template<class indexType1,class indexType2,size_t _size>
-inline indexType1 getShuffleLinearIndex(indexType1 idx,const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict dim_accumulator)
+inline indexType1 getShuffleLinearIndex(indexType1 idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
 {
 
     size_t ioffset_next=0;
@@ -394,7 +394,7 @@ inline indexType1 getShuffleLinearIndex(indexType1 idx,const std::array<indexTyp
 }
 
 template<class indexType1,class indexType2,size_t _size>
-inline indexType1 getShuffleLinearIndex(const indexType1 &idx,const std::array<indexType1,_size>& restrict dims,const std::array<indexType2,_size>& restrict multiplier,const std::array<indexType2,_size>& restrict dim_accumulator)
+inline indexType1 getShuffleLinearIndex(const indexType1 &idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
 {
 
 //    size_t ioffset_next=0;

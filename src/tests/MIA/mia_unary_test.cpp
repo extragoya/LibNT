@@ -367,6 +367,7 @@ BOOST_AUTO_TEST_CASE( MIAUnaryTests )
     dense_unary_work<int>();
     dense_unary_work<long>();
 
+
     sparse_unary_work<double>();
     sparse_unary_work<float>();
     sparse_unary_work<int>();

@@ -1,0 +1,33 @@
+function C = intersect(A,B,fhandle)
+% INTERSECT (intersect sub-operation for sparse arrays)
+
+nnzA = A.nnz;
+nnzB = B.nnz;
+c_inds=zeros(nnzA);
+
+i = 1;
+j = 1;
+k = 1; %combined index
+while i <= nnzA && j <= nnzB
+    if A.inds(i) < B.inds(j)
+        
+        i = i+1;
+        k=k+1;
+    elseif A.inds(i) > B.inds(j)
+        c_inds(k)=B.inds(j);
+        c_vals(k)=fhandle(0,B.vals(j));
+        j = j+1;
+        k=k+1;
+    else
+        c_inds(k)=A.inds(i);        
+        c_vals(k)=fhandle(A.vals(i),B.vals(j));
+        i = i+1;
+        j = j+1;
+        k=k+1;
+    end
+end
+
+c_inds=c_inds(1:k-1);   %remove extra space
+c_vals=c_vals(1:k-1);
+
+C = SparseLattice(c_inds,c_vals,A.m,A.n,A.p);

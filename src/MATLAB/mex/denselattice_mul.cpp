@@ -1,9 +1,10 @@
+#include "DenseLatticeMultMex_Export.h" //must include before mex.h so mex.h can use macro definitions
 #include "mex.h"
 
-#include "DenseLattice.h"
+
 #include "MappedDenseLattice.h"
-#include "Util.h"
-#include "LatticeException.h"
+#include "DenseLattice.h"
+#include "LibMIAException.h"
 
 
 
@@ -14,12 +15,14 @@ void perform_mult(T * C,T*A,  T*B, const mwSize*a_subs,const mwSize*b_subs){
 
     const LibMIA::MappedDenseLattice<T> latA(A,a_subs[0],a_subs[1],a_subs[2]);
     const LibMIA::MappedDenseLattice<T> latB(B,b_subs[0],b_subs[1],b_subs[2]);
-    mwSize c_subs[]={a_subs[0], b_subs[1], a_subs[2]};
+    
 
-    LibMIA::MappedDenseLattice<T> latC(C,c_subs[0],c_subs[1],c_subs[2]);
+    
 
     try{
-        latC=latA*latB;
+        auto latC=latA*latB;		
+		std::copy(latC.data_begin(), latC.data_end(), C);
+		
     }
     catch(LibMIA::LatticeException& e){
         mexErrMsgTxt(e.what());

@@ -1,2 +1,0 @@
-LIBRARY denselattice_solve.mexw32
-EXPORTS mexFunction

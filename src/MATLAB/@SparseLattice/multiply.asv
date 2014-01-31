@@ -1,0 +1,72 @@
+function C=multiply(A,B)
+
+if A.n~=B.m
+    error('Number of columns in A must equal number of rows in B')
+elseif A.p~=B.p
+    error('Depth of both lattices must be identical')
+end
+
+
+
+
+b_n=B.n;
+
+A=A';
+
+a_n=A.n;
+a_p=A.p;
+nnzA=A.nnz;
+
+
+nnzB=B.nnz;
+
+C=SparseLattice(a_n,b_n,a_p);
+
+a_ctr=1;
+start_b_ctr=1;
+c_ctr=1;  %index of values in C
+c_inds=zeros(N);
+c_vals=zeros(N);
+
+
+
+
+for current_depth=1:a_p
+    
+    while A.depth(a_ctr)==current_depth && a_ctr<nnzA
+        
+        a_ctr2=a_ctr+1;
+        c_row_idx=A.col(a_ctr);
+        
+        while A.col(a_ctr)==A.col(a_ctr2) && A.depth(a_ctr2)==current_depth && a_ctr2<nnzA 
+            a_ctr2=a_ctr2+1;
+        end
+        
+        
+        a_rows=A.row(a_ctr:(a_ctr2-1));
+        
+        
+        b_ctr=start_b_ctr;
+        b_current_col=0;
+        while B.depth(b_ctr)==current_depth && b_ctr<nnzB 
+            b_current_row=B.row(b_ctr);
+            index = binaraysearchasc(a_rows,b_current_row); %search and see if current row in B matches a valid row within the range of a_rows
+            if ~isempty(index)
+                if b_current_col~=B.col(b_inds(b_ctr))
+                    b_current_col=B.col(b_inds(b_ctr));
+                    c_vals(c_ctr)=A.vals(a_ctr+index-1)*B.vals(b_ctr);
+                    c_inds(c_ctr)=sub2ind(C,c_row_idx,b_current_col,1);
+                    c_ctr=c_ctr+1;
+                else
+                    c_vals(c_ctr)=c_vals(c_ctr)+A.vals(a_ctr+index-1)*B.vals(b_ctr);
+                end
+                
+            end
+            b_ctr=b_ctr+1;
+        end
+        a_ctr=a_ctr2;
+        
+    end
+    start_b_ctr=b_ctr;
+end
+C=SparseLattice(c_inds,c_vals,a_n,b_n,a_p);

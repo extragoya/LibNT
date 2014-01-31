@@ -98,12 +98,13 @@ struct index_type<MappedDenseLattice<T> >
   \tparam T   the datatype of individual elements.
 */
 template <class T>
-class MappedDenseLattice: public DenseLatticeBase<MappedDenseLattice<T> > //, boost::multipliable<DenseLattice<T> >
+class MappedDenseLattice: public DenseLatticeBase<MappedDenseLattice<T> > 
 {
 public:
     //Lattice();
     //! Data type of individual elements
     typedef typename internal::data_type<MappedDenseLattice>::type data_type;
+	typedef typename internal::index_type<MappedDenseLattice>::type index_type;
     typedef typename internal::Data<MappedDenseLattice>::type Data;
     typedef typename internal::storage_iterator<MappedDenseLattice>::type storage_iterator;
     typedef typename internal::const_storage_iterator<MappedDenseLattice>::type const_storage_iterator;
@@ -123,7 +124,7 @@ public:
     \param[in] rawdata Pointer of already allocated memory. Internal pointer of class is set to rawdata.
 
     */
-    MappedDenseLattice(T*rawdata,int _height, int _width, int _depth):  m_raw_data(rawdata),m_data(rawdata,boost::extents[_height][_width][_depth],boost::fortran_storage_order())
+	MappedDenseLattice(T*rawdata, index_type _height, index_type _width, index_type _depth) : m_raw_data(rawdata), m_data(rawdata, boost::extents[_height][_width][_depth], boost::fortran_storage_order())
     {
 
 
@@ -137,12 +138,12 @@ public:
 
 
 
-    const data_type& operator()(int i, int j, int k) const
+	const data_type& operator()(index_type i, index_type j, index_type k) const
     {
 
         return m_data[i][j][k];
     }
-    data_type& operator()(int i, int j, int k)
+	data_type& operator()(index_type i, index_type j, index_type k)
     {
 
         return m_data[i][j][k];

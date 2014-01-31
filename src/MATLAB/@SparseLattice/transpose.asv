@@ -1,0 +1,6 @@
+function A=transpose(A)
+
+a_n=A.n;
+A.n=A.m;
+A.m=A.n;
+

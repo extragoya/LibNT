@@ -35,6 +35,8 @@
 #define PARALLEL_TOL 8192
 //#define LIBMIA_CHECK_DIMS 1
 
+
+
 namespace LibMIA
 {
 
@@ -62,6 +64,49 @@ enum SolveInfo{
 
 const bool ColumnMajor=true;
 const bool RowMajor=false;
+
+//workaround for MSVC compiler which doesn't yet support constexpr
+#ifdef NO_CONST_EXPR_LIBMIA
+
+//comparison tolerances for non zeros after operations like solving
+template <class T> struct Tolerance
+{
+	const static int tolerance;
+};
+template <class T>
+const int __declspec(selectany)  Tolerance<T>::tolerance = 0;
+/*template <> struct Tolerance<float>
+{
+	static float tolerance=1e-3f;
+	//static const float tolerance=5.96e-08;
+
+};
+template <> struct Tolerance<double>
+{
+	static double tolerance=1e-6;
+	//static const double tolerance=1.11e-16;
+
+};
+
+//tolerances for how close to zero a nonzero can get to be included in a sparse data structure
+template <class T> struct SparseTolerance
+{
+	static int tolerance=0;
+};
+template <> struct SparseTolerance<float>
+{
+	static float tolerance=5.96e-08;
+	//static const float tolerance=5.96e-08;
+
+};
+template <> struct SparseTolerance<double>
+{
+	static double tolerance=1.11e-16;
+	//static const double tolerance=1.11e-16;
+
+};*/
+
+#else
 
 
 //comparison tolerances for non zeros after operations like solving
@@ -100,7 +145,7 @@ template <> struct SparseTolerance<double>
 
 };
 
-
+#endif
 
 
 template <class Derived>

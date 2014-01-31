@@ -2,12 +2,12 @@
 #include <sstream>
 #include <string>
 #include <cmath>
+#include "SparseMergeMex_Export.h" //must include before mex.h so mex.h can use macro definitions
 #include "mex.h"
 #include "check_sparse.h"
 #include "SparseLattice.h"
 #include "MappedSparseLattice.h"
-#include "SparseUtil.h"
-#include "LatticeException.h"
+#include "LibMIAException.h"
 
 
 typedef long long index_type;
@@ -48,6 +48,7 @@ mwSize perform_merge(mxArray *plhs[],mxClassID a_id, T*a_data, index_type  * a_i
     }
     catch(LibMIA::LatticeException& e){
         mexErrMsgTxt(e.what());
+		return 0; //superfluous since mexErrMsgTxt exits program, but done to avoid warnings
 
     }
 

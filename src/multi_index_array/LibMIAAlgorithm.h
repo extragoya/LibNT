@@ -72,7 +72,7 @@
 
 #ifndef LIBMIAALGORITHM
 #define LIBMIAALGORITHM
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 
 namespace LibMIA
 {
@@ -436,8 +436,8 @@ namespace introsort_detail {
     template <typename RandomIterator, typename Comparator,typename Swapper>
     void HeapSort( RandomIterator begin, RandomIterator end,const Comparator & comp,const Swapper & swapper)
     {
-        int i_start, i_end;
-        int _size=end-begin;
+        long long i_start, i_end;
+		long long _size = end - begin;
         /* heapify */
         for (i_start = (_size-2)/2; i_start >=0; i_start--) {
             SiftDown(begin,_size,i_start, comp, swapper);
@@ -769,7 +769,7 @@ namespace naturalmergesort_detail {
 
 
 template<typename MainIterator,typename FollowIterator,typename ScratchIterator,typename ScratchIterator2,typename  Comp>
-bool MergeSortLoop(MainIterator begin, MainIterator end, FollowIterator followBegin, ScratchIterator scratchBegin1, ScratchIterator2 scratchBegin2,const Comp& comp, boost::timer::cpu_timer& findtimer){
+bool MergeSortLoop(MainIterator begin, MainIterator end, FollowIterator followBegin, ScratchIterator scratchBegin1, ScratchIterator2 scratchBegin2,const Comp& comp){
 
     bool haveMerged=false;
     auto scratchIt1=scratchBegin1;
@@ -850,7 +850,7 @@ void NaturalMergesort(ForwardIterator begin, ForwardIterator end,FollowIt follow
   /* Continuously loop, merging together ranges until the input is fully
    * sorted.
    */
-   boost::timer::cpu_timer findtimer;
+   //boost::timer::cpu_timer findtimer;
   size_t ctr=0;
   do {
     /* We have not yet merged anything, so clear this flag. */
@@ -861,10 +861,10 @@ void NaturalMergesort(ForwardIterator begin, ForwardIterator end,FollowIt follow
      */
      //we alternate whether we use the original container or the scrathspace to hold the merged lists
     if(ctr%2==0){
-        haveMerged=MergeSortLoop(begin, end, followBegin, mainScratch.begin(), followScratch.begin(),comp, findtimer);
+        haveMerged=MergeSortLoop(begin, end, followBegin, mainScratch.begin(), followScratch.begin(),comp);
     }
     else
-        haveMerged=MergeSortLoop(mainScratch.begin(), mainScratch.end(), followScratch.begin(), begin, followBegin,comp, findtimer);
+        haveMerged=MergeSortLoop(mainScratch.begin(), mainScratch.end(), followScratch.begin(), begin, followBegin,comp);
 
 
     if(!haveMerged && ctr%2){ //if we are done, and the scratchspace holds the final merged lists, we need a final copy back
