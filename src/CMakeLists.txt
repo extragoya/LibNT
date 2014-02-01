@@ -20,7 +20,7 @@ set(Boost_DIR ${BOOST_ROOT})
 #if we're using the single-header option in boost::test, only include the boost directories
 if(MIA_USE_HEADER_ONLY_TESTS)
 	
-	find_package(Boost 1.55.0 REQUIRED EXACT)
+	find_package(Boost REQUIRED)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
 		
@@ -31,7 +31,7 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 	set(Boost_USE_MULTITHREADED      OFF)
 	set(Boost_USE_STATIC_RUNTIME    OFF)
 	set (Boost_USE_DEBUG_RUNTIME OFF)
-	find_package(Boost 1.55.0 REQUIRED EXACT COMPONENTS unit_test_framework timer system chrono)
+	find_package(Boost REQUIRED COMPONENTS unit_test_framework timer system chrono)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
 		message(${Boost_LIBRARIES})
