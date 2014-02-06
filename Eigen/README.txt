@@ -1,0 +1,6 @@
+The files located in this directory are patched versions of files found in the Eigen 3.2 library. They allow the sparse solvers included with Eigen to be used with wrapped data, i.e., wrapping the raw data found in LibMIA's SparseLattice and SparseMIA classes into Eigen's MappedSparseMatrix class. A feature request and patches have been submitted to the Eigen developers, so hopefully including these modified files will not be needed in future versions of LibMIA. The status of this feature request can be viewed here: http://eigen.tuxfamily.org/bz/show_bug.cgi?id=706
+
+In the meantime, to be able to use LibMIA's sparse solving capabilities, these files must replace their original versions in Eigen 3.2. The complete files were included instead of patch files, because it's not so trivial to apply diff patch files on Windows. Note that the modified files fall under the same license as Eigen's, namely the MPL2, http://www.mozilla.org/MPL/2.0/.
+
+1. Copy and replace SimplicialCholesky.h and SimplicialCholesky_impl.h from this directory to their location in Eigen's source tree. The original files are found at <Eigen_src_tree>/Eigen/src/SparseCholesky/
+2. Copy and replace SparseQR.h from this directory to its location in Eigen's source tree. The original file is found into <Eigen_src_tree>/Eigen/src/SparseQR/
