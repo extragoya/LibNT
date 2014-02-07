@@ -71,8 +71,9 @@ classdef SparseLattice < Lattice
                     else
                         [t_m t_n t_p]=size(arg);
                     end
-                    obj.inds=int64(find(arg));
+                    obj.inds=int64(find(arg(:))); %make sure we get a column vector of data and indices
                     t_vals=arg(obj.inds);
+                    t_vals=t_vals(:);
                     obj.m=t_m;
                     obj.n=t_n;
                     obj.p=t_p;
@@ -222,7 +223,7 @@ classdef SparseLattice < Lattice
         C=plus(A,B)
         C=minus(A,B)
         C=mtimes(A,B)
-        
+        is_eq=fuzzy_eq(A,B,tol)
         A=transpose(A);
         A=ctranspose(A);
     end %public methods
