@@ -109,7 +109,7 @@ struct function_traits<ReturnType(Args...)>
 
         The function type (``R(T...)``).
     */
-    typedef ReturnType function_type(Args...);
+    //typedef ReturnType function_type(Args...);
 
     /**
     .. type:: type member_function_type<OwnerType>

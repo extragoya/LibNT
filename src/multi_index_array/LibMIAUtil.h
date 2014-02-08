@@ -40,8 +40,8 @@
 namespace LibMIA
 {
 
-inline boost::random::mt19937& LibMIA_gen() {
-   static boost::random::mt19937 gen(time(0));
+inline boost::mt19937& LibMIA_gen() {
+   static boost::mt19937 gen(time(0));
    return gen;
 }
 

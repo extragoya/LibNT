@@ -27,7 +27,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/iterator/iterator_traits.hpp>
 
-#include "LibMiaException.h"
+#include "LibMIAException.h"
 #include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "DenseMIABase.h"
@@ -345,7 +345,7 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     auto toLatticeDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
-    ->decltype(internal::latticeCopy(*this,row_indices,column_indices,tab_indices))
+    ->DenseLattice<data_type>
     {
         return this->toLatticeCopy(row_indices,column_indices,tab_indices);
 
@@ -357,7 +357,7 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
     auto toLatticeExpression(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
-    ->decltype(this->toLatticeCopy(row_indices,column_indices,tab_indices)) const
+    ->DenseLattice<data_type> const
     {
         return this->toLatticeCopy(row_indices,column_indices,tab_indices);
 
@@ -365,7 +365,7 @@ public:
 
 
     auto toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices)
-    ->decltype(this->toStraightLatticeCopy(number_of_row_indices,number_of_column_indices)) const
+    ->DenseLattice<data_type> const
     {
 
         return this->toStraightLatticeCopy(number_of_row_indices,number_of_column_indices);
