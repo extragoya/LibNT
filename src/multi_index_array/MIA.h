@@ -334,7 +334,7 @@ public:
             throw MIAParameterException("Lower bound of random numbers must be stricly smaller than upper bound.");
         }
         boost::uniform_real<> uni_dist(low,high);
-        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA_gen(), uni_dist);
+        boost::variate_generator<boost::mt19937&, boost::uniform_real<> > uni(LibMIA_gen(), uni_dist);
         typedef boost::numeric::converter<data_type,boost::uniform_real<>::result_type> to_mdata_type;
         for (auto i=derived().data_begin();i<derived().data_end();++i){
             *i=to_mdata_type::convert(uni());
@@ -399,7 +399,8 @@ public:
     template<typename... Indices>
     data_type_ref at(Indices... indices) {
         static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
+        auto temp = {{indices...};
+        //std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
         return at(temp);
     }
 

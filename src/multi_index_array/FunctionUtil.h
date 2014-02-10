@@ -438,13 +438,14 @@ ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_en
 
         }
     }
-    std::cout << "Index\t Data in scan merge" << std::endl;
-    for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
-        std::cout << *j << "\t " << *i << std::endl;
-
-    std::cout << std::endl;
-
-    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+//    std::cout << "Index\t Data in scan merge" << std::endl;
+//    auto j=a_index_begin;
+//    for(auto i=a_data_begin;i<a_actual_data_end;++i,++j)
+//        std::cout << *j << "\t " << *i << std::endl;
+//
+//    std::cout << std::endl;
+//
+//    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
     std::inplace_merge(make_sort_permute_iter(a_index_begin,a_data_begin),
                     make_sort_permute_iter(a_index_end,a_data_end),
               make_sort_permute_iter(a_actual_index_end,a_actual_data_end),
@@ -455,12 +456,12 @@ ADataIt merge_sparse_storage_containers(ADataIt  a_data_begin,ADataIt  a_data_en
 //        return *(a_index_begin+(&lhs-&(*a_data_begin))) <*(a_index_begin+(&rhs-&(*a_data_begin)));
 //    });
 //    std::inplace_merge(a_index_begin,a_index_end,a_actual_index_end);
-    std::cout << " diff " << a_index_end-a_index_begin << std::endl;
+    /*std::cout << " diff " << a_index_end-a_index_begin << std::endl;
     std::cout << "Index\t Data in AFTER scan merge" << std::endl;
     for(auto i=a_data_begin,j=a_index_begin;i<a_actual_data_end;++i,++j)
         std::cout << *j << "\t " << *i << std::endl;
 
-    std::cout << std::endl;
+    std::cout << std::endl;*/
     return a_actual_data_end;
 
 }
