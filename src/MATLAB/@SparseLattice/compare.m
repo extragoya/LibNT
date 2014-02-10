@@ -18,7 +18,9 @@ elseif isa(B,'Lattice')
     B_inds=int64(find(B.vals));
     B_vals=B.vals(B_inds);
     B_vals=B_vals(:);
-    if(length(A.vals)~=length(B_vals))
+    if(isempty(B_vals) && isempty(A.vals))
+        is_eq=true;
+    elseif(length(A.vals)~=length(B_vals))
         
         is_eq=false;
     elseif(isequal(A.inds,B_inds) && func(A.vals,B_vals))

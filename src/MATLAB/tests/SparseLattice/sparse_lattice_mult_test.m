@@ -29,7 +29,8 @@ function testMult4(testCase)
 end
 
 function testMult5(testCase)
-    m1=1;n1=6;p=1;m2=6;n2=1;
+    m1=1;n1=25;p=1;m2=25;n2=1;
     [C, denseC]=sparse_lattice_mult_test_work(m1,n1,m2,n2,p);
+    
     verifyTrue(testCase,fuzzy_eq(C,denseC,0));
 end

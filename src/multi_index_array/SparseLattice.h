@@ -457,6 +457,16 @@ public:
         resize(diff);
     }
 
+	/*void remove_zeros(){
+		decltype(m_data) new_data;
+		decltype(m_indices) new_indices;
+		new_data.reserve(this->size());
+		new_indices.reserve(this->size());
+		for (auto it = this->index_begin(); it < this->index_end(); ++it){
+			if (std::abs(this->data_at(it))<)
+		}
+	}*/
+
 
     //SparseLattice<T,true> operator*(SparseLattice &b) ;
 

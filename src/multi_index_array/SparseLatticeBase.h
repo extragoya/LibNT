@@ -2020,7 +2020,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 {
 
 
-    std::cout << "Entered sparse solve sparse " << std::endl;
+    //std::cout << "Entered sparse solve sparse " << std::endl;
     this->check_solve_dims(b);
 
 
@@ -2181,7 +2181,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     }
 
 
-    std::cout << "Exited sparse solve sparse " << std::endl;
+    //std::cout << "Exited sparse solve sparse " << std::endl;
     return c;
 }
 template <class Derived>

@@ -223,6 +223,7 @@ classdef SparseLattice < Lattice
         C=plus(A,B)
         C=minus(A,B)
         C=mtimes(A,B)
+        B=mldivide(A,C)
         is_eq=fuzzy_eq(A,B,tol)
         A=transpose(A);
         A=ctranspose(A);

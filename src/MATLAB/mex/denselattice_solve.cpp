@@ -9,7 +9,7 @@
 
 
 template<class T>
-void perform_solve(T * C, T*A, T*B, const mwSize*a_subs, const mwSize*b_subs, const mwSize*c_subs){
+int perform_solve(T * C, T*A, T*B, const mwSize*a_subs, const mwSize*b_subs, const mwSize*c_subs){
 
 
     const LibMIA::MappedDenseLattice<T> latA(A,a_subs[0],a_subs[1],c_subs[2]);
@@ -17,16 +17,25 @@ void perform_solve(T * C, T*A, T*B, const mwSize*a_subs, const mwSize*b_subs, co
     
 
     LibMIA::MappedDenseLattice<T> latC(C,c_subs[0],c_subs[1],c_subs[2]);
-
+	int ret_code(-1);
     try{
 		auto latC = latA.solve(latB);
 		std::copy(latC.data_begin(), latC.data_end(), C);
+		if (latC.solveInfo() == LibMIA::RankDeficient){
+			ret_code = 0;
+		}
+		else if (latC.solveInfo() == LibMIA::FullyRanked){
+			ret_code = 1;
+		}
+		else if (latC.solveInfo() == LibMIA::LeastSquares){
+			ret_code = 2;
+		}
     }
     catch(LibMIA::LatticeException& e){
         mexErrMsgTxt(e.what());
 
     }
-
+	return ret_code;
 
 
 }
@@ -38,7 +47,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     if (nrhs!=2)
         mexErrMsgTxt("Two arguments must be provided to dense lattice solve.");
-    else if(nlhs>1)
+    else if(nlhs>2)
         mexErrMsgTxt("Too many output arguments.");
     else if(nlhs==0)
         mexErrMsgTxt("No output");
@@ -72,16 +81,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		c_subs[0] = a_subs[1]; c_subs[1] = b_subs[1]; c_subs[2] = a_subs[2];
 	}
     plhs[0]=mxCreateNumericArray(3, c_subs,   a_id, mxREAL);
-    //plhs[0]=mxCreateNumericArray(0, 0,   a_id, mxREAL);
+	
 
+    //plhs[0]=mxCreateNumericArray(0, 0,   a_id, mxREAL);
+	double result;
     switch (a_id)
     {
     case mxDOUBLE_CLASS:
 
-        perform_solve((double *)mxGetData(plhs[0]),(double *)mxGetData(prhs[0]), (double *)mxGetData(prhs[1]),a_subs,b_subs,c_subs);
+		result=perform_solve((double *)mxGetData(plhs[0]), (double *)mxGetData(prhs[0]), (double *)mxGetData(prhs[1]), a_subs, b_subs, c_subs);
         break;
     case mxSINGLE_CLASS:
-		perform_solve((float *)mxGetData(plhs[0]), (float *)mxGetData(prhs[0]), (float *)mxGetData(prhs[1]), a_subs, b_subs, c_subs);
+		result = perform_solve((float *)mxGetData(plhs[0]), (float *)mxGetData(prhs[0]), (float *)mxGetData(prhs[1]), a_subs, b_subs, c_subs);
         break;
     case mxUNKNOWN_CLASS:
         mexErrMsgTxt("Unrecognized lattice data type");
@@ -90,7 +101,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mexErrMsgTxt("Data type must be floating point");
         break;
     }
-
+	double*y;
+	if (nlhs == 2){		 
+		plhs[1] = mxCreateDoubleMatrix(1, 1,mxREAL);
+		y = mxGetPr(plhs[1]);
+		*y = result;
+	}
 
 
     //int fields =mxGetNumberOfFields(prhs[0]);

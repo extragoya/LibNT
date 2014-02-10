@@ -75,37 +75,41 @@ template <class T> struct Tolerance
 };
 template <class T>
 const int __declspec(selectany)  Tolerance<T>::tolerance = 0;
-/*template <> struct Tolerance<float>
+template <> struct Tolerance<float>
 {
-	static float tolerance=1e-3f;
+	const static float tolerance; 
 	//static const float tolerance=5.96e-08;
 
 };
+const float __declspec(selectany)  Tolerance<float>::tolerance = 1e-3f;
 template <> struct Tolerance<double>
 {
-	static double tolerance=1e-6;
+	const static double tolerance; 
 	//static const double tolerance=1.11e-16;
 
 };
-
+const double __declspec(selectany)  Tolerance<double>::tolerance = 1e-6;
 //tolerances for how close to zero a nonzero can get to be included in a sparse data structure
 template <class T> struct SparseTolerance
 {
-	static int tolerance=0;
+	const static int tolerance;
 };
+template <class T>
+const int __declspec(selectany)  SparseTolerance<T>::tolerance = 0;
 template <> struct SparseTolerance<float>
 {
-	static float tolerance=5.96e-08;
+	const static float tolerance;
 	//static const float tolerance=5.96e-08;
 
 };
+const float __declspec(selectany)  SparseTolerance<float>::tolerance = 5.96e-08;
 template <> struct SparseTolerance<double>
 {
-	static double tolerance=1.11e-16;
+	const static double tolerance; 
 	//static const double tolerance=1.11e-16;
 
-};*/
-
+};
+const double __declspec(selectany)  SparseTolerance<double>::tolerance = 1.11e-16;
 #else
 
 

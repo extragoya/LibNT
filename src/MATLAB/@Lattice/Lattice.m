@@ -4,6 +4,7 @@ classdef Lattice
         m
         n
         p
+        solveInfo=0; %no Info
         
     end
     

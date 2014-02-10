@@ -5,7 +5,8 @@ if A.p~=C.p
 end
 
 
-b_vals=DenseLatticeSolveMex(A.vals,C.vals);
+[b_vals, res]=DenseLatticeSolveMex(A.vals,C.vals);
 
 
 B=Lattice(b_vals);
+B.solveInfo=res;
