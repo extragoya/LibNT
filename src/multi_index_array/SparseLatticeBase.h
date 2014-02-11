@@ -1861,7 +1861,7 @@ struct sparse_lattice_solver<false,EigenSparseMatrix> {
         _solverLU.analyzePattern(_matrix);
         _solverLU.factorize(_matrix);
 
-        if(this->info()!=Eigen::Success){
+		if (_solverLU.info() != Eigen::Success){
 
             _solveInfo=RankDeficient;
         }
@@ -2143,7 +2143,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             while(b_temp_begin<b_temp_end){
                 b_vector.setZero(); //reset dense temp vector
 
-                size_t b_cur_column=(size_t)b.column(*b_temp_begin);
+                auto b_cur_column=b.column(*b_temp_begin);
                 while(b_temp_begin<b_temp_end && b.column(*b_temp_begin)==b_cur_column){
                     b_vector(b.row(*b_temp_begin))=this->convert(b.derived().data_at(b_temp_begin-b.index_begin()));
                     b_temp_begin++;

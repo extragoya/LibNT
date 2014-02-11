@@ -2,6 +2,7 @@ function is_eq = fuzzy_eq(A,B,tol)
 %EQ Summary of this function goes here
 %   Detailed explanation goes here
 
+    
     function is_eq=fuzzy_compare(a,b,tol)
        test=abs(a-b);
        inds=find(test>tol, 1);

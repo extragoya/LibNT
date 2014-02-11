@@ -41,7 +41,7 @@ namespace LibMIA
 {
 
 inline boost::mt19937& LibMIA_gen() {
-   static boost::mt19937 gen(time(0));
+	static boost::mt19937 gen(static_cast<uint32_t>(time(0)));
    return gen;
 }
 
@@ -102,7 +102,7 @@ template <> struct SparseTolerance<float>
 	//static const float tolerance=5.96e-08;
 
 };
-const float __declspec(selectany)  SparseTolerance<float>::tolerance = 5.96e-08;
+const float __declspec(selectany)  SparseTolerance<float>::tolerance = (float)5.96e-08;
 template <> struct SparseTolerance<double>
 {
 	const static double tolerance; 

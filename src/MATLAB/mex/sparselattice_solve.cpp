@@ -45,7 +45,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     double  b_subs[3]={0,0,0};
     mwSize a_data_length;
     mwSize b_data_length;
-    mxClassID a_id=check_sparse_params(nlhs, plhs, nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
+	if (nlhs != 1)
+		mexErrMsgTxt("One output argument, a dense lattice, required to solve SparseLattices.");
+	
+    mxClassID a_id=check_sparse_params(nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
 	mwSize c_subs[3];
 	c_subs[0] = a_subs[1]; c_subs[1] = b_subs[1]; c_subs[2] = a_subs[2];
 	

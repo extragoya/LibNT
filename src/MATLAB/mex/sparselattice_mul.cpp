@@ -56,7 +56,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     double  b_subs[3]={0,0,0};
     mwSize a_data_length;
     mwSize b_data_length;
-    mxClassID a_id=check_sparse_params(nlhs, plhs, nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
+	if (nlhs != 2)
+		mexErrMsgTxt("Two output arguments, c_data c_indices, required to multiply SparseLattices.");
+	else if (nlhs == 0)
+		mexErrMsgTxt("No output");
+    mxClassID a_id=check_sparse_params(nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
 
     switch (a_id)
     {

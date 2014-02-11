@@ -550,7 +550,7 @@ struct dense_lattice_solver<true,Lattice> {
 
     static auto get_solver(const Lattice & lattice,int _tab,SolveInfo &_solveInfo)->decltype(lattice.tab_matrix(_tab).jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)){
         auto _SVD=lattice.tab_matrix(_tab).jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-        if(!_SVD.nonzeroSingularValues()!=lattice.width())
+        if(_SVD.nonzeroSingularValues()!=lattice.width())
             _solveInfo=RankDeficient;
         else
             _solveInfo=LeastSquares;
@@ -688,17 +688,19 @@ inline void DenseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<othe
 
 
 
-    c.setSolveInfo(FullyRanked);
+    c.setSolveInfo(NoInfo);
     SolveInfo _solveInfo;
     for (int i=0; i<this->depth(); i++)
     {
 
         auto _solver=dense_lattice_solver<LSQR,DenseLatticeBase>::get_solver(*this,i,_solveInfo);
-        c.setSolveInfo(_solveInfo);
+		if (_solveInfo==LibMIA::RankDeficient) //ensures that if we get only one tab Rank Deficient, we'll still set the entire solution as Rank Deficient
+			c.setSolveInfo(LibMIA::RankDeficient);
         c.derived().tab_matrix(i)=_solver.solve(b.derived().tab_matrix(i));
 
     }
-
+	if (c.solveInfo()!=LibMIA::RankDeficient) //if no tabs were RankDeficient, then set solveInfo to be either FullyRanked or LeastSquares
+		c.setSolveInfo(_solveInfo);
 
 }
 

@@ -164,61 +164,61 @@ classdef SparseLattice < Lattice
         
         
         
-        function ret = subsref(obj,s)
-            % SUBSREF Implementing the following syntax:
-            % obj(i,j,k)
-            % obj.col
-            % obj.row
-            % obj.depth
-            switch s(1).type
-                
-                case '.'
-                    switch s(1).subs
-                        case 'col'
-                            if strcmp(s(2).type,'()')
-                                if(isempty(s(2).subs))
-                                    ret = col(obj);
-                                else
-                                    ret = col(obj,s(2).subs{1});
-                                end
-                            else
-                                error('Syntax for column is A.col(idx)')
-                            end
-                        case 'row'
-                            if strcmp(s(2).type,'()')
-                                if(isempty(s(2).subs))
-                                    ret = row(obj);
-                                else
-                                    ret = row(obj,s(2).subs{1});
-                                end
-                            else
-                                error('Syntax for row is A.row(idx)')
-                            end
-                        case 'tab'
-                            if strcmp(s(2).type,'()')
-                                if(isempty(s(2).subs))
-                                    ret = tab(obj);
-                                else
-                                    ret = tab(obj,s(2).subs{1});
-                                end
-                            else
-                                error('Syntax for depth is A.depth(idx)')
-                            end
-                        otherwise
-                            ret = obj.(s.subs);
-                            
-                    end
-                case '()'    
-                    if length(s(1).subs)==1
-                        ret=obj.vals(s(1).subs{1});
-
-                    end
-                    
-                                    
-                otherwise
-                    error('Specify value for x as obj(x)')
-            end
-        end % subsref
+%         function ret = subsref(obj,s)
+%             % SUBSREF Implementing the following syntax:
+%             % obj(i,j,k)
+%             % obj.col
+%             % obj.row
+%             % obj.depth
+%             switch s(1).type
+%                 
+%                 case '.'
+%                     switch s(1).subs
+%                         case 'col'
+%                             if strcmp(s(2).type,'()')
+%                                 if(isempty(s(2).subs))
+%                                     ret = col(obj);
+%                                 else
+%                                     ret = col(obj,s(2).subs{1});
+%                                 end
+%                             else
+%                                 error('Syntax for column is A.col(idx)')
+%                             end
+%                         case 'row'
+%                             if strcmp(s(2).type,'()')
+%                                 if(isempty(s(2).subs))
+%                                     ret = row(obj);
+%                                 else
+%                                     ret = row(obj,s(2).subs{1});
+%                                 end
+%                             else
+%                                 error('Syntax for row is A.row(idx)')
+%                             end
+%                         case 'tab'
+%                             if strcmp(s(2).type,'()')
+%                                 if(isempty(s(2).subs))
+%                                     ret = tab(obj);
+%                                 else
+%                                     ret = tab(obj,s(2).subs{1});
+%                                 end
+%                             else
+%                                 error('Syntax for depth is A.depth(idx)')
+%                             end
+%                         otherwise
+%                             ret = obj.(s.subs);
+%                             
+%                     end
+%                 case '()'    
+%                     if length(s(1).subs)==1
+%                         ret=obj.vals(s(1).subs{1});
+% 
+%                     end
+%                     
+%                                     
+%                 otherwise
+%                     error('Specify value for x as obj(x)')
+%             end
+%         end % subsref
         
         C=plus(A,B)
         C=minus(A,B)
