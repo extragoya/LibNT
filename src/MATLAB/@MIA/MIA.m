@@ -122,9 +122,12 @@ classdef MIA
     methods (Access=protected)
         Expr=make_expr(A,indices);
         obj=assign_expr(obj,indices,Expr);
-        split_indices=make_cell_indices(obj,indices);
+        
         obj=assign(obj,otherMIA,assign_order);
         
+    end
+    methods(Access=protected, Static)
+        split_indices=make_cell_indices(indices);
     end
     
 end

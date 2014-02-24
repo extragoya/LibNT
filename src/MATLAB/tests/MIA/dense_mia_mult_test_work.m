@@ -1,5 +1,7 @@
 function [C, c_data]=dense_mia_mult_test_work(a_dims,b_dims,a_indices,b_indices,a_outer_idx,a_inner_idx,a_inter_idx,b_outer_idx,b_inner_idx,b_inter_idx)
-
+%a_indices, b_indices are hte string indices, e.g. 'ijk'. a_outer_idx,
+%a_inter_idx, etc are the actual numerical index values that are undergoing
+%each of the three possible mulitplications
 a_data=rand(a_dims);
 b_data=rand(b_dims);
 

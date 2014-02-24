@@ -5,7 +5,7 @@ function obj=assign_expr(obj,indices,Expr)
 %performed
 otherMIA=Expr.m_mia;
 
-split_indices=make_cell_indices(obj,indices);
+split_indices=MIA.make_cell_indices(indices);
 other_indices=Expr.m_indices;
 if(length(split_indices)~=length(other_indices))
     error('Orders of two MIAs must be the same to perform assignment');

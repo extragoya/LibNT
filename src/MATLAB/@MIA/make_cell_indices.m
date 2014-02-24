@@ -1,4 +1,4 @@
-function split_indices=make_cell_indices(obj,indices)
+function split_indices=make_cell_indices(indices)
 %splits a char array, e.g., 'i!kj' into a cell array, e.g., {i},{!k},{j}
 %and also throws an error with invalid input
 
@@ -12,9 +12,7 @@ if(ischar(indices))
     if ~isempty(invalid_indices)
         error('Only input lower-case letters and ''!''') 
     end
-    if length(split_indices)~=obj.order
-       error('Number of indices must be the same as MIA order') 
-    end
+    
     
     
 else
