@@ -74,6 +74,7 @@ classdef Lattice
         B=mldivide(A,C);
         A=transpose(A);
         A=ctranspose(A);
+        AMIA=toMIA(A,row_size,col_size,depth_size);
     end
     
 end %classdef
