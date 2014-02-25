@@ -893,22 +893,7 @@ public:
             cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
         }
 
-        //bLat.print();
 
-
-
-//        std::cout << "CLat done" << std::endl;
-//        cLat.print();
-
-
-
-
-
-
-        //std::cout << "Lattice product finished " << std::endl;
-
-
-        //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
 
 
@@ -993,7 +978,7 @@ public:
         auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
 
         MIA_return_type* cMIA;
-        if(check_if_copy_needed<other_ownership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
+        if(check_if_copy_needed<other_ownership>(m_mia,Rhs.m_mia)){ //if the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
             typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
             bMIACopyType temp(*(Rhs.m_mia));
             auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);

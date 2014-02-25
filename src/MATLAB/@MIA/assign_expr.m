@@ -4,8 +4,24 @@ function obj=assign_expr(obj,indices,Expr)
 %indices match properly, and if so, then the actual assignment will be
 %performed
 otherMIA=Expr.m_mia;
+if (ischar(indices))
+    split_indices=MIA.make_cell_indices(indices);
+    
+elseif iscell(indices)
+    
+    if(numel(size(indices))>2 || size(indices,1)>1)
+        error('Must input a cell row vector of chars');
+    end
+    for i=1:length(indices)
+        if(~ischar(indices{i}))
+            error('Each entry in cell array must be a char');
+        end
+    end
+    split_indices=indices;
+else
+    error('Must input a char array or cell array of chars when indexing MIAs');
+end
 
-split_indices=MIA.make_cell_indices(indices);
 other_indices=Expr.m_indices;
 if(length(split_indices)~=length(other_indices))
     error('Orders of two MIAs must be the same to perform assignment');

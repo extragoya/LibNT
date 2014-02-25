@@ -5,3 +5,4 @@ resultsSparseLatticeSolve = runtests('SparseLattice\sparse_lattice_solve_test.m'
 resultsDenseMIAMult = runtests('MIA\dense_mia_mult_test.m')
 resultsDenseMIAAssign = runtests('MIA\dense_mia_assign_test.m')
 resultsDenseMIAMerge = runtests('MIA\dense_mia_merge_test.m')
+resultsDenseMIASolve = runtests('MIA\dense_mia_solve_test.m')

@@ -1,6 +1,19 @@
 function CExpr = mtimes(A,B)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%MIA multiplication
+%performs multiplication using MIA algebra, e.g., A('ij!k')*B('jl!k'),
+%which is an outer product across i and l, inner product across j, and
+%inter (element-wise) product across k. Any other combination is possible,
+%provided number of indices equals MIA order and dimensions match up
+%appropriately. Resulting MIAExpr contains MIA and indices equivalent to:
+%[a_outer_indices, b_outer_indices, inter_indices]. For example, in above
+%, if you do ans=A('ij!k')*B('jl!k') you will get an MIAExpr holding an
+%MIA and indices equivalent to C('ilk')=A('ij!k')*B('jl!k'). To use
+%different assignment indices, use an already constructed MIA, e.g., 
+%C=MIA;
+%C('kil')=A('ij!k')*B('jl!k')
+%or
+%C('lik')=A('ij!k')*B('jl!k')
+%or any other legal index set.
 
 [a_inner_idx, a_inter_idx, a_outer_idx, b_inner_idx, b_inter_idx, b_outer_idx]=pull_mult_indices(A,B);
 error_check_mult(A,B,a_inner_idx, a_inter_idx, b_inner_idx, b_inter_idx) %make sure indices match up properly for multiplication
