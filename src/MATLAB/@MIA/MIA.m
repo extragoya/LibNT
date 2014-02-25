@@ -117,6 +117,8 @@ classdef MIA
         
         
         B=toLattice(A,row_idx,col_idx,depth_idx);
+        C=do_plus(A,B,permute_idx);
+        C=do_minus(A,B,permute_idx);
     end
     
     methods (Access=protected)

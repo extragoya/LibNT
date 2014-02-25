@@ -26,12 +26,14 @@ classdef MIAExpr
          end
          
          C=mtimes(A,B);
+         C=plus(A,B);
+         C=minus(A,B);
     end
     methods (Access=protected)
         [a_inner_idx, a_inter_idx, a_outer_idx, b_inner_idx, b_inter_idx, b_outer_idx]=pull_mult_indices(A,B);
         error_check_mult(A,B,a_inner_idx, a_inter_idx, b_inner_idx, b_inter_idx)
         error_check_mldivide(A,C);
-        error_check_merge(A,B);
+        error_check_merge(A,B,permute_idx);
         error_check_flatten(A,row_idx,col_idx);
     end
 end

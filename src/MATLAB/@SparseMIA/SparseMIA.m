@@ -16,9 +16,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                 obj.dims=[];
                 obj.indices=[];
                 obj.data=[];
-                obj.inner_idx=[];
-                obj.outer_idx=[];
-                obj.inter_idx=[];
+                
             else
                 if nargin==1
                     arg=varargin{1};
@@ -27,10 +25,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                         obj.indices=find(arg);
                         obj.data=nonzeros(arg);
                         obj.partition=2;
-                        obj.inter_idx=1:2;
-                        obj.merge_idx=1:2;
-                        obj.inner_idx=[];
-                        obj.outer_idx=[];
+                        
                     elseif isa(arg,'MIA')
                         obj.dims=size(arg);
                         idx=find(arg.data);
@@ -44,10 +39,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                                 
                             end
                         end
-                        obj.inter_idx=arg.inter_idx;
-                        obj.inner_idx=arg.inner_idx;
-                        obj.outer_idx=arg.outer_idx;
-                        obj.merge_idx=arg.merge_idx;
+                        
                     else
                         error('SparseMIA constructor called with incomptabile parameters. Please view help.')
                     end
@@ -62,18 +54,11 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                     
                     idx= obj.dims>1;
                     obj.dims=obj.dims(idx);
-                    l=numel(obj.dims);
-                    if numel(obj.dims)==1
-                        obj.dims=[obj.dims 1];
-                        l=1;
-                    end
+                    
                     obj.partition=numel(obj.dims);
-                    [obj.indices idx] = sort(obj.indices);
+                    [obj.indices, idx] = sort(obj.indices);
                     obj.data=obj.data(idx);
-                    obj.inter_idx=1:l;
-                    obj.merge_idx=1:l;
-                    obj.inner_idx=[];
-                    obj.outer_idx=[];
+                    
                     
                 elseif nargin ==4
                     %TODO error checking and cleaning up dimensions of unit
@@ -84,13 +69,9 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                     obj.partition=varargin{4};
                     
                     
-                    [obj.indices idx] = sortrows(obj.indices);
+                    [obj.indices, idx] = sortrows(obj.indices);
                     obj.data=obj.data(idx);
-                    l=numel(obj.dims);
-                    obj.inter_idx=1:l;
-                    obj.merge_idx=1:l;
-                    obj.inner_idx=[];
-                    obj.outer_idx=[];
+                    
                 else
                     error('SparseMIA constructor called with incomptabile parameters. Please view help.')
                     
