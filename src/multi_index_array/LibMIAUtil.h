@@ -34,7 +34,7 @@
 
 #define PARALLEL_TOL 8192
 //#define LIBMIA_CHECK_DIMS 1
-
+#define LIBMIA_ROUND_DOWN(x, s) ((x) & ~((s)-1))
 
 
 namespace LibMIA
@@ -77,14 +77,14 @@ template <class T>
 const int __declspec(selectany)  Tolerance<T>::tolerance = 0;
 template <> struct Tolerance<float>
 {
-	const static float tolerance; 
+	const static float tolerance;
 	//static const float tolerance=5.96e-08;
 
 };
 const float __declspec(selectany)  Tolerance<float>::tolerance = 1e-3f;
 template <> struct Tolerance<double>
 {
-	const static double tolerance; 
+	const static double tolerance;
 	//static const double tolerance=1.11e-16;
 
 };
@@ -105,7 +105,7 @@ template <> struct SparseTolerance<float>
 const float __declspec(selectany)  SparseTolerance<float>::tolerance = (float)5.96e-08;
 template <> struct SparseTolerance<double>
 {
-	const static double tolerance; 
+	const static double tolerance;
 	//static const double tolerance=1.11e-16;
 
 };

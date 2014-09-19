@@ -21,6 +21,7 @@
 #include<array>
 
 #include "LibMIAUtil.h"
+#include "libdivide.h"
 
 namespace LibMIA
 {
@@ -59,6 +60,28 @@ struct static_for<N, N>
     { }
 };
 
+
+template <int Last>
+struct static_reverse_for
+{
+    template <typename Fn>
+    inline static void _do(Fn const& fn)
+    {
+
+        static_assert(Last>=0,"Must create static_reverse_for loop with Last>0 ");
+        fn(Last);
+        static_reverse_for<Last-1>::_do(fn);
+
+    }
+};
+
+template <>
+struct static_reverse_for<-1>
+{
+    template <typename Fn>
+    inline static void _do(Fn const& fn)
+    { }
+};
 
 template<class array_type>
 bool check_ascending(const array_type& _from){
@@ -235,7 +258,7 @@ typename array_type1::value_type dimensionality_from(const array_type1& from_arr
     typename array_type1::value_type _dimensionality=1;
     for(auto _order: from_sequence_order)
     {
-        _dimensionality*=(unsigned)from_array[(size_t)_order];
+        _dimensionality*=from_array[(size_t)_order];
     }
     return _dimensionality;
 
@@ -360,6 +383,81 @@ inline std::array<size_t, _size> createDimAccumulator(const std::array<indexType
 }
 
 template<class indexType1,size_t _size>
+inline std::array<size_t, _size> createDimAccumulator(const std::array<indexType1, _size>& restrict_libmia dims)
+{
+
+    std::array<size_t,_size> dim_accumulator;
+    size_t current_accumulator=1;
+    dim_accumulator[0]=1;
+    static_for<1, _size>::_do([&](int i)
+    {
+        current_accumulator*=(size_t)dims[i-1];
+        dim_accumulator[i]=current_accumulator;
+    });
+
+
+    return dim_accumulator;
+
+}
+
+template<class indexType1>
+inline std::vector<size_t> createDimAccumulator(const std::vector<indexType1>& restrict_libmia dims)
+{
+
+    std::vector<size_t> dim_accumulator(dims.size());
+    size_t current_accumulator=1;
+    dim_accumulator[0]=1;
+    for(int i=1;i<dims.size();++i)
+    {
+        current_accumulator*=(size_t)dims[i-1];
+        dim_accumulator[i]=current_accumulator;
+    }
+
+
+    return dim_accumulator;
+
+}
+
+
+
+template<class indexType1,size_t _size>
+inline std::array<libdivide::divider<size_t>,_size> createDimAccumulator_libdivide(const std::array<indexType1, _size>& restrict_libmia dims)
+{
+
+    std::array<libdivide::divider<size_t>,_size> dim_accumulator;
+    size_t current_accumulator=1;
+    dim_accumulator[0]=1;
+    static_for<1, _size>::_do([&](int i)
+    {
+        current_accumulator*=(size_t)dims[i-1];
+        dim_accumulator[i]=libdivide::divider<size_t>(current_accumulator);
+    });
+
+
+    return dim_accumulator;
+
+}
+
+template<class indexType1>
+inline std::vector<libdivide::divider<size_t>> createDimAccumulator_libdivide(const std::vector<indexType1>& restrict_libmia dims)
+{
+
+    std::vector<libdivide::divider<size_t>> dim_accumulator(dims.size());
+    size_t current_accumulator=1;
+    dim_accumulator[0]=1;
+
+    for(int i=1;i<dims.size();++i)
+    {
+        current_accumulator*=(size_t)dims[i-1];
+        dim_accumulator[i]=libdivide::divider<size_t>(current_accumulator);
+    }
+
+
+    return dim_accumulator;
+
+}
+
+template<class indexType1,size_t _size>
 inline std::array<size_t,_size> createMultiplier(const std::array<indexType1,_size>& dims)
 {
 
@@ -375,8 +473,33 @@ inline std::array<size_t,_size> createMultiplier(const std::array<indexType1,_si
 
 }
 
+template<class indexType1>
+inline std::vector<size_t> createMultiplier(const std::vector<indexType1>& dims)
+{
+
+    std::vector<size_t> multiplier(dims.size());
+    multiplier[0]=1;
+    for(int i=1;i<dims.size();++i)
+    {
+        multiplier[i]= (size_t)(multiplier[i-1]*dims[i-1]);
+    }
+
+
+    return multiplier;
+
+}
+
+template<class dimType1,class dimType2, class sequenceType,class unsignedType,size_t _size>
+void create_shuffle_needs(const std::array<dimType1,_size>& dims1,const std::array<dimType2,_size>& dims2,const std::array<sequenceType,_size>& shuffleOrder,std::array<unsignedType,_size>& dim_accumulator,std::array<libdivide::divider<unsignedType>,_size>& fast_dim_accumulator,std::array<unsignedType,_size>& multiplier)
+{
+    dim_accumulator=createDimAccumulator(dims1); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    fast_dim_accumulator=createDimAccumulator_libdivide(dims1); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
+    auto dummy_multiplier=createMultiplier(dims2);
+    internal::reorder_from(dummy_multiplier,shuffleOrder,multiplier);
+}
+
 template<class indexType1,class indexType2,size_t _size>
-inline indexType1 getShuffleLinearIndex(indexType1 idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
+inline indexType1 getShuffleLinearIndex_old(indexType1 idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
 {
 
     size_t ioffset_next=0;
@@ -393,8 +516,10 @@ inline indexType1 getShuffleLinearIndex(indexType1 idx, const std::array<indexTy
 
 }
 
+
+
 template<class indexType1,class indexType2,size_t _size>
-inline indexType1 getShuffleLinearIndex(const indexType1 &idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
+inline indexType1 getShuffleLinearIndex_old(const indexType1 idx, const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType2, _size>& restrict_libmia dim_accumulator)
 {
 
 //    size_t ioffset_next=0;
@@ -407,19 +532,239 @@ inline indexType1 getShuffleLinearIndex(const indexType1 &idx, const std::array<
 //
 //    return (indexType1)ioffset_next;
 
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
 
-    size_t ioffset_next=0;
+
     static_for<0, _size>::_do([&](int i)
     {
 
         //ioffset_next+=(dim_accumulator[i].perform_divide(idx))%((unsigned)dims[i])*multiplier;
 
-        ioffset_next+=((size_t)idx/(size_t)dim_accumulator[i])%((size_t)dims[i])*(size_t)multiplier[i]; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
+        ioffset_next+=((unsigned_Type)idx/(unsigned_Type)dim_accumulator[i])%((unsigned_Type)dims[i])*(unsigned_Type)multiplier[i]; //use the shuffled denominators to compute shuffle full indices, then convert linIdx on the fly
 
     });
     return (indexType1)ioffset_next;
 
 }
+
+
+template<class indexType1,class indexType2,class indexType3>
+inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType3>& restrict_libmia dim_accumulator,const std::vector<indexType2>& restrict_libmia dim_accumulator_num)
+{
+
+    assert(multiplier.size()==dim_accumulator.size());
+    assert(multiplier.size()==dim_accumulator_num.size());
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    for(int i=multiplier.size()-1;i>=0;--i){
+
+        quotient=((unsigned_Type)idx/dim_accumulator[i]);
+        ioffset_next+=quotient*multiplier[i];
+        idx-=quotient*dim_accumulator_num[i];
+
+
+    };
+
+    return (indexType1)ioffset_next;
+
+}
+
+//testing whether mult by shifts (when possible) is a lot faster, must not be used when the dimensions are shuffled in different order
+template<class indexType1,class indexType2,class indexType3>
+inline indexType1 reShuffleLinearIndexShiftMult( indexType1 idx, const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType3>& restrict_libmia dim_accumulator,const std::vector<indexType2>& restrict_libmia dim_accumulator_num)
+{
+
+    assert(multiplier.size()==dim_accumulator.size());
+    assert(multiplier.size()==dim_accumulator_num.size());
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    for(int i=multiplier.size()-1;i>0;--i){
+
+        quotient=((unsigned_Type)idx/dim_accumulator[i]);
+        ioffset_next+=quotient<<multiplier[i];
+        idx-=quotient*dim_accumulator_num[i];
+
+
+    };
+    ioffset_next+=idx;
+    return (indexType1)ioffset_next;
+
+}
+
+//testing whether mult by shifts (when possible) is a lot faster, must not be used when the dimensions are shuffled in different order
+template<class indexType1,class indexType2>
+inline indexType1 reShuffleLinearIndexShiftDiv( indexType1 idx, const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType2>& restrict_libmia dim_accumulator)
+{
+
+    assert(multiplier.size()==dim_accumulator.size());
+
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    for(int i=multiplier.size()-1;i>0;--i){
+
+        quotient=((unsigned_Type)idx>>dim_accumulator[i]);
+        ioffset_next+=quotient*multiplier[i];
+        idx-=quotient<<dim_accumulator[i];
+
+
+    };
+    ioffset_next+=idx;
+    return (indexType1)ioffset_next;
+
+}
+
+template<class itType1,class itType2,class indexType2,class indexType3>
+inline void reShuffleAllLinearIndices( itType1 itBegin1, itType2 itBegin2, size_t length,const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType3>& restrict_libmia dim_accumulator,const std::vector<indexType2>& restrict_libmia dim_accumulator_num)
+{
+    using namespace libdivide;
+    assert(multiplier.size()==dim_accumulator.size());
+    assert(multiplier.size()==dim_accumulator_num.size());
+    typedef typename std::make_unsigned<typename std::iterator_traits<itType1>::value_type>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    for(int i=multiplier.size()-1;i>0;--i){
+        auto cur_divisor=dim_accumulator[i];
+        auto cur_divisor_num=dim_accumulator_num[i];
+        auto cur_mult=multiplier[i];
+        auto it2=itBegin2;
+//        for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+//            quotient=((unsigned_Type)(*it1)/cur_divisor);
+//            *it2+=quotient*cur_mult;
+//            *it1-=quotient*cur_divisor_num;
+//        }
+        switch (cur_divisor.get_algorithm()) {
+        case 0:
+            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+                quotient=((unsigned_Type)(*it1)/unswitch<0>(cur_divisor));
+                *it2+=quotient*cur_mult;
+                *it1-=quotient*cur_divisor_num;
+            }
+            break;
+        case 1:
+            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+                quotient=((unsigned_Type)(*it1)/unswitch<1>(cur_divisor));
+                *it2+=quotient*cur_mult;
+                *it1-=quotient*cur_divisor_num;
+            }
+            break;
+        case 2:
+            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+                quotient=((unsigned_Type)(*it1)/unswitch<2>(cur_divisor));
+                *it2+=quotient*cur_mult;
+                *it1-=quotient*cur_divisor_num;
+            }
+            break;
+        case 3:
+            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+                quotient=((unsigned_Type)(*it1)/unswitch<3>(cur_divisor));
+                *it2+=quotient*cur_mult;
+                *it1-=quotient*cur_divisor_num;
+            }
+            break;
+        case 4:
+            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
+                quotient=((unsigned_Type)(*it1)/unswitch<4>(cur_divisor));
+                *it2+=quotient*cur_mult;
+                *it1-=quotient*cur_divisor_num;
+            }
+            break;
+        }
+
+
+
+    };
+
+
+}
+
+template<class indexType1,class indexType2,class indexType3,size_t _size,typename boost::enable_if_c<(_size > 1), int>::type=0>
+inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType3, _size>& restrict_libmia dim_accumulator,const std::array<indexType2, _size>& restrict_libmia dim_accumulator_num)
+{
+
+
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    static_reverse_for<(int)_size-2>::_do([&](int i)
+    {
+
+        quotient=((unsigned_Type)idx/dim_accumulator[i+1]);
+        ioffset_next+=quotient*multiplier[i+1];
+        idx-=quotient*dim_accumulator_num[i+1];
+
+
+    });
+    ioffset_next+=idx*multiplier[0];
+
+    return (indexType1)ioffset_next;
+
+}
+
+template<class indexType1,class indexType2,class indexType3,size_t _size,typename boost::enable_if_c<(_size == 1), int>::type=0>
+inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType3, _size>& restrict_libmia dim_accumulator,const std::array<indexType2, _size>& restrict_libmia dim_accumulator_num)
+{
+
+
+    return idx;
+
+}
+
+//just a test function to compare performance to reShuffleLinearIndex
+template<class indexType1,class indexType2,size_t _size>
+inline indexType1 getShuffleLinearIndex_POD( indexType1 idx, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType2, _size>& restrict_libmia dim_accumulator_num)
+{
+
+
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    for(int i=_size-1;i>=0;--i)
+    {
+
+        quotient=((unsigned_Type)idx/dim_accumulator_num[i]);
+        ioffset_next+=quotient*multiplier[i];
+        idx-=quotient*dim_accumulator_num[i];
+
+
+    }
+    return (indexType1)ioffset_next;
+
+}
+
+//just a test function to compare performance to reShuffleLinearIndex
+template<class indexType1,class indexType2,size_t _size>
+inline indexType1 getShuffleLinearIndex_POD_static( indexType1 idx, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType2, _size>& restrict_libmia dim_accumulator_num)
+{
+
+
+    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
+    unsigned_Type ioffset_next=0;
+    unsigned_Type quotient;
+
+    static_reverse_for<_size-1>::_do([&](int i)
+    {
+
+        quotient=((unsigned_Type)idx/dim_accumulator_num[i]);
+        ioffset_next+=quotient*multiplier[i];
+        idx-=quotient*dim_accumulator_num[i];
+
+
+    });
+    return (indexType1)ioffset_next;
+
+}
+
+
 
 
 //!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
@@ -491,7 +836,7 @@ inline indexType sub2ind_function(const std::array<function_type,T> & indices_fu
 
 }
 
-//!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
+//!order is given in the order we collect dims and indices is given in the default order--- that is not suffled around
 template<typename itType, typename accessType2,typename dimType>
 typename dimType::value_type sub2ind(itType _begin, itType _end,const accessType2 &order, const dimType & dims)
 {
@@ -565,11 +910,6 @@ typename dimType::value_type sub2ind_reorder(const accessType & indices, const a
         multiplier*=dims[order[i]];
     }
     return idx;
-
-
-
-
-
 }
 
 

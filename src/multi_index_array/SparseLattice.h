@@ -588,7 +588,7 @@ SparseLattice<T>::end() const
 
 template<typename T>
 inline typename SparseLattice<T>::storage_iterator
-SparseLattice<T>::begin() 
+SparseLattice<T>::begin()
 {
 
 
@@ -600,7 +600,7 @@ SparseLattice<T>::begin()
 
 template<typename T>
 inline typename SparseLattice<T>::storage_iterator
-SparseLattice<T>::end() 
+SparseLattice<T>::end()
 {
 
 
@@ -715,8 +715,8 @@ SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op
     b.sort(this->linIdxSequence());
 
 
-    typedef  typename internal::data_type<otherDerived >::type b_data_type;
-	
+    //typedef  typename internal::data_type<otherDerived >::type b_data_type;
+
 	SparseLattice<data_type> C(this->height(), this->width(), this->depth());
 	internal::outside_merge_sparse_storage_containers(C, *this, b, op); //don't bother doing an inplace_merge, as even std::algorithm uses an out-of-place copy for this
 	*this = std::move(C);

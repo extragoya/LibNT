@@ -140,6 +140,10 @@ public:
     //! final derived type
     typedef typename internal::FinalDerived<DenseMIA>::type FinalDerived;
 
+    typedef typename DenseMIABase<DenseMIA>::accumulator_type accumulator_type;
+    typedef typename DenseMIABase<DenseMIA>::fast_accumulator_type fast_accumulator_type;
+    typedef typename DenseMIABase<DenseMIA>::multiplier_type multiplier_type;
+
 private:
 
     smart_raw_pointer m_smart_raw_ptr;
@@ -1052,8 +1056,12 @@ void DenseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,cons
     this->mSolveInfo=otherMIA.solveInfo();
     index_type curIdx=0;
     auto lhsOrder=internal::reverseOrder(index_order);
-    auto dim_accumulator=internal::createDimAccumulator(otherMIA.dims(),lhsOrder); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    auto multiplier=internal::createMultiplier(this->dims());
+    accumulator_type dim_accumulator;
+    fast_accumulator_type fast_dim_accumulator;
+    multiplier_type multiplier;
+    internal::create_shuffle_needs(otherMIA.dims(),this->dims(),lhsOrder,dim_accumulator,fast_dim_accumulator,multiplier);
+
+
     //print_array(dim_accumulator,"dim_accumulator");
     //print_array(index_order,"index_order");
 
@@ -1063,7 +1071,7 @@ void DenseMIA<T,_order>::assign(const SparseMIABase<otherDerived>& otherMIA,cons
 
         //std::cout << idx << std::endl;
         auto default_idx=otherMIA.convert_to_default_linIdxSequence(*it);
-        auto shuffled_idx=internal::getShuffleLinearIndex(default_idx,this->dims(),multiplier,dim_accumulator);
+        auto shuffled_idx=internal::reShuffleLinearIndex(default_idx,multiplier,fast_dim_accumulator,dim_accumulator);
         this->atIdx(shuffled_idx)=this->convert(otherMIA.data_at(it));
     }
 
@@ -1107,15 +1115,16 @@ void DenseMIA<T,_order>::assign(const DenseMIABase<otherDerived>& otherMIA,const
     this->mSolveInfo=otherMIA.solveInfo();
     index_type curIdx=0;
 
-    auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    auto multiplier=internal::createMultiplier(otherMIA.dims());
-    //print_array(dim_accumulator,"dim_accumulator");
-    //print_array(index_order,"index_order");
+
+    accumulator_type dim_accumulator;
+    fast_accumulator_type fast_dim_accumulator;
+    multiplier_type multiplier;
+    internal::create_shuffle_needs(this->dims(),otherMIA.dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
 
     for(auto this_it=this->data_begin(); this_it<this->data_end(); ++this_it)
     {
 
-        *this_it=this->convert(otherMIA.atIdx(internal::getShuffleLinearIndex(curIdx++,otherMIA.dims(),multiplier,dim_accumulator)));
+        *this_it=this->convert(otherMIA.atIdx(internal::reShuffleLinearIndex(curIdx++,multiplier,fast_dim_accumulator,dim_accumulator)));
 
     }
 
@@ -1161,15 +1170,16 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,con
 
 
 
-
-    auto dim_accumulator=internal::createDimAccumulator(this->dims(),index_order);
-    auto multiplier=internal::createMultiplier(b.dims());
+    accumulator_type dim_accumulator;
+    fast_accumulator_type fast_dim_accumulator;
+    multiplier_type multiplier;
+    internal::create_shuffle_needs(this->dims(),b.dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
 
     if(this->dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
         for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
-            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::reShuffleLinearIndex(curIdx,multiplier,fast_dim_accumulator,dim_accumulator))));
 
 
         }
@@ -1177,7 +1187,7 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,con
     else{
        for(index_type curIdx=0; curIdx<this->dimensionality(); ++curIdx)
         {
-            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::getShuffleLinearIndex(curIdx,b.dims(),multiplier,dim_accumulator))));
+            this->atIdx(curIdx)=op(this->atIdx(curIdx),this->convert(b.atIdx(internal::reShuffleLinearIndex(curIdx,multiplier,fast_dim_accumulator,dim_accumulator))));
 
         }
 

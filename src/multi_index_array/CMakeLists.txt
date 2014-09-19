@@ -13,7 +13,9 @@ set(LibMIA_headers
      LibMIAAlgorithm.h
 	 LibMIAException.h
 	 LibMIAHelpers.h
+	 LibMIARadix.h
 	 LibMIARanges.h
+	 LibMIATimSort.h
 	 LibMIAUtil.h
      MappedDenseLattice.h
      MappedSparseLattice.h

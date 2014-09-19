@@ -17,7 +17,7 @@
 #ifndef FUNCTION_UTIL_H
 #define FUNCTION_UTIL_H
 #define LIBMIA_LOG2E 1.44269504088896340736
-
+#include <iostream>
 #include <boost/numeric/conversion/converter.hpp>
 
 #include "LibMIAUtil.h"
@@ -33,6 +33,7 @@ namespace internal{
  *  @{
 */
 
+//index_order is order going from LHS to in RHS - ie {1 3 2 0} means a(i,j,k,l)=b(l,i,k,j)
 template<class Derived,class otherDerived, class Op, class index_param_type>
 typename MIAMergeReturnType<Derived,otherDerived>::type
 perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const Op& op,const std::array<index_param_type,internal::order<Derived>::value>& index_order){
@@ -48,18 +49,19 @@ perform_implicit_merge(const MIA<Derived>& a, const MIA<otherDerived>& b,const O
 
 
 
-    auto dim_accumulator=internal::createDimAccumulator(a.dims(),index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    auto multiplier=internal::createMultiplier(b.dims());
-
+    typename MIA<Derived>::accumulator_type dim_accumulator;
+    typename MIA<Derived>::fast_accumulator_type fast_dim_accumulator;
+    typename MIA<Derived>::multiplier_type multiplier;
+    internal::create_shuffle_needs(a.dims(),b.dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
     if(a.dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
         for(b_index_type idx=0;idx<a.dimensionality();++idx)
-            c.atIdx(idx)=op(a.atIdx(idx),a.convert(b.atIdx(internal::getShuffleLinearIndex(idx,b.dims(),multiplier,dim_accumulator))));
+            c.atIdx(idx)=op(a.atIdx(idx),a.convert(b.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator))));
     }
     else{
 
         for(b_index_type idx=0;idx<a.dimensionality();++idx)
-            c.atIdx(idx)=op(a.atIdx(idx),a.convert(b.atIdx(internal::getShuffleLinearIndex(idx,b.dims(),multiplier,dim_accumulator))));
+            c.atIdx(idx)=op(a.atIdx(idx),a.convert(b.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator))));
     }
     return c;
 
@@ -173,18 +175,25 @@ auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_in
     //std::cout<< "Tab dims " << tab_dims[0] << "\n";
     DenseLattice<data_type> lat(row_size, column_size, tab_size);
 
-    const auto dim_accumulator=internal::createDimAccumulator(shuffled_dims,index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
-    const auto multiplier=internal::createMultiplier(mia.dims());
+
+
+    typename MIA<Derived>::accumulator_type dim_accumulator;
+    typename MIA<Derived>::fast_accumulator_type fast_dim_accumulator;
+    typename MIA<Derived>::multiplier_type multiplier;
+    internal::create_shuffle_needs(shuffled_dims,mia.dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
+
+
+
 
     if(mia.dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
         for(index_type idx=0;idx<mia.dimensionality();++idx){
-            lat.atIdx(idx)=mia.atIdx(internal::getShuffleLinearIndex(idx,mia.dims(),multiplier,dim_accumulator));
+            lat.atIdx(idx)=mia.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator));
         }
     }
     else{
         for(index_type idx=0;idx<mia.dimensionality();++idx){
-            lat.atIdx(idx)=mia.atIdx(internal::getShuffleLinearIndex(idx,mia.dims(),multiplier,dim_accumulator));
+            lat.atIdx(idx)=mia.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator));
         }
 
     }

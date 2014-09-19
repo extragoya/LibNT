@@ -98,6 +98,9 @@ public:
     typedef typename internal::data_iterator<DenseMIABase>::type data_iterator;
     typedef typename internal::const_data_iterator<DenseMIABase>::type const_data_iterator;
     typedef typename internal::FinalDerived<DenseMIABase>::type FinalDerived;
+    typedef typename MIA<DenseMIABase>::accumulator_type accumulator_type;
+    typedef typename MIA<DenseMIABase>::fast_accumulator_type fast_accumulator_type;
+    typedef typename MIA<DenseMIABase>::multiplier_type multiplier_type;
 
     constexpr static size_t mOrder=internal::order<DenseMIABase>::value;
     Derived& derived()
@@ -736,14 +739,7 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
     auto other_dimensionality=internal::reorder_from(this->dims(), other_indices,otherDims);
 
 
-    //print_array(contract_indices,"contract_indices");
-    //print_array(contract_partition,"contract_partition");
 
-//    print_array(attract_indices,"attract_indices");
-//    print_array(attract_partition,"attract_partition");
-
-    //print_array(other_indices,"other_indices");
-    //
 
     //get size of contraction indices in each set of contractions (each range within the same partition or set should be all identical)
     std::array<size_t,no_con_partition> contract_index_ranges;
@@ -769,8 +765,7 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
     std::array<index_type,other_indices.size()+no_attract_partition>  retDims;
     internal::concat_arrays(otherDims,attract_index_ranges,retDims);
 
-    //print_array(other_indices,"other_indices");
-    //print_array(retDims,"retDims");
+
 
     retType ret(retDims);
 

@@ -689,7 +689,7 @@ inline void DenseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<othe
 
 
     c.setSolveInfo(NoInfo);
-    SolveInfo _solveInfo;
+    SolveInfo _solveInfo=NoInfo;
     for (int i=0; i<this->depth(); i++)
     {
 

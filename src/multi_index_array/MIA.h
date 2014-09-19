@@ -22,6 +22,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 
+#include "libdivide.h"
 
 #include "Index.h"
 
@@ -196,7 +197,13 @@ public:
     typedef typename internal::data_type_ref<MIA>::type data_type_ref;
     typedef typename internal::const_data_type_ref<MIA>::type const_data_type_ref;
     typedef typename internal::FinalDerived<MIA>::type FinalDerived;
+    typedef typename std::make_unsigned<index_type>::type unsigned_index_type;
     constexpr static size_t mOrder=internal::order<Derived>::value;
+    typedef libdivide::divider<unsigned_index_type> fast_divisor;
+    typedef std::array<unsigned_index_type,mOrder> accumulator_type;
+    typedef std::array<unsigned_index_type,mOrder> multiplier_type;
+    typedef std::array<fast_divisor,mOrder> fast_accumulator_type;
+
     Derived& derived() { return *static_cast<Derived*>(this); }
     /** \returns a const reference to the derived object */
     const Derived& derived() const { return *static_cast<const Derived*>(this); }
@@ -399,8 +406,8 @@ public:
     template<typename... Indices>
     data_type_ref at(Indices... indices) {
         static_assert(internal::check_mia_constructor<MIA,Indices...>::type::value,"Number of dimensions must be same as <order> and each given range must be convertible to <index_type>, i.e., integer types.");
-        auto temp = {{indices...};
-        //std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
+        //auto temp = {{indices...}};
+        std::array<index_type,internal::order<MIA>::value> temp = {{indices...}};
         return at(temp);
     }
 

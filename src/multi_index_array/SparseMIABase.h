@@ -16,9 +16,11 @@
 #ifndef SPARSEMIABASE_H_INCLUDED
 #define SPARSEMIABASE_H_INCLUDED
 
+#include <type_traits>
 
 #include <boost/utility/enable_if.hpp>
 
+#include <boost/random/uniform_int_distribution.hpp>
 
 #include "LibMIAException.h"
 #include "LibMIAUtil.h"
@@ -27,7 +29,8 @@
 #include "MappedSparseLattice.h"
 #include "LibMIAAlgorithm.h"
 #include "FunctionUtil.h"
-
+#include "LibMIATimSort.h"
+#include "LibMIARadix.h"
 //\defgroup
 namespace LibMIA
 {
@@ -183,7 +186,15 @@ public:
     typedef typename internal::full_tuple<SparseMIABase>::type full_tuple;
     typedef typename internal::const_full_tuple<SparseMIABase>::type const_full_tuple;
     typedef typename internal::FinalDerived<SparseMIABase>::type FinalDerived;
+    typedef typename std::make_unsigned<index_type>::type cast_type; //type to use for casting to unsigned, for the purposes of performing division (faster if unsigned)
     constexpr static size_t mOrder=internal::order<SparseMIABase>::value;
+    typedef typename std::array<size_t,mOrder> linIdxType;
+    typedef typename MIA<SparseMIABase>::fast_divisor fast_divisor;
+    typedef typename MIA<SparseMIABase>::unsigned_index_type unsigned_index_type;
+    typedef typename MIA<SparseMIABase>::accumulator_type accumulator_type;
+    typedef typename MIA<SparseMIABase>::fast_accumulator_type fast_accumulator_type;
+    typedef typename MIA<SparseMIABase>::multiplier_type multiplier_type;
+
     Derived& derived()
     {
         return *static_cast<Derived*>(this);
@@ -362,12 +373,210 @@ public:
 
 
 
+
+    //! A sort test, to test sorting random indices using the different sorting options
+    void sort_test(const int option=0){
+        std::vector<index_type> scratch1;
+        std::vector<data_type> scratch2;
+
+        if (option==1){
+
+            gfx::timsort(this->index_begin(),this->index_end(),this->data_begin(),this->data_end(),scratch1,scratch2);
+
+            return;
+        }
+        else if(option==0){
+            sort();
+            return;
+        }
+        else if (option==7){
+
+
+            scratch1.resize(this->size());
+            scratch2.resize(this->size());
+            internal::PerformPatienceRun(this->index_begin(),this->index_end(),this->data_begin(),scratch1,scratch2);
+        }
+        else if(option==8){
+            scratch1.resize(this->size());
+            scratch2.resize(this->size());
+
+
+            internal::RadixSortStraight(this->index_begin(),this->data_begin(),scratch1.begin(),scratch2.begin(),this->size(),this->dimensionality());
+        }
+        else if(option==9){
+            internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(),this->size(),this->dimensionality() );
+
+        }
+        else if(option==10){
+            scratch1.resize(this->size());
+            scratch2.resize(this->size());
+            internal::RadixSort(this->index_begin(),this->index_end(),this->data_begin(),scratch1.begin(), scratch2.begin(),this->dimensionality());
+        }
+
+    }
+
+    //! used to test different permutation algorithms -
+    void test_sort(const std::array<size_t,mOrder> & _linIdxSequence,const int option=0)
+    {
+        auto oldLinIdxSequence=this->linIdxSequence();
+
+        change_linIdx_sequence(_linIdxSequence);
+
+        std::vector<index_type> scratch1;
+        std::vector<data_type> scratch2;
+
+        if (option==1){
+
+            gfx::timsort(this->index_begin(),this->index_end(),this->data_begin(),this->data_end(),scratch1,scratch2);
+
+            return;
+        }
+        else if(option==2){
+            sort();
+            return;
+        }
+        else if(option==4){
+            scratch1.reserve(this->size());
+            scratch2.reserve(this->size());
+            internal::NaturalMergesort(this->index_begin(),this->index_end(),this->data_begin(),scratch1,scratch2,std::less<index_type>());
+
+
+            return;
+        }
+
+        else if(option==11){
+            internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(),this->size(),this->dimensionality() );
+            return;
+        }
+        else if(option==12){
+
+            scratch1.resize(this->size());
+            scratch2.resize(this->size());
+
+
+            internal::RadixSortStraight<2048,11,3000>(this->index_begin(),this->data_begin(),scratch1.begin(),scratch2.begin(),this->size(),this->dimensionality());
+
+
+            return;
+        }
+        else if (option==0){
+            scratch1.reserve(this->size());
+            scratch2.reserve(this->size());
+        }
+
+        //if we performing a sort that tries to subdive the task into independent sublists
+        auto shuffleSequence=internal::getShuffleSequence(oldLinIdxSequence,_linIdxSequence); //get the shuffle sequence from old to new
+
+        auto reverseShuffleSequence=internal::getShuffleSequence(_linIdxSequence,oldLinIdxSequence); //get the shuffle sequence from new to old
+
+        std::array<index_type,mOrder> divisor_list;
+        divisor_list[0]=1;
+        for(auto idx=1;idx<mOrder;++idx){
+            divisor_list[idx]=divisor_list[idx-1]*this->dim(this->linIdxSequence()[idx-1]);
+        }
+        bool oldCanSkip=true;
+        //find out which indices we can skip
+        for(size_t curOldSequenceIdx=1;curOldSequenceIdx<mOrder;++curOldSequenceIdx){
+            bool canSkip=true;
+
+            for(int check_idx=mOrder-1;check_idx>0;--check_idx){
+                if (shuffleSequence[check_idx]==curOldSequenceIdx)
+                    break;
+                else if(shuffleSequence[check_idx]<curOldSequenceIdx){
+                    canSkip=false;
+                    break;
+                }
+            }
+
+            if(canSkip && !oldCanSkip){
+                //std::cout << "Previous indices couldn't skip: Sorting indices below " << curOldSequenceIdx << std::endl;
+                auto start_it=this->index_begin();
+
+
+                fast_divisor _fast_divisor(divisor_list[curOldSequenceIdx]);
+                auto cur_num_divisor=divisor_list[curOldSequenceIdx];
+                //dedtermine region where we can sort
+                while(start_it < this->index_end()){
+                    auto end_it=start_it+1;
+                    auto curValue=((unsigned_index_type)*start_it)/_fast_divisor;
+                    auto nextValue=(curValue+1)*cur_num_divisor;
+                    while(end_it<this->index_end() && *end_it<nextValue)
+                        end_it++;
+
+
+                        //std::cout << "start_it " << *start_it << " end_it " << *end_it << std::endl;
+
+                        switch(option){
+                            case 0:
+
+                                internal::NaturalMergesort(start_it,end_it,this->data_begin()+(start_it-this->index_begin()),scratch1, scratch2,std::less<index_type>());
+                                break;
+                            case 3:
+                                gfx::timsort(start_it,end_it,this->data_begin()+(start_it-this->index_begin()),this->data_begin()+(end_it-this->index_begin()),scratch1,scratch2);
+                                break;
+                            case 5:
+                                internal::Introsort(start_it,end_it,std::less<index_type>(), internal::DualSwapper<index_iterator,data_iterator>(start_it,this->data_begin()+(start_it-this->index_begin())));
+                                break;
+
+
+
+                            case 7:
+                                scratch1.resize(end_it-start_it);
+                                scratch2.resize(end_it-start_it);
+                                internal::PerformPatienceRun(start_it,end_it,this->data_begin()+(start_it-this->index_begin()),scratch1,scratch2);
+                                break;
+                        }
+
+                    //
+
+
+
+                    start_it=end_it;
+                }
+            }
+            //if we've reached the end of indices to consider, then we need to just perform a straight sort
+            else if(!canSkip && curOldSequenceIdx==mOrder-1){
+                    //std::cout << "Reached the end: Sorting indices below " << curOldSequenceIdx << std::endl;
+                    if(option==3)
+                        gfx::timsort(this->index_begin(),this->index_end(),this->data_begin(),this->data_end(),scratch1,scratch2);
+                    else if(option==5){
+                        internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),
+                                internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+                    }
+                    else if(option==0){
+
+                        internal::NaturalMergesort(this->index_begin(),this->index_end(),this->data_begin(),scratch1,scratch2,std::less<index_type>());
+                    }
+                    else if (option==7){
+
+                            scratch1.resize(this->size());
+                            scratch2.resize(this->size());
+                            internal::PerformPatienceRun(this->index_begin(),this->index_end(),this->data_begin(),scratch1,scratch2);
+                    }
+
+            }
+            else{
+               //std::cout << "Skipping index " << curOldSequenceIdx << std::endl;
+            }
+            oldCanSkip=canSkip;
+
+
+
+        }
+
+
+
+
+
+        this->setSorted(true);
+    }
+
     //! Sort non-zero containers based on the given order
     /*!
         Will update the current sort order.
 
         \param[in]  _linIdxSequence the lexographical precedence to use in the sort - for instance {3,1,2} would sort based on the 3rd,1st, then 2nd index and update mLinIdxSequence accordingly
-        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+
 
     */
     void sort(const std::array<size_t,mOrder> & _linIdxSequence)
@@ -376,61 +585,128 @@ public:
 
 //        print_array(this->linIdxSequence(),"this->linIdxSequence()");
 //        print_array(_linIdxSequence,"_linIdxSequence");
+        typedef typename std::make_unsigned<index_type>::type unsigned_Type;
         if(!mIsSorted){
-            //std::cout << "Doing intro" << std::endl;
-            change_linIdx_sequence(_linIdxSequence);
-            sort();
-        }
-        else if(_linIdxSequence!=this->linIdxSequence()){ //if *this is already sorted, and we're just changing the linIdxSequence, then we can do a more efficient merge-type sort
-            //std::cout << "Doing reorder sort " << std::endl;
-            //print_array(_linIdxSequence,"new _linIdxSequence");
-            auto oldLinIdxSequence=this->linIdxSequence();
 
             change_linIdx_sequence(_linIdxSequence);
-            //this->print();
-            auto shuffleSequence=internal::getShuffleSequence(oldLinIdxSequence,_linIdxSequence); //get the shuffle sequence from old to new
-            //print_array(shuffleSequence,"shuffleSequence");
-            auto reverseShuffleSequence=internal::getShuffleSequence(_linIdxSequence,oldLinIdxSequence); //get the shuffle sequence from new to old
-            //print_array(reverseShuffleSequence,"reverseShuffleSequence");
+            this->sort();
+        }
+        else if(mOrder!=1 && _linIdxSequence!=this->linIdxSequence()){ //if *this is already sorted, and we're just changing the linIdxSequence, then we can do a more efficient merge-type sort
+
+
+            auto oldLinIdxSequence=this->linIdxSequence();
+            change_linIdx_sequence(_linIdxSequence); //change the linear indices to the new lexicographical precedence
+            //auxiliary buffers
             std::vector<index_type> scratch1;
             std::vector<data_type> scratch2;
-            for(size_t curOldSequenceIdx=1;curOldSequenceIdx<mOrder;++curOldSequenceIdx){
-                bool canSkip=true;
-                for(int check_idx=mOrder-1;check_idx>0;--check_idx){
-                    if (shuffleSequence[check_idx]==curOldSequenceIdx)
-                        break;
-                    else if(shuffleSequence[check_idx]<curOldSequenceIdx){
-                        canSkip=false;
+            //just perform introsort if the size is too small
+            if(this->size()<3000){
+               internal::Introsort(this->index_begin(),this->index_end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
+                return;
+            }
+
+            //otherwise, we need to examine the the new lexicographical precedenec compared to the old
+            std::array<index_type,mOrder> divisor_list;
+            //create a divisor list from the new lexicographical precedence
+            divisor_list[0]=1;
+            for(auto idx=1;idx<mOrder;++idx){
+                divisor_list[idx]=divisor_list[idx-1]*this->dim(this->linIdxSequence()[idx-1]);
+            }
+
+            auto reverseShuffleSequence=internal::getShuffleSequence(oldLinIdxSequence,_linIdxSequence); //get the shuffle sequence from new to old
+
+
+            std::vector<bool> sort_or_find;
+            std::array<bool,mOrder> sort_or_find_indices;
+            std::vector<unsigned_Type> divisors;
+            std::vector<unsigned_Type> max_sizes;
+
+            //print_array(reverseShuffleSequence,"reverseShuffleSequence");
+
+            //iterate through the shuffle sequence and determine which indices must be sorted, and which remain in the same place (and therefore define regions we don't need to sort)
+            //we iterate through the shuffle sequence, but stop before the first one, as its digits always don't need to be sorted
+            for(int i=mOrder-1;i>0;--i){
+                sort_or_find_indices[i]=false;
+                for(auto _idx=0;_idx<i;++_idx){
+                    if(reverseShuffleSequence[_idx]>reverseShuffleSequence[i]){
+                        sort_or_find_indices[i]=true;
                         break;
                     }
                 }
-                if(!canSkip){
-                    //std::cout << "Can't skip index " << curOldSequenceIdx << std::endl;
-                    if(curOldSequenceIdx==mOrder-1){
-                        internal::NaturalMergesort(this->index_begin(),this->index_end(),this->data_begin(),scratch1,scratch2,std::less<index_type>());
+            }
+            auto curIndex=mOrder-1;
+
+            //now based on whether indices are sort or find, we will create sort and find stages for the radix shuffle to perform
+            while(curIndex>0){
+
+                if(sort_or_find_indices[curIndex]==false){ //if the current index doesn't need to be sorted
+                    sort_or_find.push_back(false); //create a find stage, with accompanying divisors and max sizes
+                    divisors.push_back(divisor_list[curIndex]);
+                    max_sizes.push_back(this->dim(this->linIdxSequence()[curIndex]));
+                    //std::cout << "Make a new find index divisor " << divisors.back() << " index " << curIndex << std::endl;
+                    //if the previous indices are also find indices, add them to the current find stage
+                    auto tempCurIndex=curIndex-1;
+                    while(tempCurIndex>0 && sort_or_find_indices[tempCurIndex]==false){
+                        divisors.back()=divisor_list[tempCurIndex];
+                        max_sizes.back()*=this->dim(this->linIdxSequence()[tempCurIndex]);
+                        tempCurIndex--;
+                    }
+                    curIndex=tempCurIndex;
+                }
+                else{ //otherwise current index is a sort index
+                    sort_or_find.push_back(true); //push back that the current index is a sort index
+                    auto tempCurIndex=curIndex-1;
+                    //if the current index is the second index, we can modify its divisor to be a power of two (even if the first index's range isn't a power of two)
+                    //this will speed up the division needed in the radix shuffle to pull this index out from the larger linear indices
+                    if(curIndex==1){
+                        auto bit_size=(long)std::floor(std::log2(divisor_list[curIndex]));
+                        divisors.push_back(std::pow(2,bit_size));
+                        bit_size=(long)std::ceil(std::log2(this->dim(this->linIdxSequence()[curIndex])));
+                        max_sizes.push_back(std::pow(2,bit_size));
                     }
                     else{
-                        auto start_it=this->index_begin();
+                        divisors.push_back(divisor_list[curIndex]);
+                        max_sizes.push_back(this->dim(this->linIdxSequence()[curIndex]));
 
-                        while(start_it < this->index_end()){
-                            decltype(start_it) end_it=find_end_specific_idx(this->get_idx(*start_it,reverseShuffleSequence[curOldSequenceIdx+1]),reverseShuffleSequence[curOldSequenceIdx+1],start_it, this->index_end(),false);
-//                            std::cout << "start_it " << *start_it << " end_it " << *end_it << std::endl;
-//                            std::cout << "Looking for value of " << this->get_idx(*start_it,reverseShuffleSequence[curOldSequenceIdx+1]) << "in index " << reverseShuffleSequence[curOldSequenceIdx+1] << std::endl;
-                            internal::NaturalMergesort(start_it,end_it,this->data_begin()+(start_it-this->index_begin()),scratch1, scratch2,std::less<index_type>());
-                    //internal::NaturalMergesort(start_it,end_it,std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()),linIdxSequence==ColumnMajor?this->height():this->width());
-                    //internal::NaturalMergesort(start_it,end_it,std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()),finder,linIdxSequence==ColumnMajor?this->height():this->width());
-                            start_it=end_it;
+
+                    //std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
+                        //add any previous indices that are also sort indices to the current sort stage
+                        while(tempCurIndex>0 && sort_or_find_indices[tempCurIndex]==true){
+                            //perform same trick as above if applicable
+                            if(tempCurIndex==1){
+                                auto bit_size=(long)std::floor(std::log2(divisor_list[tempCurIndex]));
+                                divisors.back()=std::pow(2,bit_size);
+                                bit_size=(long)std::ceil(std::log2(this->dim(this->linIdxSequence()[tempCurIndex])));
+                                max_sizes.back()*=std::pow(2,bit_size);
+                            }
+                            else{
+                                divisors.back()=divisor_list[tempCurIndex];
+                                max_sizes.back()*=this->dim(this->linIdxSequence()[tempCurIndex]);
+                            }
+                            tempCurIndex--;
                         }
                     }
-
-                }
-                else{
-                   //std::cout << "Skipping index " << curOldSequenceIdx << std::endl;
+                    curIndex=tempCurIndex;
                 }
 
             }
+            //if the last stage, ie, those corresponding to the first indices, is a find stage, we can remove it
+            if(sort_or_find.back()==false){
+                divisors.pop_back();
+                max_sizes.pop_back();
+
+            }
+
+            //create RadixShuffle object
+            internal::RadixShuffle<index_type,data_type,2048,11,3000> radixShuffle(max_sizes,divisors,this->dimensionality(),sort_or_find.front());
+            //permute the sparse data based on the stage information provided
+            radixShuffle.permute(this->index_begin(),this->data_begin(),this->size());
+
+
+            return;
 
         }
+
         this->setSorted(true);
     }
 
@@ -472,7 +748,11 @@ public:
     //returns the idx'th index of the linIdx, where linIdx is calculated based on current linIdxSequence
     index_type get_idx(index_type linIdx, size_t idx) const
     {
-        return ((unsigned)linIdx)/((unsigned)mLinIdx.accumulator()[idx])%((unsigned)this->dim(this->linIdxSequence()[idx]));
+
+        //linear indices may be calculated in any shuffle order, e.g., {1,0,2}, so we must take that into account when pulling the i'th index
+        typedef typename std::make_unsigned<index_type>::type cast_type;
+        auto quotient=static_cast<cast_type>(linIdx)/static_cast<cast_type>(mLinIdx.accumulator()[idx]);
+        return quotient%(static_cast<cast_type>(this->dim(this->linIdxSequence()[idx])));
 
     }
 
@@ -516,29 +796,33 @@ public:
 
     }
 
-    //!don't use - just here for benchmark purposes - will probably disappear in later versions
-    void old_sort()
-    {
-        if(!mIsSorted)
-        {
-            std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
-                {
-                    return std::get<1>(left)<std::get<1>(right);
-                } );
-        }
-    }
+//    //!don't use - just here for benchmark purposes - will probably disappear in later versions
+//    void old_sort()
+//    {
+//        if(!mIsSorted)
+//        {
+//            std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
+//                {
+//                    return std::get<1>(left)<std::get<1>(right);
+//                } );
+//        }
+//    }
 
     //!Prints non-zero values and indices
-    void print()
+    void print(bool do_sort=true)
     {
 
-
-        this->reset_linIdx_sequence();
-        //this->sort(mDefaultLinIdxSequence);
+//        if(!do_sort)
+//            this->reset_linIdx_sequence();
+//        else
+//            this->sort(mDefaultLinIdxSequence);
         print_array(this->dims(),"Dimensions");
         std::cout << "Nonzeros " << this->size() << std::endl;
         std::cout << "Dimens" << std::endl;
+
+        print_array(this->linIdxSequence(),"Linear Index Sequence");
         std::cout << "Index\t Indices\t Data" << std::endl;
+
         for(auto it=this->storage_begin();it<this->storage_end();++it){
             std::cout << index_val(*it) << "\t ";
             print_array_on_line(this->ind2sub(index_val(*it)));
@@ -548,6 +832,10 @@ public:
 
     }
 
+
+
+
+
     //! Changes the lexicographical precedence used to calculate the linear indices.
     /*!
         If different than mLinIdxSequence, all index values are recalculated based upon _linIdx_sequence, and sorted flag will be set to false.
@@ -555,10 +843,30 @@ public:
     template<class index_param_type>
     void change_linIdx_sequence(const std::array<index_param_type,mOrder> & _linIdx_sequence)
     {
+
         static_assert(internal::check_index_compatibility<size_t,index_param_type>::type::value,"Must use an array convertable to index_type");
 
         if(_linIdx_sequence==linIdxSequence()) //do nothing if we're already at the desired linIdxSequence
             return;
+        if(mOrder==1)
+            return;
+        //setup fast reshuffle (based on static for)
+        auto reorder_Dims=this->dims();
+        auto new_reorder_Dims=this->dims();
+        //get the dimensions ordered based on current linIdx
+        internal::reorder_from(this->dims(),this->linIdxSequence(),reorder_Dims);
+        internal::reorder_from(this->dims(),_linIdx_sequence,new_reorder_Dims);
+        //get the shuffle sequence that suffles the new linIdx into the current one
+        auto index_order=internal::getShuffleSequence(_linIdx_sequence,this->linIdxSequence());
+        //create some helper values for linIdx shuffle
+
+
+        accumulator_type dim_accumulator;
+        fast_accumulator_type fast_dim_accumulator;
+        multiplier_type multiplier;
+        internal::create_shuffle_needs(reorder_Dims,new_reorder_Dims,index_order,dim_accumulator,fast_dim_accumulator,multiplier);
+
+
 
         for(auto& it: derived().m_indices){
             //std::cout << "idx " << it << std::endl;
@@ -566,8 +874,16 @@ public:
             //std::cout << "sub2ind " << this->sub2ind_reorder(this->ind2sub_reorder(it,mLinIdxSequence),_linIdxSequence) << std::endl;
 
             //get the full set of indices from the current linear index, and then recalculate the linear index based on _linIdx_sequence
-            it=this->sub2ind_reorder(this->ind2sub_reorder(it,linIdxSequence()),_linIdx_sequence);
+            //auto it2=this->sub2ind_reorder(this->ind2sub_reorder(it,linIdxSequence()),_linIdx_sequence);
+
+            it=internal::reShuffleLinearIndex(it,multiplier,fast_dim_accumulator,dim_accumulator);
+
+
+
+
+
         }
+
         setLinIdxSequence(_linIdx_sequence);
         mIsSorted=false;
     }
@@ -583,8 +899,11 @@ public:
 
     //! Resets the lexographical predence of the linear indices to the default precedence, i.e., {0,1...mOrder-1}. Index values are updated as well.
     void reset_linIdx_sequence(){
-        change_linIdx_sequence(mDefaultLinIdxSequence);
+        if (mOrder>1)
+            change_linIdx_sequence(mDefaultLinIdxSequence);
     }
+
+
 
     //!converts a linear index calculated using mLinIdxSequence to a linear index calculated using mDefaultLinIdxSequence
     index_type convert_to_default_linIdxSequence(const index_type idx) const
@@ -615,11 +934,10 @@ public:
             return;
         using namespace boost::numeric;
 
-        boost::uniform_real<> uni_dist(0,this->dimensionality()-1);
-        boost::variate_generator<boost::random::mt19937&, boost::uniform_real<> > uni(LibMIA_gen(), uni_dist);
-        typedef converter<index_type,boost::uniform_real<>::result_type,conversion_traits<index_type,boost::uniform_real<>::result_type>,def_overflow_handler,RoundEven<boost::uniform_real<>::result_type>> to_mdata_type;
+        boost::random::uniform_int_distribution<index_type> uni_dist(0,this->dimensionality()-1);
+
         for (auto i=derived().index_begin();i<derived().index_end();++i){
-            *i=to_mdata_type::convert(uni());
+            *i=uni_dist(LibMIA_gen());
         }
         mIsSorted=false;
 
@@ -1023,11 +1341,11 @@ protected:
                 it2++;
             else{
                 if (*it1!=*it2){
-                    std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
+                    //std::cout << "Triggered Index " << *it1 << " " << *it2 << std::endl;
                     return false;
                 }
                 if (!predicate(data1,data2)){
-                    std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
+                    //std::cout << "Triggered data " << data1 << " " << data2 << std::endl;
                     return false;
                 }
 
@@ -1041,13 +1359,13 @@ protected:
         //so check remaining nnz are below the zero tolerance
         while(it1<this->index_end()){
             if(!this->below_tolerance(this->data_at(it1++))){
-                std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
+                //std::cout << "not below tolerance it1 " << this->data_at(it1) << " index " << *it1 << std::endl;
                 return false;
             }
         }
         while(it2<otherMIA.index_end()){
             if(!otherMIA.below_tolerance(otherMIA.data_at(it2++))){
-                std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
+                //std::cout << "not below tolerance it2 " << otherMIA.data_at(it2) << " index " << *it2 << std::endl;
                 return false;
             }
         }
@@ -1179,9 +1497,14 @@ SparseMIABase<Derived>::outside_scanMerge(SparseMIABase<otherDerived> &b,const O
         this->sort(temp_linIdxSequence);
     }
     else if(this->is_sorted()&&!b.is_sorted()){
+
         auto b_linIdxSequence=b.linIdxSequence();
+
+
         internal::reorder_from(index_order,this->linIdxSequence(),b_linIdxSequence);
+
         b.sort(b_linIdxSequence); //change b's sort order to it matches the index order, and also *this's current sort order
+
 
     }
     else if(this->is_sorted()&& b.is_sorted()){

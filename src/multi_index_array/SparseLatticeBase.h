@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include <array>
+#include <type_traits>
 //#include <functional>
 
 //#include <boost/mpl/assert.hpp>
@@ -147,6 +148,7 @@ public:
     typedef typename Eigen::SparseMatrix<data_type,Eigen::RowMajor> SparseMatrix_rm;
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm;
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::RowMajor,index_type> MappedSparseMatrix_rm;
+    typedef typename std::make_unsigned<index_type>::type cast_type; //type to use for casting to unsigned, for the purposes of performing division (faster if unsigned)
 
     Derived& derived()
     {
@@ -353,7 +355,8 @@ public:
     inline index_type tab(index_type lin_index) const
     {
 
-        return (((unsigned)lin_index)/((unsigned)(this->height()*this->width())))%((unsigned)this->depth());
+
+        return ((static_cast<cast_type>(lin_index)/(static_cast<cast_type>(this->height()*this->width())))%(static_cast<cast_type>(this->depth())));
 
 
     }
@@ -609,21 +612,21 @@ protected:
 
     void changeToColumnMajor(){
 
-        auto divisor=(unsigned)(this->width()*this->height());
+        auto divisor=static_cast<cast_type>((this->width()*this->height()));
         for(auto it=this->index_begin();it<this->index_end();++it){
-            auto rem=((unsigned)(*it))%divisor;
+            auto rem=(static_cast<cast_type>((*it)))%divisor;
             *it-=rem;
-            *it+=rem/((unsigned)this->width())+(rem%((unsigned)this->width()))*this->height();
+            *it+=rem/(static_cast<cast_type>(this->width()))+(rem%(static_cast<cast_type>(this->width())))*this->height();
         }
     }
 
     void changeToRowMajor(){
 
-        auto divisor=(unsigned)(this->width()*this->height());
+        auto divisor=static_cast<cast_type>((this->width()*this->height()));
         for(auto it=this->index_begin();it<this->index_end();++it){
             auto rem=((unsigned)(*it))%divisor;
             *it-=rem;
-            *it+=rem/((unsigned)this->height())+(rem%((unsigned)this->height()))*this->width();
+            *it+=rem/(static_cast<cast_type>(this->height()))+(rem%(static_cast<cast_type>(this->height())))*this->width();
         }
     }
 
@@ -647,20 +650,20 @@ protected:
     //! Returns the firstIdx - if lattice is sorted columnmajor, will return row, otherwise column
     inline index_type firstIdx(index_type _idx) const{
         if(this->linIdxSequence()==ColumnMajor){
-            return ((unsigned)_idx)%((unsigned)this->height());
+            return (static_cast<cast_type>(_idx))%(static_cast<cast_type>(this->height()));
         }
         else
-            return ((unsigned)_idx)%((unsigned)this->width());
+            return (static_cast<cast_type>(_idx))%(static_cast<cast_type>(this->width()));
     }
     //! Returns the second index - if lattice is sorted columnmajor, will return column, otherwise row
     inline index_type secondIdx(index_type _idx) const{
         if(this->linIdxSequence()==ColumnMajor){
 
-            return (((unsigned)_idx)/((unsigned)this->height()))%((unsigned)this->width());
+            return ((static_cast<cast_type>(_idx)))/(static_cast<cast_type>(this->height()))%(static_cast<cast_type>(this->width()));
 
         }
         else{
-            return (((unsigned)_idx)/((unsigned)this->width()))%((unsigned)this->height());
+            return ((static_cast<cast_type>(_idx)))/(static_cast<cast_type>(this->width()))%(static_cast<cast_type>(this->height()));
         }
     }
 

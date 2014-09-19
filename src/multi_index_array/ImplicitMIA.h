@@ -186,6 +186,9 @@ public:
     typedef typename internal::const_data_iterator<ImplicitMIA>::type const_data_iterator;
 
 
+    typedef typename DenseMIABase<ImplicitMIA>::accumulator_type accumulator_type;
+    typedef typename DenseMIABase<ImplicitMIA>::fast_accumulator_type fast_accumulator_type;
+    typedef typename DenseMIABase<ImplicitMIA>::multiplier_type multiplier_type;
 
 
 public:
@@ -426,15 +429,18 @@ public:
 
 
 
+        accumulator_type dim_accumulator;
+        fast_accumulator_type fast_dim_accumulator;
+        multiplier_type multiplier;
+        internal::create_shuffle_needs(temp.dims(),this->dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
 
-        auto dim_accumulator=internal::createDimAccumulator(temp_storage,index_order); //precompute the demoninators needed to convert from linIdx to a full index, using new_dims
         //get faster execution if I make different code structures instead of using opemmp's if statement
         if(this->dimensionality()>=PARALLEL_TOL){
             #pragma omp parallel for
             for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
             {
 
-                *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
+                *temp_it=temp.convert(this->atIdx(internal::reShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),multiplier,fast_dim_accumulator,dim_accumulator)));
 
             }
         }
@@ -443,7 +449,7 @@ public:
             for(auto temp_it=temp.data_begin(); temp_it<temp.data_end(); ++temp_it)
             {
 
-                *temp_it=temp.convert(this->atIdx(internal::getShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),this->dims(),dim_accumulator)));
+                *temp_it=temp.convert(this->atIdx(internal::reShuffleLinearIndex((index_type)(temp_it-temp.data_begin()),multiplier,fast_dim_accumulator,dim_accumulator)));
 
             }
         }

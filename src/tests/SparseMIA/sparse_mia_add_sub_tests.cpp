@@ -56,6 +56,7 @@ void do_work(size_t dim1,size_t dim2){
     //std::cout << "Dense Scan add " << boost::timer::format(dense_t.elapsed()) << std::endl;
 
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Non-destructive Add (Scan) 1a for ")+typeid(_data_type).name());
+
     //now check when b is not sorted
     a.reset_linIdx_sequence();
     a.sort();
@@ -76,7 +77,7 @@ void do_work(size_t dim1,size_t dim2){
 
 
     c(i,j,k,l)=b(i,j,k,l)+b(k,l,i,j);
-    dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_b(j,l,i,k);
+    dense_c(i,j,k,l)=dense_b(i,j,k,l)+dense_b(k,l,i,j);
     BOOST_CHECK_MESSAGE(c==dense_c,std::string("Self addition check 1 for ")+typeid(_data_type).name());
 
 

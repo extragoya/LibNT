@@ -835,6 +835,7 @@ void  SparseMIA<T,_order>::sortMerge(SparseMIABase<otherDerived> &b,const Op& op
     }
     else{
         //don't use storage iterators, as they're likely slower than just performing two separate copy runs
+
         std::copy(b.data_begin(),b.data_end(),this->data_begin()+old_size);
         std::copy(b.index_begin(),b.index_end(),this->index_begin()+old_size);
         this->collect_duplicates(op);
