@@ -17,16 +17,8 @@ set(Boost_DIR ${BOOST_ROOT})
 
 
 
-#if we're using the single-header option in boost::test, only include the boost directories
-if(MIA_USE_HEADER_ONLY_TESTS)
-	
-	find_package(Boost REQUIRED)
-	if(Boost_FOUND)
-		include_directories(${Boost_INCLUDE_DIRS}) 
-		
-	endif()
-else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for the unit_test_framework
-	
+
+if(NOT MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for the unit_test_framework
 	set(Boost_USE_STATIC_LIBS        ON)
 	set(Boost_USE_MULTITHREADED      OFF)
 	set(Boost_USE_STATIC_RUNTIME    OFF)
@@ -36,7 +28,15 @@ else(MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs for
 		include_directories(${Boost_INCLUDE_DIRS}) 
 		message(${Boost_LIBRARIES})
 	endif()
-endif(MIA_USE_HEADER_ONLY_TESTS)
+	
+else(NOT MIA_USE_HEADER_ONLY_TESTS) #if we're using the single-header option in boost::test, only include the boost directories
+	find_package(Boost REQUIRED)
+	if(Boost_FOUND)
+		include_directories(${Boost_INCLUDE_DIRS}) 
+		
+	endif()
+	
+endif(NOT MIA_USE_HEADER_ONLY_TESTS)
 set(Boost_install_include "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
 
 #setup the config file for LibMIA

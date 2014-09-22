@@ -63,7 +63,7 @@
 #define _MIN_GALLOP_ 7
 //#include <boost/timer/timer.hpp>
 #include <forward_list>
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 #include "LibMIATimSort.h"
 namespace LibMIA
 {

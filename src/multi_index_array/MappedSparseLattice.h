@@ -182,6 +182,8 @@ public:
     typedef typename LibMIA::internal::const_data_iterator<MappedSparseLattice>::type const_data_iterator;
 
 
+	
+
     //!  Constructs a sparse lattice from pre-allocated data.
     /*!
     \param[in] _data Raw pointer of data memory. Must have have been allocated to same size as _size. No checking is done to ensure this requirement is met.

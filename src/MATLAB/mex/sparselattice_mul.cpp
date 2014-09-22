@@ -40,6 +40,7 @@ mwSize perform_mult(mxArray *plhs[],mxClassID a_id, T*a_data, index_type  * a_in
     }
     catch(LibMIA::LatticeException& e){
         mexErrMsgTxt(e.what());
+		return 0;
 
     }
 
@@ -60,7 +61,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		mexErrMsgTxt("Two output arguments, c_data c_indices, required to multiply SparseLattices.");
 	else if (nlhs == 0)
 		mexErrMsgTxt("No output");
-    mxClassID a_id=check_sparse_params(nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
+    mxClassID a_id=check_sparse_params_lattice(nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
 
     switch (a_id)
     {

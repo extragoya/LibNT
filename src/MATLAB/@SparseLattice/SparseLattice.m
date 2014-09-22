@@ -44,7 +44,7 @@ classdef SparseLattice < Lattice
         
         nnz %number of non zeros
         
-        iscompressed=false;
+        
         
     end
     methods
@@ -74,9 +74,9 @@ classdef SparseLattice < Lattice
                     obj.inds=int64(find(arg(:))); %make sure we get a column vector of data and indices
                     t_vals=arg(obj.inds);
                     t_vals=t_vals(:);
-                    obj.m=t_m;
-                    obj.n=t_n;
-                    obj.p=t_p;
+                    obj.m=int64(t_m);
+                    obj.n=int64(t_n);
+                    obj.p=int64(t_p);
                     obj.vals=t_vals;                              
                     obj.nnz=length(t_vals);
                 else
@@ -85,9 +85,9 @@ classdef SparseLattice < Lattice
             elseif nargin==7
                 %S = SparseLattice(i,j,k,vals,m,n,p)
                 
-                obj.m=varargin{5};
-                obj.n=varargin{6};
-                obj.p=varargin{7};
+                obj.m=int64(varargin{5});
+                obj.n=int64(varargin{6});
+                obj.p=int64(varargin{7});
                 
                 SparseLattice.error_check_range(obj.m,obj.n,obj.p);
                 
@@ -117,9 +117,9 @@ classdef SparseLattice < Lattice
                
             elseif nargin==5
                 %S = SparseLattice(inds,vals,m,n,p)
-                obj.m=varargin{3};
-                obj.n=varargin{4};
-                obj.p=varargin{5};
+                obj.m=int64(varargin{3});
+                obj.n=int64(varargin{4});
+                obj.p=int64(varargin{5});
                 
                 SparseLattice.error_check_range(obj.m,obj.n,obj.p);
                 
@@ -136,9 +136,9 @@ classdef SparseLattice < Lattice
                 
             elseif nargin==3
                 %S = SparseLattice(m,n,p)
-                obj.m=varargin{1};
-                obj.n=varargin{2};
-                obj.p=varargin{3};
+                obj.m=int64(varargin{1});
+                obj.n=int64(varargin{2});
+                obj.p=int64(varargin{3});
                 obj.vals=[];
                 obj.inds =int64([]);                
                 obj.nnz=0;
@@ -157,9 +157,13 @@ classdef SparseLattice < Lattice
         function disp(obj)
             
             
+            if( isempty(obj.vals))
+                disp('[]')
+                return;
+            end
             disp('                 i                 j                 k                 val')
             
-            disp([obj.row() obj.col() obj.depth() obj.vals])
+            disp([obj.row() obj.col() obj.tab() obj.vals])
         end
         
         
@@ -230,10 +234,7 @@ classdef SparseLattice < Lattice
     end %public methods
     
     methods (Access=protected)
-        C=union(A,B,fhandle)
-        C=intersect(A,B,fhandle)
-        C=binary_setup(A,B,fhandle,f_intersect)
-        [A,B,IsSparse] = chkbinary(A,B)
+        
         
         
         function [i j k]=ind2sub(obj,idx)
@@ -280,13 +281,15 @@ classdef SparseLattice < Lattice
     
     methods (Access=protected, Static=true)
         
-        [c c_inds]=merge_list(a,a_inds,b,b_inds,m,n,p);
+       
     
    
         
         function inds=error_check_idx(inds,nnz,m,n,p)
             if ~isvector(inds)
-                error('Input vector for row, column, and depth indices')
+                if(~isempty(inds))
+                    error('Input vector for row, column, and depth indices')
+                end
             end
             if length(inds)~=nnz
                 error('Length of row, column, and depth indices must equal length of non-zero values')
@@ -320,7 +323,9 @@ classdef SparseLattice < Lattice
         
         function vals=error_check_nonzeros(vals)
             if ~isvector(vals)
-                error('Input vector for nonzero values')
+                if(~isempty(vals))
+                    error('Input vector for nonzero values')
+                end
             end
             if size(vals,1)==1
                 vals=vals';

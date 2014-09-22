@@ -3,8 +3,9 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
     properties
         
         dims
-        indices %can be two dimensional based on partition array
-        partition
+        indices %linear indices, can be in arbitrary lexicographical order
+        linIdx
+        isSorted
         
     end
     
@@ -16,34 +17,31 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                 obj.dims=[];
                 obj.indices=[];
                 obj.data=[];
+                obj.linIdx=[];
+                obj.isSorted=[];
                 
             else
                 if nargin==1
                     arg=varargin{1};
                     if issparse(arg)
                         obj.dims=size(arg);
-                        obj.indices=find(arg);
+                        obj.indices=int64(find(arg));
                         obj.data=nonzeros(arg);
-                        obj.partition=2;
+                        obj.linIdx=[1 2]; %equivalent to column major ordering
+                        obj.isSorted=true;
                         
                     elseif isa(arg,'MIA')
                         obj.dims=size(arg);
                         idx=find(arg.data);
                         obj.data=arg.data(idx);
-                        obj.indices=idx;
-                        obj.partition=numel(obj.dims);
-                        
-                        if obj.partition==2
-                            if obj.dims(2)==1
-                                obj.partition=1;
-                                
-                            end
-                        end
+                        obj.indices=int64(idx);
+                        obj.linIdx=1:numel(obj.dims);
+                        obj.isSorted=true;                        
                         
                     else
                         error('SparseMIA constructor called with incomptabile parameters. Please view help.')
                     end
-                elseif nargin ==3
+                elseif (nargin ==3 || nargin==4)
                     %TODO error checking
                     obj.data=varargin{1};
                     obj.indices=int64(varargin{2});
@@ -53,25 +51,19 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                     obj.dims=varargin{3};
                     
                     idx= obj.dims>1;
-                    obj.dims=obj.dims(idx);
-                    
-                    obj.partition=numel(obj.dims);
-                    [obj.indices, idx] = sort(obj.indices);
-                    obj.data=obj.data(idx);
+                    obj.dims=obj.dims(idx);     
                     
                     
-                elseif nargin ==4
-                    %TODO error checking and cleaning up dimensions of unit
-                    %size
-                    obj.data=varargin{1};
-                    obj.indices=int64(varargin{2});
-                    obj.dims=varargin{3};
-                    obj.partition=varargin{4};
+                    
+                    obj.linIdx=1:numel(obj.dims);
+                    if nargin==3 % if sorted is not specified, we assume it's unsorted
+                        obj.isSorted=false;     
+                    else
+                        obj.isSorted=varargin{4};
+                    end                            
                     
                     
-                    [obj.indices, idx] = sortrows(obj.indices);
-                    obj.data=obj.data(idx);
-                    
+                                  
                 else
                     error('SparseMIA constructor called with incomptabile parameters. Please view help.')
                     
@@ -86,6 +78,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
             
         end
         %TODO mldivide
+        A=sort(A,newLinIdx);
         B=flatten(A,row_idx,col_idx);
         C=mtimes(A,B)
         C=plus(A,B)

@@ -1323,7 +1323,7 @@ auto SparseLatticeBase<Derived>::mult_scatter(std::vector<size_t>::iterator & a_
     size_t cur_a_row;
     while(a_cur_it<a_end && this->column(*a_cur_it)==b_row){
         cur_a_row=(size_t)this->row(*a_cur_it); //here we've assumed a's rows have already been truncated
-        if (row_marker[cur_a_row]<b_column+1){
+        if ((b_index_type)(row_marker[cur_a_row])<b_column+1){
             row_marker[cur_a_row]=b_column+1;
             c_indices.push_back(cur_a_row); //push back the compressed row (this will have to be remapped afterwards)
             //std::cout << "Beta: " << beta << " a_data " << this->data_at(a_cur_it-this->index_begin()) << " index " << a_cur_it-this->index_begin() << " result " << beta*this->data_at(a_cur_it-this->index_begin()) << std::endl;

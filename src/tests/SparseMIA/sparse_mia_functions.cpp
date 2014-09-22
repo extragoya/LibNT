@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE( SparseCompareTests )
 
 
     do_work<float>(dim1,dim2,dim3);
-//    do_work<double>(dim1,dim2,dim3);
-//    do_work<int32_t>(dim1,dim2,dim3);
-//    do_work<int64_t>(dim1,dim2,dim3);
+    do_work<double>(dim1,dim2,dim3);
+    do_work<int32_t>(dim1,dim2,dim3);
+    do_work<int64_t>(dim1,dim2,dim3);
 }

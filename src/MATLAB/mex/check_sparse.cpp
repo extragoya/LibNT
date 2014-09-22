@@ -2,7 +2,7 @@
 
 #include "check_sparse.h"
 
-mxClassID check_sparse_params(int nrhs, const mxArray *prhs[],double  *a_subs,double  *b_subs,mwSize* a_data_length,mwSize* b_data_length){
+mxClassID check_sparse_params_lattice(int nrhs, const mxArray *prhs[], double  *a_subs, double  *b_subs, mwSize* a_data_length, mwSize* b_data_length){
 
     if (nrhs!=6)
         mexErrMsgTxt("Six arguments must be provided to sparse lattice multiplication.");
@@ -49,5 +49,54 @@ mxClassID check_sparse_params(int nrhs, const mxArray *prhs[],double  *a_subs,do
     *a_data_length=a_data_subs[0];
     *b_data_length=b_data_subs[0];
     return a_id;
+
+}
+
+mxClassID check_sparse_params_merge(int nrhs, const mxArray *prhs[],  mwSize* a_data_length, mwSize* b_data_length,double * op){
+
+	if (nrhs != 5)
+		mexErrMsgTxt("Five arguments must be provided to sparse lattice multiplication.");
+
+	bool _valid = mxIsNumeric(prhs[0])& mxIsInt64(prhs[1]) & mxIsNumeric(prhs[2])& mxIsInt64(prhs[3])&  mxIsDouble(prhs[4]);
+
+	if (!_valid)
+		mexErrMsgTxt("Invalid class. Indices must be int64 and dims must be double.\n");
+
+	mxClassID a_id = mxGetClassID(prhs[0]);
+	mxClassID b_id = mxGetClassID(prhs[2]);
+	if (a_id != b_id)
+		mexErrMsgTxt("Lattice data must have the same underlying data type");
+
+
+
+	mwSize a_data_dims = mxGetNumberOfDimensions(prhs[0]);
+	mwSize a_index_dims = mxGetNumberOfDimensions(prhs[1]);	
+	mwSize b_data_dims = mxGetNumberOfDimensions(prhs[2]);
+	mwSize b_index_dims = mxGetNumberOfDimensions(prhs[3]);	
+	mwSize op_dims = mxGetNumberOfDimensions(prhs[4]);
+	_valid = a_data_dims == 2 && a_index_dims == 2 && b_data_dims == 2 && b_index_dims == 2 && op_dims == 2;
+
+
+
+	const mwSize* a_data_subs = mxGetDimensions(prhs[0]);
+	const mwSize* a_index_subs = mxGetDimensions(prhs[1]);	
+	const mwSize* b_data_subs = mxGetDimensions(prhs[2]);
+	const mwSize* b_index_subs = mxGetDimensions(prhs[3]);
+	*op = std::floor(mxGetScalar(prhs[4]));
+	if (*op<0 || *op>1)
+		mexErrMsgTxt("Input one or two for operation, ie 0 for add, 1 for subtract");
+
+	_valid = _valid && (a_data_subs[1] == 1 || a_data_subs[0] == 0) && (a_index_subs[1] == 1 || a_index_subs[0] == 0) && (b_data_subs[1] == 1 || b_data_subs[0] == 0) && (b_index_subs[1] == 1 || b_index_subs[0] == 0) ;
+	if (!_valid)
+		mexErrMsgTxt("Input must be two vectors representing a_data a_indices. This is followed by the same info for b");
+
+	_valid = (a_data_subs[0] == a_index_subs[0]) & (b_data_subs[0] == b_index_subs[0]);
+	if (!_valid)
+		mexErrMsgTxt("Data and index vectors must be the same length.");
+	
+
+	*a_data_length = a_data_subs[0];
+	*b_data_length = b_data_subs[0];
+	return a_id;
 
 }
