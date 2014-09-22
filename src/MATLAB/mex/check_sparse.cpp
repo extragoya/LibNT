@@ -100,3 +100,40 @@ mxClassID check_sparse_params_merge(int nrhs, const mxArray *prhs[],  mwSize* a_
 	return a_id;
 
 }
+
+mxClassID check_sparse_unary(int nrhs, const mxArray *prhs[], mwSize* a_data_length)
+{
+	assert(nrhs > 1);
+
+	bool _valid = mxIsNumeric(prhs[0])& mxIsInt64(prhs[1]);
+
+	if (!_valid)
+		mexErrMsgTxt("Invalid class. Indices must be int64 and dims must be double.\n");
+
+	mxClassID a_id = mxGetClassID(prhs[0]);
+
+
+
+	mwSize a_data_dims = mxGetNumberOfDimensions(prhs[0]);
+	mwSize a_index_dims = mxGetNumberOfDimensions(prhs[1]);
+	
+	_valid = a_data_dims == 2 && a_index_dims == 2;
+
+
+
+	const mwSize* a_data_subs = mxGetDimensions(prhs[0]);
+	const mwSize* a_index_subs = mxGetDimensions(prhs[1]);	
+
+	_valid = _valid && (a_data_subs[1] == 1 || a_data_subs[0] == 0) && (a_index_subs[1] == 1 || a_index_subs[0] == 0);
+	if (!_valid)
+		mexErrMsgTxt("Input must be two vectors representing data and then indices.");
+
+	_valid = (a_data_subs[0] == a_index_subs[0]);
+	if (!_valid)
+		mexErrMsgTxt("Data and index vectors must be the same length.");
+
+
+	*a_data_length = a_data_subs[0];
+	
+	return a_id;
+}

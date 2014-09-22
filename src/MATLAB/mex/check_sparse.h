@@ -7,4 +7,6 @@ mxClassID check_sparse_params_lattice(int nrhs, const mxArray *prhs[],double  *a
 
 mxClassID check_sparse_params_merge(int nrhs, const mxArray *prhs[], mwSize* a_data_length, mwSize* b_data_length,double *op);
 
+mxClassID check_sparse_unary(int nrhs, const mxArray *prhs[], mwSize* a_data_length);
+
 #endif // CHECK_SPARSE_H_INCLUDED

@@ -77,6 +77,9 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
             ret=obj.dims;
             
         end
+        function ret=nnz(obj)
+            ret=length(obj.data);
+        end
         %TODO mldivide
         A=sort(A,newLinIdx);
         B=flatten(A,row_idx,col_idx);

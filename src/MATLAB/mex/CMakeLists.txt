@@ -16,6 +16,7 @@ set (DENSE_LATTICE_SOLVE_SOURCES denselattice_solve.cpp)
 set (SPARSE_LATTICE_MULT_SOURCES sparselattice_mul.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_LATTICE_SOLVE_SOURCES sparselattice_solve.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_MERGE_SOURCES sparse_merge.cpp ${SPARSE_CHECK_SOURCES})
+set (SPARSE_SORT_SOURCES sparse_sort.cpp ${SPARSE_CHECK_SOURCES})
 LINK_DIRECTORIES(${MATLAB_LIB_DIR})
 
 #we set the EXPORT_MACRO_NAME to DLL_EXPORT_SYM, b/c mex.h uses that define. This allows us to export dll symbols without .def file
@@ -24,6 +25,7 @@ add_library(DenseLatticeSolveMex SHARED ${DENSE_LATTICE_SOLVE_SOURCES})
 add_library(SparseLatticeMultMex SHARED ${SPARSE_LATTICE_MULT_SOURCES})
 add_library(SparseLatticeSolveMex SHARED ${SPARSE_LATTICE_SOLVE_SOURCES})
 add_library(SparseMergeMex SHARED ${SPARSE_MERGE_SOURCES})
+add_library(SparseSortMex SHARED ${SPARSE_SORT_SOURCES})
 #Generate a header file that creates the proper export macro
 #I believe this function needs a target name when you call it, so I supply one, even though I want the MexSymbols_Export.h file to be used by all mex files.
 GENERATE_EXPORT_HEADER( DenseLatticeMultMex
@@ -56,19 +58,27 @@ GENERATE_EXPORT_HEADER( SparseMergeMex
              EXPORT_FILE_NAME SparseMergeMex_Export.h
              STATIC_DEFINE SparseMergeMex_BUILT_AS_STATIC
 )
+GENERATE_EXPORT_HEADER( SparseSortMex
+             BASE_NAME SparseSortMexSymbols
+             EXPORT_MACRO_NAME DLL_EXPORT_SYM
+             EXPORT_FILE_NAME SparseSortMex_Export.h
+             STATIC_DEFINE SparseSortMex_BUILT_AS_STATIC
+)
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 TARGET_LINK_LIBRARIES(DenseLatticeMultMex libmx libmex libmat)
 TARGET_LINK_LIBRARIES(DenseLatticeSolveMex libmx libmex libmat)
 TARGET_LINK_LIBRARIES(SparseLatticeMultMex libmx libmex libmat)
 TARGET_LINK_LIBRARIES(SparseLatticeSolveMex libmx libmex libmat)
 TARGET_LINK_LIBRARIES(SparseMergeMex libmx libmex libmat)
+TARGET_LINK_LIBRARIES(SparseSortMex libmx libmex libmat)
 #Change the extension to the appropriate MATLAB one
 set_target_properties(DenseLatticeMultMex PROPERTIES SUFFIX  .${MEX_EXT})
 set_target_properties(DenseLatticeSolveMex PROPERTIES SUFFIX  .${MEX_EXT})
 set_target_properties(SparseLatticeMultMex PROPERTIES SUFFIX  .${MEX_EXT})
 set_target_properties(SparseLatticeSolveMex PROPERTIES SUFFIX  .${MEX_EXT})
 set_target_properties(SparseMergeMex PROPERTIES SUFFIX  .${MEX_EXT})
+set_target_properties(SparseSortMex PROPERTIES SUFFIX  .${MEX_EXT})
 
 add_custom_target(MATLAB)
-add_dependencies(MATLAB DenseLatticeMultMex DenseLatticeSolveMex SparseLatticeMultMex SparseLatticeSolveMex SparseMergeMex)
+add_dependencies(MATLAB DenseLatticeMultMex DenseLatticeSolveMex SparseLatticeMultMex SparseLatticeSolveMex SparseMergeMex SparseSortMex)
 
