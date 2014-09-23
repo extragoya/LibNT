@@ -16,7 +16,7 @@ endif()
 # Visual Studio specifics - C++11 is on automatically
 if(MSVC)
   #msvc doesn't support constexpr yet, so we need to define an empty macro and also add an appropriate compiler flag
-  add_definitions(-Drestrict_libmia=_restrict)
+  add_definitions(-Drestrict_libmia=__restrict)
   add_definitions(-DNO_CONST_EXPR_LIBMIA)
   add_definitions(-D_ALLOW_KEYWORD_MACROS)
   message("MSVC compiler used. No support for MIA Functions, but MATLAB wrapper can be built")

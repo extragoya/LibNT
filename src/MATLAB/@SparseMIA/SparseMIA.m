@@ -4,7 +4,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
         
         dims
         indices %linear indices, can be in arbitrary lexicographical order
-        linIdx
+        lexOrder
         isSorted
         
     end
@@ -17,7 +17,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                 obj.dims=[];
                 obj.indices=[];
                 obj.data=[];
-                obj.linIdx=[];
+                obj.lexOrder=[];
                 obj.isSorted=[];
                 
             else
@@ -27,7 +27,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                         obj.dims=size(arg);
                         obj.indices=int64(find(arg));
                         obj.data=nonzeros(arg);
-                        obj.linIdx=[1 2]; %equivalent to column major ordering
+                        obj.lexOrder=[1 2]; %equivalent to column major ordering
                         obj.isSorted=true;
                         
                     elseif isa(arg,'MIA')
@@ -35,7 +35,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                         idx=find(arg.data);
                         obj.data=arg.data(idx);
                         obj.indices=int64(idx);
-                        obj.linIdx=1:numel(obj.dims);
+                        obj.lexOrder=1:numel(obj.dims);
                         obj.isSorted=true;                        
                         
                     else
@@ -55,7 +55,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                     
                     
                     
-                    obj.linIdx=1:numel(obj.dims);
+                    obj.lexOrder=1:numel(obj.dims);
                     if nargin==3 % if sorted is not specified, we assume it's unsorted
                         obj.isSorted=false;     
                     else
@@ -81,13 +81,15 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
             ret=length(obj.data);
         end
         %TODO mldivide
-        A=sort(A,newLinIdx);
+        A=sort(A);
+        A=permute(A,newLinIdx);
+        A=changeLexOrder(A,newLinIdx);
         B=flatten(A,row_idx,col_idx);
         C=mtimes(A,B)
         C=plus(A,B)
         [indices parition]=extract_indices(A,idx,linear);
         indices=pull_index(A,idx);
-        A=consolidate_indices(A);
+        
     end
     
     methods (Access=private)

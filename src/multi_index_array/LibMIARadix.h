@@ -47,7 +47,7 @@ inline void _RadixSort_Unsigned_PowerOf2Radix_L1( ForwardIt begin, FollowIt foll
 
     typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
 
-    constexpr unsigned long BitMask=PowerOfTwoRadix-1;
+	libmia_constexpr unsigned long BitMask = PowerOfTwoRadix - 1; //use constexpr workaround
     std::array<unsigned long,PowerOfTwoRadix> count;
 
     for(auto &e:count)
@@ -106,7 +106,7 @@ inline void _RadixSort_Unsigned_PowerOf2Radix_L1( ForwardIt begin, FollowIt foll
 
 
 template< class ForwardIt,class FollowIt>
-inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt restrict_libmia begin, FollowIt restrict_libmia followBegin,size_t length,size_t max_size )
+inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  followBegin , size_t length, size_t max_size)
 {
 
     typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
@@ -140,7 +140,7 @@ inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt restrict_libmia be
 
 
 template< unsigned int PowerOfTwoRadix,class ForwardIt,class FollowIt,class ScratchIt,class ScratchItFollow>
-inline std::array<size_t,PowerOfTwoRadix+1> _performRadixExtractDigit( ForwardIt restrict_libmia begin1, FollowIt restrict_libmia followBegin1,ScratchIt restrict_libmia begin2, ScratchItFollow restrict_libmia followBegin2, size_t length,
+inline std::array<size_t,PowerOfTwoRadix+1> _performRadixExtractDigit( ForwardIt  begin1, FollowIt  followBegin1,ScratchIt  begin2, ScratchItFollow  followBegin2, size_t length,
                         unsigned long cur_shiftRightAmount ){
 
 
@@ -193,7 +193,7 @@ inline std::array<size_t,PowerOfTwoRadix+1> _performRadixExtractDigit( ForwardIt
 // Altered to suit the needs of sparse MIA permutations
 //
 template< unsigned long PowerOfTwoRadix, unsigned long Log2ofPowerOfTwoRadix, long Threshold,class ForwardIt,class FollowIt,class ScratchIt,class ScratchItFollow>
-inline void _RadixSort_Sort_Simple( ForwardIt restrict_libmia begin1, FollowIt restrict_libmia followBegin1,ScratchIt restrict_libmia begin2, ScratchItFollow restrict_libmia followBegin2, size_t length,
+inline void _RadixSort_Sort_Simple( ForwardIt  begin1, FollowIt  followBegin1,ScratchIt  begin2, ScratchItFollow  followBegin2, size_t length,
                         unsigned long cur_shiftRightAmount,bool inputArrayIsDestination){
 
 
@@ -306,7 +306,7 @@ inline size_t getLengthThreshold(size_t max_size){
 
 
 template<unsigned int PowerOfTwoRadix,unsigned int Log2ofPowerOfTwoRadix,unsigned int Threshold,class ForwardIt,class FollowIt,class ScratchIt,class ScratchItFollow,class unsigned_Type>
-inline void RadixSortStraight( ForwardIt restrict_libmia begin, FollowIt restrict_libmia followBegin, ScratchIt restrict_libmia scratchBegin, ScratchItFollow restrict_libmia scratchBegin2,size_t length,const unsigned_Type max_size)
+inline void RadixSortStraight( ForwardIt  begin, FollowIt  followBegin, ScratchIt  scratchBegin, ScratchItFollow  scratchBegin2,size_t length,const unsigned_Type max_size)
 {
 
     typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
@@ -768,11 +768,11 @@ performRadixExtractDigit( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  
 
     using namespace libdivide;
     //std::cout << "Enetered Extract Digit" <<std::endl;
-    constexpr unsigned int numberOfBins=PowerOfTwoRadix;
+    libmia_constexpr unsigned int numberOfBins=PowerOfTwoRadix;
     auto fast_divisor=mFastDivisors[stage_index];
 
 
-    constexpr unsigned int BitMask =PowerOfTwoRadix-1;
+    //constexpr unsigned int BitMask =PowerOfTwoRadix-1;
     for(auto &i:mCountBuffer)
         i=0;
 
@@ -780,23 +780,23 @@ performRadixExtractDigit( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  
    switch (fast_divisor.get_algorithm()) {
         case 0:
             for ( auto it=begin1;it<begin1+length;++it ) // Scan the array and count the number of times each value in the current bitMask appears
-                mCountBuffer[ extractDigit<BitMask>( ((unsignedType)*it)/unswitch<0>(fast_divisor), cur_shiftRightAmount )+1 ]++;
+				mCountBuffer[extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<0>(fast_divisor), cur_shiftRightAmount) + 1]++;
             break;
         case 1:
             for ( auto it=begin1;it<begin1+length;++it ) // Scan the array and count the number of times each value in the current bitMask appears
-                mCountBuffer[ extractDigit<BitMask>( ((unsignedType)*it)/unswitch<1>(fast_divisor), cur_shiftRightAmount )+1 ]++;
+				mCountBuffer[extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<1>(fast_divisor), cur_shiftRightAmount) + 1]++;
             break;
         case 2:
             for ( auto it=begin1;it<begin1+length;++it ) // Scan the array and count the number of times each value in the current bitMask appears
-                mCountBuffer[ extractDigit<BitMask>( ((unsignedType)*it)/unswitch<2>(fast_divisor), cur_shiftRightAmount )+1 ]++;
+				mCountBuffer[extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<2>(fast_divisor), cur_shiftRightAmount) + 1]++;
             break;
         case 3:
             for ( auto it=begin1;it<begin1+length;++it ) // Scan the array and count the number of times each value in the current bitMask appears
-                mCountBuffer[ extractDigit<BitMask>( ((unsignedType)*it)/unswitch<3>(fast_divisor), cur_shiftRightAmount )+1 ]++;
+				mCountBuffer[extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<3>(fast_divisor), cur_shiftRightAmount) + 1]++;
             break;
         case 4:
             for ( auto it=begin1;it<begin1+length;++it ) // Scan the array and count the number of times each value in the current bitMask appears
-                mCountBuffer[ extractDigit<BitMask>( ((unsignedType)*it)/unswitch<4>(fast_divisor), cur_shiftRightAmount )+1 ]++;
+				mCountBuffer[extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<4>(fast_divisor), cur_shiftRightAmount) + 1]++;
             break;
     }
 
@@ -814,35 +814,35 @@ performRadixExtractDigit( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  
     switch (fast_divisor.get_algorithm()) {
         case 0:
             for ( auto it=begin1;it<begin1+length;++it,++followIt){ //perform radix sort on the current bitMask, using the starting offsets
-                auto cur_Digit=extractDigit<BitMask>( ((unsignedType)*it)/unswitch<0>(fast_divisor), cur_shiftRightAmount );
+				auto cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<0>(fast_divisor), cur_shiftRightAmount);
                 *(begin2+mCountBuffer2[cur_Digit])=*it;
                 *(followBegin2+mCountBuffer2[cur_Digit]++)=*followIt;
             }
             break;
         case 1:
             for ( auto it=begin1;it<begin1+length;++it,++followIt){ //perform radix sort on the current bitMask, using the starting offsets
-                auto cur_Digit=extractDigit<BitMask>( ((unsignedType)*it)/unswitch<1>(fast_divisor), cur_shiftRightAmount );
+				auto cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<1>(fast_divisor), cur_shiftRightAmount);
                 *(begin2+mCountBuffer2[cur_Digit])=*it;
                 *(followBegin2+mCountBuffer2[cur_Digit]++)=*followIt;
             }
             break;
         case 2:
             for ( auto it=begin1;it<begin1+length;++it,++followIt){ //perform radix sort on the current bitMask, using the starting offsets
-                auto cur_Digit=extractDigit<BitMask>( ((unsignedType)*it)/unswitch<2>(fast_divisor), cur_shiftRightAmount );
+				auto cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<2>(fast_divisor), cur_shiftRightAmount);
                 *(begin2+mCountBuffer2[cur_Digit])=*it;
                 *(followBegin2+mCountBuffer2[cur_Digit]++)=*followIt;
             }
             break;
         case 3:
             for ( auto it=begin1;it<begin1+length;++it,++followIt){ //perform radix sort on the current bitMask, using the starting offsets
-                auto cur_Digit=extractDigit<BitMask>( ((unsignedType)*it)/unswitch<3>(fast_divisor), cur_shiftRightAmount );
+				auto cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<3>(fast_divisor), cur_shiftRightAmount);
                 *(begin2+mCountBuffer2[cur_Digit])=*it;
                 *(followBegin2+mCountBuffer2[cur_Digit]++)=*followIt;
             }
             break;
         case 4:
             for ( auto it=begin1;it<begin1+length;++it,++followIt){ //perform radix sort on the current bitMask, using the starting offsets
-                auto cur_Digit=extractDigit<BitMask>( ((unsignedType)*it)/unswitch<4>(fast_divisor), cur_shiftRightAmount );
+				auto cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it) / unswitch<4>(fast_divisor), cur_shiftRightAmount);
                 *(begin2+mCountBuffer2[cur_Digit])=*it;
                 *(followBegin2+mCountBuffer2[cur_Digit]++)=*followIt;
             }

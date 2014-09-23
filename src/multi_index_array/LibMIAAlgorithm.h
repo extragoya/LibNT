@@ -1983,10 +1983,6 @@ void RadixSort(MainIterator begin, MainIterator end, FollowIterator followBegin,
                                                          histograms.begin()+i*Radix,buffer.begin(),followBuffer.begin(),length,shift_amount);
         }
 
-//        if ((i-starting_pass)%2==0)
-//            RadixIteration<MainIterator,FollowIterator,ScratchIterator,ScratchIterator2,HistIt,kHist>(begin,followBegin,scratchIt1,scratchIt2,histograms.begin()+i*kHist,length,shift_amount);
-//        else
-//            RadixIteration<MainIterator,FollowIterator,ScratchIterator,ScratchIterator2,HistIt,kHist>(scratchIt1,scratchIt2,begin,followBegin,histograms.begin()+i*kHist,length,shift_amount);
 
        shift_amount+=bit_size;
        //std::cout << "Pass " << i << std::endl;
@@ -1999,10 +1995,8 @@ void RadixSort(MainIterator begin, MainIterator end, FollowIterator followBegin,
     }
 
 
-    //std::cout << "Insertion" << std::endl;
+
     InsertionSortImproved(begin,begin+length,followBegin,std::less<index_type>()); //clean up
-    //introsort_detail::IntrosortRec(begin,begin+length,introsort_detail::IntrosortDepth(begin,begin+length),std::less<index_type>(),internal::DualSwapper<MainIterator,FollowIterator>(begin,followBegin));
-    //std::cout << "Insertion Done" << std::endl;
 
 
 }

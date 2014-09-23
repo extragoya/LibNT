@@ -67,7 +67,7 @@ const bool RowMajor=false;
 
 //workaround for MSVC compiler which doesn't yet support constexpr
 #ifdef NO_CONST_EXPR_LIBMIA
-
+#define libmia_constexpr const
 //comparison tolerances for non zeros after operations like solving
 template <class T> struct Tolerance
 {
@@ -112,7 +112,7 @@ template <> struct SparseTolerance<double>
 const double __declspec(selectany)  SparseTolerance<double>::tolerance = 1.11e-16;
 #else
 
-
+#define libmia_constexpr constexpr
 //comparison tolerances for non zeros after operations like solving
 template <class T> struct Tolerance
 {

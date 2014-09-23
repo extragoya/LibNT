@@ -605,100 +605,19 @@ public:
                 return;
             }
 
-            //otherwise, we need to examine the the new lexicographical precedenec compared to the old
-            std::array<index_type,mOrder> divisor_list;
-            //create a divisor list from the new lexicographical precedence
-            divisor_list[0]=1;
-            for(auto idx=1;idx<mOrder;++idx){
-                divisor_list[idx]=divisor_list[idx-1]*this->dim(this->linIdxSequence()[idx-1]);
-            }
+           
 
             auto reverseShuffleSequence=internal::getShuffleSequence(oldLinIdxSequence,_linIdxSequence); //get the shuffle sequence from new to old
-
-
-            std::vector<bool> sort_or_find;
-            std::array<bool,mOrder> sort_or_find_indices;
-            std::vector<unsigned_Type> divisors;
-            std::vector<unsigned_Type> max_sizes;
-
-            //print_array(reverseShuffleSequence,"reverseShuffleSequence");
-
-            //iterate through the shuffle sequence and determine which indices must be sorted, and which remain in the same place (and therefore define regions we don't need to sort)
-            //we iterate through the shuffle sequence, but stop before the first one, as its digits always don't need to be sorted
-            for(int i=mOrder-1;i>0;--i){
-                sort_or_find_indices[i]=false;
-                for(auto _idx=0;_idx<i;++_idx){
-                    if(reverseShuffleSequence[_idx]>reverseShuffleSequence[i]){
-                        sort_or_find_indices[i]=true;
-                        break;
-                    }
-                }
-            }
-            auto curIndex=mOrder-1;
-
-            //now based on whether indices are sort or find, we will create sort and find stages for the radix shuffle to perform
-            while(curIndex>0){
-
-                if(sort_or_find_indices[curIndex]==false){ //if the current index doesn't need to be sorted
-                    sort_or_find.push_back(false); //create a find stage, with accompanying divisors and max sizes
-                    divisors.push_back(divisor_list[curIndex]);
-                    max_sizes.push_back(this->dim(this->linIdxSequence()[curIndex]));
-                    //std::cout << "Make a new find index divisor " << divisors.back() << " index " << curIndex << std::endl;
-                    //if the previous indices are also find indices, add them to the current find stage
-                    auto tempCurIndex=curIndex-1;
-                    while(tempCurIndex>0 && sort_or_find_indices[tempCurIndex]==false){
-                        divisors.back()=divisor_list[tempCurIndex];
-                        max_sizes.back()*=this->dim(this->linIdxSequence()[tempCurIndex]);
-                        tempCurIndex--;
-                    }
-                    curIndex=tempCurIndex;
-                }
-                else{ //otherwise current index is a sort index
-                    sort_or_find.push_back(true); //push back that the current index is a sort index
-                    auto tempCurIndex=curIndex-1;
-                    //if the current index is the second index, we can modify its divisor to be a power of two (even if the first index's range isn't a power of two)
-                    //this will speed up the division needed in the radix shuffle to pull this index out from the larger linear indices
-                    if(curIndex==1){
-                        auto bit_size=(long)std::floor(std::log2(divisor_list[curIndex]));
-                        divisors.push_back(std::pow(2,bit_size));
-                        bit_size=(long)std::ceil(std::log2(this->dim(this->linIdxSequence()[curIndex])));
-                        max_sizes.push_back(std::pow(2,bit_size));
-                    }
-                    else{
-                        divisors.push_back(divisor_list[curIndex]);
-                        max_sizes.push_back(this->dim(this->linIdxSequence()[curIndex]));
-
-
-                    //std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
-                        //add any previous indices that are also sort indices to the current sort stage
-                        while(tempCurIndex>0 && sort_or_find_indices[tempCurIndex]==true){
-                            //perform same trick as above if applicable
-                            if(tempCurIndex==1){
-                                auto bit_size=(long)std::floor(std::log2(divisor_list[tempCurIndex]));
-                                divisors.back()=std::pow(2,bit_size);
-                                bit_size=(long)std::ceil(std::log2(this->dim(this->linIdxSequence()[tempCurIndex])));
-                                max_sizes.back()*=std::pow(2,bit_size);
-                            }
-                            else{
-                                divisors.back()=divisor_list[tempCurIndex];
-                                max_sizes.back()*=this->dim(this->linIdxSequence()[tempCurIndex]);
-                            }
-                            tempCurIndex--;
-                        }
-                    }
-                    curIndex=tempCurIndex;
-                }
-
-            }
-            //if the last stage, ie, those corresponding to the first indices, is a find stage, we can remove it
-            if(sort_or_find.back()==false){
-                divisors.pop_back();
-                max_sizes.pop_back();
-
-            }
+			std::vector<unsigned_Type> divisors;
+			std::vector<unsigned_Type> max_sizes;
+			auto shuffled_dims = this->dims();
+			internal::reorder_from(this->dims(), _linIdxSequence, shuffled_dims);
+			bool first_stage = internal::setupPermute(reverseShuffleSequence, shuffled_dims, divisors, max_sizes);
+			
+           
 
             //create RadixShuffle object
-            internal::RadixShuffle<index_type,data_type,2048,11,3000> radixShuffle(max_sizes,divisors,this->dimensionality(),sort_or_find.front());
+			internal::RadixShuffle<index_type, data_type, 2048, 11, 3000> radixShuffle(max_sizes, divisors, this->dimensionality(), first_stage);
             //permute the sparse data based on the stage information provided
             radixShuffle.permute(this->index_begin(),this->data_begin(),this->size());
 

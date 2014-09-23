@@ -18,7 +18,8 @@
 #define INDEXUTIL_H
 
 
-#include<array>
+#include <array>
+#include <vector>
 
 #include "LibMIAUtil.h"
 #include "libdivide.h"
@@ -559,7 +560,7 @@ inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::vector<indexT
     unsigned_Type ioffset_next=0;
     unsigned_Type quotient;
 
-    for(int i=multiplier.size()-1;i>=0;--i){
+    for(size_t i=multiplier.size()-1;i>=1;--i){
 
         quotient=((unsigned_Type)idx/dim_accumulator[i]);
         ioffset_next+=quotient*multiplier[i];
@@ -567,123 +568,14 @@ inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::vector<indexT
 
 
     };
-
+	ioffset_next += idx*multiplier[0];
     return (indexType1)ioffset_next;
 
-}
-
-//testing whether mult by shifts (when possible) is a lot faster, must not be used when the dimensions are shuffled in different order
-template<class indexType1,class indexType2,class indexType3>
-inline indexType1 reShuffleLinearIndexShiftMult( indexType1 idx, const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType3>& restrict_libmia dim_accumulator,const std::vector<indexType2>& restrict_libmia dim_accumulator_num)
-{
-
-    assert(multiplier.size()==dim_accumulator.size());
-    assert(multiplier.size()==dim_accumulator_num.size());
-    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
-    unsigned_Type ioffset_next=0;
-    unsigned_Type quotient;
-
-    for(int i=multiplier.size()-1;i>0;--i){
-
-        quotient=((unsigned_Type)idx/dim_accumulator[i]);
-        ioffset_next+=quotient<<multiplier[i];
-        idx-=quotient*dim_accumulator_num[i];
-
-
-    };
-    ioffset_next+=idx;
-    return (indexType1)ioffset_next;
 
 }
 
-//testing whether mult by shifts (when possible) is a lot faster, must not be used when the dimensions are shuffled in different order
-template<class indexType1,class indexType2>
-inline indexType1 reShuffleLinearIndexShiftDiv( indexType1 idx, const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType2>& restrict_libmia dim_accumulator)
-{
-
-    assert(multiplier.size()==dim_accumulator.size());
-
-    typedef typename std::make_unsigned<indexType1>::type unsigned_Type;
-    unsigned_Type ioffset_next=0;
-    unsigned_Type quotient;
-
-    for(int i=multiplier.size()-1;i>0;--i){
-
-        quotient=((unsigned_Type)idx>>dim_accumulator[i]);
-        ioffset_next+=quotient*multiplier[i];
-        idx-=quotient<<dim_accumulator[i];
 
 
-    };
-    ioffset_next+=idx;
-    return (indexType1)ioffset_next;
-
-}
-
-template<class itType1,class itType2,class indexType2,class indexType3>
-inline void reShuffleAllLinearIndices( itType1 itBegin1, itType2 itBegin2, size_t length,const std::vector<indexType2>& restrict_libmia multiplier, const std::vector<indexType3>& restrict_libmia dim_accumulator,const std::vector<indexType2>& restrict_libmia dim_accumulator_num)
-{
-    using namespace libdivide;
-    assert(multiplier.size()==dim_accumulator.size());
-    assert(multiplier.size()==dim_accumulator_num.size());
-    typedef typename std::make_unsigned<typename std::iterator_traits<itType1>::value_type>::type unsigned_Type;
-    unsigned_Type ioffset_next=0;
-    unsigned_Type quotient;
-
-    for(int i=multiplier.size()-1;i>0;--i){
-        auto cur_divisor=dim_accumulator[i];
-        auto cur_divisor_num=dim_accumulator_num[i];
-        auto cur_mult=multiplier[i];
-        auto it2=itBegin2;
-//        for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-//            quotient=((unsigned_Type)(*it1)/cur_divisor);
-//            *it2+=quotient*cur_mult;
-//            *it1-=quotient*cur_divisor_num;
-//        }
-        switch (cur_divisor.get_algorithm()) {
-        case 0:
-            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-                quotient=((unsigned_Type)(*it1)/unswitch<0>(cur_divisor));
-                *it2+=quotient*cur_mult;
-                *it1-=quotient*cur_divisor_num;
-            }
-            break;
-        case 1:
-            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-                quotient=((unsigned_Type)(*it1)/unswitch<1>(cur_divisor));
-                *it2+=quotient*cur_mult;
-                *it1-=quotient*cur_divisor_num;
-            }
-            break;
-        case 2:
-            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-                quotient=((unsigned_Type)(*it1)/unswitch<2>(cur_divisor));
-                *it2+=quotient*cur_mult;
-                *it1-=quotient*cur_divisor_num;
-            }
-            break;
-        case 3:
-            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-                quotient=((unsigned_Type)(*it1)/unswitch<3>(cur_divisor));
-                *it2+=quotient*cur_mult;
-                *it1-=quotient*cur_divisor_num;
-            }
-            break;
-        case 4:
-            for(auto it1=itBegin1;it1<itBegin1+length;++it1,++it2){
-                quotient=((unsigned_Type)(*it1)/unswitch<4>(cur_divisor));
-                *it2+=quotient*cur_mult;
-                *it1-=quotient*cur_divisor_num;
-            }
-            break;
-        }
-
-
-
-    };
-
-
-}
 
 template<class indexType1,class indexType2,class indexType3,size_t _size,typename boost::enable_if_c<(_size > 1), int>::type=0>
 inline indexType1 reShuffleLinearIndex( indexType1 idx, const std::array<indexType2, _size>& restrict_libmia multiplier, const std::array<indexType3, _size>& restrict_libmia dim_accumulator,const std::array<indexType2, _size>& restrict_libmia dim_accumulator_num)
@@ -764,8 +656,98 @@ inline indexType1 getShuffleLinearIndex_POD_static( indexType1 idx, const std::a
 
 }
 
+//just a test function to compare performance to reShuffleLinearIndex
+template<class containerType1, class containerType2, class unsigned_index_type>
+inline bool setupPermute(const containerType1 & reverseShuffleSequence, const containerType2 & dims, std::vector<unsigned_index_type> & divisors, std::vector<unsigned_index_type> & max_sizes)
+{
+
+	assert(dims.size() == reverseShuffleSequence.size());
+	//otherwise, we need to examine the the new lexicographical precedenec compared to the old
+	auto divisor_list=dims;
+	//create a divisor list from the new lexicographical precedence
+	divisor_list[0] = 1;
+	auto _order = dims.size();
+	for (auto idx = 1; idx<_order; ++idx){
+		divisor_list[idx] = divisor_list[idx - 1] * dims[idx-1];
+	}
+
+	std::vector<bool> sort_or_find_indices(_order);
+	std::vector<bool> sort_or_find;
+	//iterate through the shuffle sequence and determine which indices must be sorted, and which remain in the same place (and therefore define regions we don't need to sort)
+	//we iterate through the shuffle sequence, but stop before the first one, as its digits always don't need to be sorted
+	for (int i = _order - 1; i > 0; --i){
+		sort_or_find_indices[i] = false;
+		for (auto _idx = 0; _idx<i; ++_idx){
+			if (reverseShuffleSequence[_idx]>reverseShuffleSequence[i]){
+				sort_or_find_indices[i] = true;
+				break;
+			}
+		}
+	}
+	auto curIndex = _order - 1;
+
+	//now based on whether indices are sort or find, we will create sort and find stages for the radix shuffle to perform
+	while (curIndex > 0){
+
+		if (sort_or_find_indices[curIndex] == false){ //if the current index doesn't need to be sorted
+			sort_or_find.push_back(false); //create a find stage, with accompanying divisors and max sizes
+			divisors.push_back(divisor_list[curIndex]);
+			max_sizes.push_back(dims[curIndex]);
+			//std::cout << "Make a new find index divisor " << divisors.back() << " index " << curIndex << std::endl;
+			//if the previous indices are also find indices, add them to the current find stage
+			auto tempCurIndex = curIndex - 1;
+			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == false){
+				divisors.back() = divisor_list[tempCurIndex];
+				max_sizes.back() *= dims[tempCurIndex];
+				tempCurIndex--;
+			}
+			curIndex = tempCurIndex;
+		}
+		else{ //otherwise current index is a sort index
+			sort_or_find.push_back(true); //push back that the current index is a sort index
+			auto tempCurIndex = curIndex - 1;
+			//if the current index is the second index, we can modify its divisor to be a power of two (even if the first index's range isn't a power of two)
+			//this will speed up the division needed in the radix shuffle to pull this index out from the larger linear indices
+			if (curIndex == 1){
+				auto bit_size = (long)std::floor(std::log2(divisor_list[curIndex]));
+				divisors.push_back(std::pow(2, bit_size));
+				bit_size = (long)std::ceil(std::log2(dims[curIndex]));
+				max_sizes.push_back(std::pow(2, bit_size));
+			}
+			else{
+				divisors.push_back(divisor_list[curIndex]);
+				max_sizes.push_back(dims[curIndex]);
 
 
+				//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
+				//add any previous indices that are also sort indices to the current sort stage
+				while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){
+					//perform same trick as above if applicable
+					if (tempCurIndex == 1){
+						auto bit_size = (long)std::floor(std::log2(divisor_list[tempCurIndex]));
+						divisors.back() = std::pow(2, bit_size);
+						bit_size = (long)std::ceil(std::log2(dims[tempCurIndex]));
+						max_sizes.back() *= std::pow(2, bit_size);
+					}
+					else{
+						divisors.back() = divisor_list[tempCurIndex];
+						max_sizes.back() *= dims[tempCurIndex];
+					}
+					tempCurIndex--;
+				}
+			}
+			curIndex = tempCurIndex;
+		}
+
+	}
+	//if the last stage, ie, those corresponding to the first indices, is a find stage, we can remove it
+	if (sort_or_find.back() == false){
+		divisors.pop_back();
+		max_sizes.pop_back();
+
+	}
+	return sort_or_find.front();
+}
 
 //!order is given in the order we collect dims and indices is given in the default order, that is not suffled around
 template<typename index_type, typename order_it,typename dimType>
@@ -1013,6 +995,28 @@ std::array<index_type,_size> getShuffleSequence(const std::array<index_type,_siz
 
     }
     return shuffleSequence;
+
+
+}
+//!If _old={2,3,1} and _new={3,1,2}, will return shuffleSequence={1,2,0}, ie _old[shuffleSequence[i]]=new[i]
+template<typename index_type>
+std::vector<index_type> getShuffleSequence(const std::vector<index_type>& _old, const std::vector<index_type>& _new){
+	assert(_old.size() == _new.size());
+	auto _size = _old.size();
+	std::vector<index_type> shuffleSequence(_size);
+	for (size_t idx = 0; idx<_size; ++idx){
+		shuffleSequence[idx] = static_cast<index_type>(_size);// should be overwritten, if not, erroneous input was provided
+		for (size_t shufIdx = 0; shufIdx<_size; ++shufIdx){
+			if (_old[shufIdx] == _new[idx]){
+				shuffleSequence[idx] = static_cast<index_type>(shufIdx);
+				break;
+			}
+
+		}
+
+
+	}
+	return shuffleSequence;
 
 
 }
