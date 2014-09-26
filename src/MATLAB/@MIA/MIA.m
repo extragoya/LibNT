@@ -4,6 +4,7 @@ classdef MIA
     properties
         
         data
+        solveInfo=0; %no Info
         
     end
     
@@ -13,9 +14,16 @@ classdef MIA
             if nargin==0
                 obj.data=[];
                 
-            elseif nargin==1
+            elseif nargin==1 || nargin==2
                 arg=varargin{1};
                 if isnumeric(arg)
+                    
+                    if nargin==1
+                        obj.solveInfo=0;
+                    else
+                        obj.solveInfo=varargin{2};
+                    end
+                    
                     obj.data=arg;
                     obj.data=squeeze(obj.data);
                     s=size(obj.data);
@@ -57,7 +65,12 @@ classdef MIA
             ret=size(obj.data);            
             
         end
-        
+        function ret=dims(obj)
+            ret=size(obj.data);
+            if (ret(end)==1)
+                ret=ret(1:end-1);
+            end
+        end
         
         function obj=permute(obj,order)
             obj.data=permute(obj.data,order);
@@ -115,7 +128,7 @@ classdef MIA
         A=flatten(A,row_idx,col_idx)
         
         
-        
+        isequal=eq(a,b);
         B=toLattice(A,row_idx,col_idx,depth_idx);
         C=do_plus(A,B,permute_idx);
         C=do_minus(A,B,permute_idx);
@@ -124,12 +137,13 @@ classdef MIA
     methods (Access=protected)
         Expr=make_expr(A,indices);
         obj=assign_expr(obj,indices,Expr);
-        
+        is_equal=compare(A,B,func);
         obj=assign(obj,otherMIA,assign_order);
         
     end
     methods(Access=protected, Static)
         split_indices=make_cell_indices(indices);
+        
     end
     
 end

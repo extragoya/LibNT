@@ -1,9 +1,9 @@
 classdef Lattice
     properties (SetAccess = protected)
         vals    %values
-        m
-        n
-        p
+        m@int64 scalar
+        n@int64 scalar
+        p@int64 scalar
         solveInfo=0; %no Info
         
     end

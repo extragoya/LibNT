@@ -7,6 +7,7 @@ function A = permute(A,newLinIdx)
 
 
 if(~A.isSorted)
+    A=A.changeLexOrder(newLinIdx);
     SparseSortMex(A.data,A.indices);
 elseif(~isequal(newLinIdx,A.lexOrder))
     oldLexOrder=A.lexOrder;

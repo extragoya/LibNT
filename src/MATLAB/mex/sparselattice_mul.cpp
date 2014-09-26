@@ -9,22 +9,22 @@
 #include "LibMIAException.h"
 
 
-typedef long long index_type;
+
 
 template<class T>
-mwSize perform_mult(mxArray *plhs[],mxClassID a_id, T*a_data, index_type  * a_indices,  T*b_data, index_type * b_indices, double *a_subs,mwSize a_size,double *b_subs,mwSize b_size){
+mwSize perform_mult(mxArray *plhs[], mxClassID a_id, T*a_data, mex_index_type  * a_indices, T*b_data, mex_index_type * b_indices, mex_index_type *a_subs, mwSize a_size, mex_index_type *b_subs, mwSize b_size){
 
     T * c_data;
-    index_type  * c_indices;
+	mex_index_type * c_indices;
 
-    LibMIA::MappedSparseLattice<T> latA(a_data,a_indices,a_size,(int)a_subs[0],(int)a_subs[1],(int)a_subs[2]);
-    LibMIA::MappedSparseLattice<T> latB(b_data,b_indices,b_size,(int)b_subs[0],(int)b_subs[1],(int)b_subs[2]);
+    LibMIA::MappedSparseLattice<T> latA(a_data,a_indices,a_size,a_subs[0],a_subs[1],a_subs[2]);
+    LibMIA::MappedSparseLattice<T> latB(b_data,b_indices,b_size,b_subs[0],b_subs[1],b_subs[2]);
 
     try{
         LibMIA::SparseLattice<T> latC=latA*latB;
 
         c_data = (T *)mxCalloc(latC.size() , sizeof(T));
-        c_indices = (index_type *)mxCalloc(latC.size() , sizeof(index_type));
+		c_indices = (mex_index_type *)mxCalloc(latC.size(), sizeof(mex_index_type));
         std::copy(latC.data_begin(),latC.data_end(),&c_data[0]);
         std::copy(latC.index_begin(),latC.index_end(),&c_indices[0]);
         plhs[0] = mxCreateNumericMatrix(0, 0, a_id, mxREAL);
@@ -53,27 +53,28 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
 
-    double  a_subs[3]={0,0,0};
-    double  b_subs[3]={0,0,0};
+	mex_index_type *a_subs;
+	mex_index_type *b_subs;
+    
     mwSize a_data_length;
     mwSize b_data_length;
 	if (nlhs != 2)
 		mexErrMsgTxt("Two output arguments, c_data c_indices, required to multiply SparseLattices.");
 	else if (nlhs == 0)
 		mexErrMsgTxt("No output");
-    mxClassID a_id=check_sparse_params_lattice(nrhs, prhs,a_subs,b_subs,&a_data_length,&b_data_length);
+    mxClassID a_id=check_sparse_params_lattice(nrhs, prhs,&a_subs,&b_subs,&a_data_length,&b_data_length);
 
     switch (a_id)
     {
     case mxDOUBLE_CLASS:
 
-        perform_mult(plhs,a_id,(double *)mxGetData(prhs[0]), (index_type *)mxGetData(prhs[1]),(double *)mxGetData(prhs[3]),(index_type *)mxGetData(prhs[4]),a_subs,a_data_length,b_subs,b_data_length);
+		perform_mult(plhs, a_id, (double *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (double *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
         break;
     case mxSINGLE_CLASS:
-        perform_mult(plhs,a_id,(float *)mxGetData(prhs[0]), (index_type *)mxGetData(prhs[1]),(float *)mxGetData(prhs[3]),(index_type *)mxGetData(prhs[4]),a_subs,a_data_length,b_subs,b_data_length);
+		perform_mult(plhs, a_id, (float *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (float *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
         break;
     case mxINT32_CLASS:
-        perform_mult(plhs,a_id,(int *)mxGetData(prhs[0]), (index_type *)mxGetData(prhs[1]),(int *)mxGetData(prhs[3]),(index_type *)mxGetData(prhs[4]),a_subs,a_data_length,b_subs,b_data_length);
+		perform_mult(plhs, a_id, (int *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (int *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
         break;
     case mxUNKNOWN_CLASS:
         mexErrMsgTxt("Unrecognized lattice data type");
