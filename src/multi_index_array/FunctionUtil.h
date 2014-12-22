@@ -638,6 +638,35 @@ inline bool isEqualFuzzy(T a, T2 b, T3 prec = Tolerance<T>::tolerance)
   }
 }
 
+
+//! Removes data with duplicated indices - conflicts are solved by using the collector class, ie std::plus<data_type>
+template<class index_it, class data_it,class Collector>
+size_t collect_duplicates_function(index_it index_begin, index_it index_end, data_it data_begin,Collector collector)
+{
+
+
+    auto result_idx = index_begin;
+    auto result_data= data_begin;
+    auto first=result_idx;
+    auto first_data=data_begin;
+
+    while (++first < index_end)
+    {
+        ++first_data;
+        if (*result_idx != *first){
+            *(++result_idx)=*first;
+            *(++result_data)=*first_data;
+        }
+        else{
+
+            *result_data=collector(*result_data,*first_data);
+        }
+    }
+
+    return result_idx-index_begin+1;
+
+}
+
 }
 
 

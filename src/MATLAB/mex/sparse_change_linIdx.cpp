@@ -37,7 +37,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 	std::vector<unsigned char> curIdx(a_degree);
 	std::vector<unsigned char> desiredIdx(a_degree);
-	std::vector<unsigned char> dims(a_degree);
+	std::vector<mex_index_type> dims(a_degree);
 	std::copy(current_permute_idx, current_permute_idx + a_degree, curIdx.begin());
 	std::copy(desired_permute_idx, desired_permute_idx + a_degree, desiredIdx.begin());
 	std::copy(_dims, _dims + a_degree, dims.begin());
@@ -56,6 +56,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	reorder_from(dims, desiredIdx, new_reorder_Dims);
 	auto dim_accumulator = createDimAccumulator(reorder_Dims);
 	auto dim_accumulator_fast = createDimAccumulator_libdivide(reorder_Dims);
+	
 	auto multiplier = createMultiplier(new_reorder_Dims);
 	auto index_order = getShuffleSequence(desiredIdx, curIdx);
 	auto new_multiplier = multiplier;

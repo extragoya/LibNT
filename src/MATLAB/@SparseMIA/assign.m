@@ -2,7 +2,7 @@ function obj = assign(obj,otherMIA,assign_order)
 %assigns from otherMIA to obj, based on the index_order, e.g., [2 1 3]
 %means that otherMIA is assigned to obj as obj(ijk)=otherMIA(jik)
 
-if(isa(otherMIA,'SparseMIA'))
+if(isa(otherMIA,'SparseMIA') && isa(obj,'SparseMIA'))
     obj.data=otherMIA.data;
     obj.indices=otherMIA.indices; 
     

@@ -502,19 +502,21 @@ protected:
     void check_merge_dims(const MIA<otherDerived> &b,const std::array<index_param_type,mOrder>& index_order) const
     {
 
-        for(size_t i=0;i<index_order.size();++i)
+#ifdef LIBMIA_CHECK_DIMS
+		for(size_t i=0;i<index_order.size();++i)
             if(b.dim(index_order[i])!=m_dims[i])
-                throw MIAParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
+                throw MIParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
+#endif
 
     }
 
     template<class otherDerived>
     void check_merge_dims(const MIA<otherDerived> &b) const
     {
-
+#ifdef LIBMIA_CHECK_DIMS
         if(this->dims()!=b.dims())
             throw MIAParameterException("MIA dimensions must be identical for merger operation (+,-, etc).");
-
+#endif
 
     }
 

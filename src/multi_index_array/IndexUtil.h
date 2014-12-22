@@ -666,7 +666,7 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 	auto divisor_list=dims;
 	//create a divisor list from the new lexicographical precedence
 	divisor_list[0] = 1;
-	auto _order = dims.size();
+	auto _order = (int)dims.size();
 	for (auto idx = 1; idx<_order; ++idx){
 		divisor_list[idx] = divisor_list[idx - 1] * dims[idx-1];
 	}
@@ -706,36 +706,19 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 		else{ //otherwise current index is a sort index
 			sort_or_find.push_back(true); //push back that the current index is a sort index
 			auto tempCurIndex = curIndex - 1;
-			//if the current index is the second index, we can modify its divisor to be a power of two (even if the first index's range isn't a power of two)
-			//this will speed up the division needed in the radix shuffle to pull this index out from the larger linear indices
-			if (curIndex == 1){
-				auto bit_size = (long)std::floor(std::log2(divisor_list[curIndex]));
-				divisors.push_back(std::pow(2, bit_size));
-				bit_size = (long)std::ceil(std::log2(dims[curIndex]));
-				max_sizes.push_back(std::pow(2, bit_size));
-			}
-			else{
-				divisors.push_back(divisor_list[curIndex]);
-				max_sizes.push_back(dims[curIndex]);
+			
+			divisors.push_back(divisor_list[curIndex]);
+			max_sizes.push_back(dims[curIndex]);
 
 
-				//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
-				//add any previous indices that are also sort indices to the current sort stage
-				while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){
-					//perform same trick as above if applicable
-					if (tempCurIndex == 1){
-						auto bit_size = (long)std::floor(std::log2(divisor_list[tempCurIndex]));
-						divisors.back() = std::pow(2, bit_size);
-						bit_size = (long)std::ceil(std::log2(dims[tempCurIndex]));
-						max_sizes.back() *= std::pow(2, bit_size);
-					}
-					else{
-						divisors.back() = divisor_list[tempCurIndex];
-						max_sizes.back() *= dims[tempCurIndex];
-					}
-					tempCurIndex--;
-				}
+		//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
+		//add any previous indices that are also sort indices to the current sort stage
+			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){				
+				divisors.back() = divisor_list[tempCurIndex];
+				max_sizes.back() *= dims[tempCurIndex];				
+				tempCurIndex--;
 			}
+			
 			curIndex = tempCurIndex;
 		}
 

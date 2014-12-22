@@ -75,6 +75,11 @@ classdef Lattice
         A=transpose(A);
         A=ctranspose(A);
         AMIA=toMIA(A,row_size,col_size,depth_size);
+        is_eq=fuzzy_eq(A,B,tol);
+    end
+    
+    methods (Access=protected)
+        is_eq = compare(A,B,func)
     end
     
 end %classdef

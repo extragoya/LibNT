@@ -113,7 +113,7 @@ public:
     typedef typename internal::data_iterator<DenseLattice>::type data_iterator;
     typedef typename internal::const_data_iterator<DenseLattice>::type const_data_iterator;
     typedef T* raw_pointer;
-    
+
 
 private:
     typedef std::unique_ptr<T []> smart_raw_pointer;
@@ -216,6 +216,27 @@ public:
             for(int j=0; j<this->width(); j++)
                 for(int k=0; k<this->depth(); k++)
                     (*m_Data)[i][j][k]=to_mdata_type::convert(other.derived()(i,j,k));
+
+    }
+
+    //!  Copy constructor.
+    template<class otherDerived>
+    DenseLattice(SparseLatticeBase<otherDerived> & other):DenseLatticeBase<DenseLattice<T> >(), m_smart_raw_ptr(new T[other.height()*other.width()*other.depth()]), m_Data(new Data(m_smart_raw_ptr.get(),boost::extents[other.height()][other.width()][other.depth()],boost::fortran_storage_order()))
+    {
+
+
+        typedef  typename internal::data_type<otherDerived>::type other_data_type;
+        typedef boost::numeric::converter<data_type,other_data_type> to_mdata_type;
+        this->init( other.height(), other.width(), other.depth(),other.solveInfo());
+        this->zeros();
+        other.sort(ColumnMajor);
+        for(auto it=other.index_begin();it<other.index_end();++it){
+
+            this->atIdx(*it)=to_mdata_type::convert(other.data_at(it));
+
+        }
+
+
 
     }
 

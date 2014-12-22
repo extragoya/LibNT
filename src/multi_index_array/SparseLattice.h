@@ -205,22 +205,23 @@ public:
 
     }
 
-    //!  Constructs a sparse lattice from two prexisting std::vectors.
+
+
+
+        //!  Constructs a sparse lattice from two prexisting std::vectors.
     /*!
-    Swaps the contents of _data and _indices with the lattice's internal vectors, making passed in vectors empty.
+    Copies the contents of _data and _indices to the lattice's internal vectors.
     Will throw a LatticeParameterException upon invalid parameters.
     \param[in] _data std::vector<T> of data values.
     \param[in] _indices std::vector<long long> of indice values. Must be linear index of column/row major ordering
     */
-    SparseLattice(Data& _data,Indices& _indices,index_type _height,index_type _width,index_type _depth): m_data(), m_indices()
+    SparseLattice(const Data& _data,const Indices& _indices,index_type _height,index_type _width,index_type _depth,bool isSorted=false):m_data(_data), m_indices(_indices)
     {
+
         if (_data.size()!=_indices.size())
             throw LatticeParameterException("Data and Indices vectors must be the same size.");
-        std::swap(m_data,_data);
-        std::swap(m_indices,_indices);
         this->init(_height,_width,_depth);
-        this->sparse_init(false,ColumnMajor);
-        //this->sort(ColumnMajor);
+        this->sparse_init(isSorted,ColumnMajor);
 
     }
 
@@ -271,22 +272,7 @@ public:
 
     }
 
-    //!  Constructs a sparse lattice from two prexisting std::vectors.
-    /*!
-    Copies the contents of _data and _indices to the lattice's internal vectors.
-    Will throw a LatticeParameterException upon invalid parameters.
-    \param[in] _data std::vector<T> of data values.
-    \param[in] _indices std::vector<long long> of indice values. Must be linear index of column/row major ordering
-    */
-    SparseLattice(const Data& _data,const Indices& _indices,index_type _height,index_type _width,index_type _depth):m_data(_data), m_indices(_indices)
-    {
 
-        if (_data.size()!=_indices.size())
-            throw LatticeParameterException("Data and Indices vectors must be the same size.");
-        this->init(_height,_width,_depth);
-        this->sparse_init(false,ColumnMajor);
-
-    }
 
     //!  Constructs a sparse lattice from two prexisting std::vectors.
     /*!
@@ -295,7 +281,7 @@ public:
     \param[in] _data std::vector<T> of data values.
     \param[in] _indices std::vector<long long> of indice values. Must be linear index of column/row major ordering
     */
-    SparseLattice( Data&& _data, Indices&& _indices,index_type _height,index_type _width,index_type _depth):m_data(), m_indices()
+    SparseLattice( Data&& _data, Indices&& _indices,index_type _height,index_type _width,index_type _depth,bool _isSorted=false):m_data(), m_indices()
     {
 
         //std::cout << "MOVED sparse lattice" << std::endl;
@@ -304,7 +290,7 @@ public:
         if (_data.size()!=_indices.size())
             throw LatticeParameterException("Data and Indices vectors must be the same size.");
         this->init(_height,_width,_depth);
-        this->sparse_init(false,ColumnMajor);
+        this->sparse_init(_isSorted,ColumnMajor);
         //this->print();
 
     }
@@ -379,6 +365,7 @@ public:
     }
 
     void resize(size_t _size){
+        assert(_size<=this->dimesionality());
         this->m_data.resize(_size);
         this->m_indices.resize(_size);
     }
@@ -436,24 +423,8 @@ public:
 
 
         this->sort(this->linIdxSequence());
+        auto diff=collect_duplicates_function(this->index_begin(), this->index_end(), this->data_begin(), collector);
 
-
-        auto result_idx = this->index_begin();
-        auto result_data= this->data_begin();
-        auto first=result_idx;
-        while (++first != this->index_end())
-        {
-            if (*result_idx != *first){
-                *(++result_idx)=*first;
-                *(++result_data)=this->data_at(first);
-            }
-            else{
-
-                *result_data=collector(*result_data,this->data_at(first));
-            }
-        }
-
-        size_t diff=result_idx-this->index_begin()+1;
         resize(diff);
     }
 

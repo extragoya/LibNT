@@ -49,4 +49,4 @@ for i=1:cur_order
     end
 
 end
-obj=assign(obj,otherMIA,assign_order); %perform actual assignment
+obj=obj.assign(otherMIA,assign_order); %perform actual assignment

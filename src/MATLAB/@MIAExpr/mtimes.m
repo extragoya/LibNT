@@ -34,20 +34,40 @@ a_outer_size=a_size(a_outer_idx);
 b_outer_size=b_size(b_outer_idx);
 
 
-A_lat=A_mia.toLattice(a_outer_idx, a_inner_idx, a_inter_idx);
-B_lat=B_mia.toLattice(b_inner_idx, b_outer_idx, b_inter_idx);
+if(isa(A_mia,'SparseMIA') && isa(B_mia,'MIA')) %we switch the operands around in this case
+    A_lat=A_mia.toLattice(a_inner_idx,a_outer_idx,a_inter_idx);
+    B_lat=B_mia.toLattice(b_outer_idx,b_inner_idx, b_inter_idx);
+    %perform lattice product
+    
+    C_lat=B_lat*A_lat;
+    
+    clear A_lat B_lat
+    
+    %convert result back to an MIA
+    c_indices=B.m_indices(b_outer_idx);
+    c_indices=[c_indices A.m_indices(a_outer_idx)];
+    c_indices=[c_indices B.m_indices(b_inter_idx)];
+
+    C=C_lat.toMIA(b_outer_size,a_outer_size, a_inter_size);
+else
+    A_lat=A_mia.toLattice(a_outer_idx, a_inner_idx, a_inter_idx);
+    B_lat=B_mia.toLattice(b_inner_idx, b_outer_idx, b_inter_idx);
+    %perform lattice product
+    C_lat=A_lat*B_lat;
+    clear A_lat B_lat
+    %convert result back to an MIA
+    c_indices=A.m_indices(a_outer_idx);
+    c_indices=[c_indices B.m_indices(b_outer_idx)];
+    c_indices=[c_indices A.m_indices(a_inter_idx)];
+
+    C=C_lat.toMIA(a_outer_size, b_outer_size, a_inter_size);
+end
 
 
 
-%perform lattice product
-C_lat=A_lat*B_lat;
-clear A_lat B_lat
-%convert result back to an MIA
-c_indices=A.m_indices(a_outer_idx);
-c_indices=[c_indices B.m_indices(b_outer_idx)];
-c_indices=[c_indices A.m_indices(a_inter_idx)];
 
-C=C_lat.toMIA(a_outer_size, b_outer_size, a_inter_size);
+
+
 %create a MIAExpr using resulting MIA and indices
 CExpr=MIAExpr(C,c_indices);
 

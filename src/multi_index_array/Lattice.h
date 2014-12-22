@@ -28,6 +28,7 @@
 #include "LibMIAException.h"
 #include "LibMIAUtil.h"
 #include "FunctionUtil.h"
+#include "libdivide.h"
 //, boost::multipliable<Derived>
 //
 namespace LibMIA
@@ -74,6 +75,12 @@ public:
     typedef typename internal::data_type<Lattice>::type data_type;
     typedef typename internal::index_type<Lattice>::type index_type;
     typedef typename internal::data_iterator<Lattice>::type data_iterator;
+	typedef typename std::make_unsigned<index_type>::type unsigned_index_type;
+	
+	typedef libdivide::divider<unsigned_index_type> fast_divisor;
+	typedef std::array<unsigned_index_type, 3> accumulator_type;
+	typedef std::array<unsigned_index_type, 3> multiplier_type;
+	typedef std::array<fast_divisor, 3> fast_accumulator_type;
 
 
     Lattice() {}
@@ -108,14 +115,19 @@ public:
 
     void set_height(index_type _height){
         m_height=_height;
+		m_fast_height = fast_divisor(_height);
+		m_tab_divisor = fast_divisor(this->width()*_height);
     }
 
     void set_width(index_type _width){
         m_width=_width;
+		m_fast_width = fast_divisor(_width);
+		m_tab_divisor = fast_divisor(this->height()*_width);
     }
 
     void set_depth(index_type _depth){
         m_depth=_depth;
+		
     }
 
     index_type dimensionality() const
@@ -140,12 +152,12 @@ public:
 
     /** Sets all lattice data to one.*/
     void ones(){
-        std::fill ( derived().data_begin(), derived().data_end(), 1);
+		std::fill(derived().data_begin(), derived().data_end(), data_type(1));
     }
 
     /** Sets all lattice data to one.*/
     void zeros(){
-        std::fill ( derived().data_begin(), derived().data_end(), 0);
+        std::fill ( derived().data_begin(), derived().data_end(), data_type(0));
     }
 
     //!  Sets lattice data to uniformly distributed random values.
@@ -180,29 +192,33 @@ protected:
     /** Throws a LatticeParameterException if lattice multiplication operands have invalid dimensions.*/
     template<class otherDerived>
     void check_mult_dims(const Lattice<otherDerived> &rhs) const{
-
+#ifdef LIBMIA_CHECK_DIMS
         if (rhs.derived().depth()!=derived().depth())
             throw LatticeParameterException("Lattice depths must the same to be multipled.");
         if (derived().width()!=rhs.derived().height())
             throw LatticeParameterException("LHS Lattice width must be the same as RHS Lattice height.");
+#endif
 
     }
 
     /** Throws a LatticeParameterException if lattice solution operands have invalid dimensions.*/
     template<class otherDerived>
     void check_solve_dims(const Lattice<otherDerived> &rhs) const{
-        if (rhs.derived().depth()!=derived().depth())
+#ifdef LIBMIA_CHECK_DIMS
+		if (rhs.derived().depth()!=derived().depth())
             throw LatticeParameterException("Lattice depths must be the same to solve systems of equations.");
         if (derived().height()!=rhs.derived().height())
             throw LatticeParameterException("LHS Lattice height must be the same as RHS Lattice height to solve system of equations.");
+#endif
 
     }
     /** Throws a LatticeParameterException if lattice merging operands have invalid dimensions.*/
     template<class otherDerived>
     void check_merge_dims(const Lattice<otherDerived> &rhs) const{
-        if (rhs.derived().depth()!=derived().depth() || rhs.derived().height()!=derived().height() || rhs.derived().width()!=derived().width())
+#ifdef LIBMIA_CHECK_DIMS
+		if (rhs.derived().depth()!=derived().depth() || rhs.derived().height()!=derived().height() || rhs.derived().width()!=derived().width())
             throw LatticeParameterException("Lattice dimensions must be identical for merger operation (+,-, etc).");
-
+#endif
 
     }
 
@@ -211,17 +227,41 @@ protected:
         m_height=_height;
         m_width=_width;
         m_depth=_depth;
+		m_fast_height = fast_divisor(_height);
+		m_fast_width = fast_divisor(_width);
+		m_tab_divisor = fast_divisor(_height*_width);
         mSolveInfo=_solveInfo;
 
     }
 
+	
 
 
+	inline const fast_divisor& width_divisor() const
+	{
+		return m_fast_width;
+	}
+	inline const fast_divisor& height_divisor() const
+	{
+		return m_fast_height;
+	}
+
+	//! to get tab quickly
+	inline const fast_divisor& tab_divisor() const
+	{
+		return m_tab_divisor;
+	}
+
+
+private:
 
     index_type m_height=0;
     index_type m_width=0;
     index_type m_depth=0;
-
+	fast_divisor m_fast_height;
+	fast_divisor m_fast_width;
+	fast_divisor m_tab_divisor;
+	
 
 
 

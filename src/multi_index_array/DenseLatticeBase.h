@@ -443,19 +443,20 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_
     auto & a=*this;
     typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
     typedef typename Derived::index_type a_index_type;
-
+	
     typename c_type::Indices c_indices;
     c_indices.reserve(b.size());
     typename c_type::Data c_data;
     c_data.reserve(b.size());
-    typename internal::data_type<c_type>::type cur_c_data;
+    
     //timer_minor=boost::timer::cpu_timer();
 
-    b.sort();
+    b.sort(ColumnMajor);
 
     auto b_temp_begin=b.index_begin();
     auto b_temp_end=b_temp_begin;
-
+	size_t cur_start_c_column = 0;
+	
     while(b_temp_begin<b.index_end()){
         auto cur_tab=b.tab(*b_temp_begin);
         auto cur_col=b.column(*b_temp_begin);
@@ -463,17 +464,25 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_
         while(b_temp_end<b.index_end()&&b.tab(*b_temp_end)==cur_tab && b.column(*b_temp_end)==cur_col){
             b_temp_end++;
         }
-        for(a_index_type a_rows=0;a_rows<a.height();++a_rows){
-            cur_c_data=0;
-            for(auto b_it=b_temp_begin;b_it<b_temp_end;++b_it){
-                cur_c_data+=b.data_at(b_it-b.index_begin())*a(a_rows,b.row(*b_it),cur_tab);
-
-            }
-            if(std::abs(cur_c_data)>SparseTolerance<decltype(cur_c_data)>::tolerance){
-                c_data.push_back(cur_c_data);
-                c_indices.push_back(a_rows+(cur_col+cur_tab*b.width())*a.height());
-            }
-        }
+		auto new_size = c_indices.size() + a.height();
+		if (new_size>c_indices.capacity()){
+			c_indices.reserve(2 * c_indices.capacity());
+			c_data.reserve(2 * c_data.capacity());
+		}
+		c_indices.resize(new_size);
+		c_data.resize(new_size, 0);
+		//initialize column (will be full, but possibly embedded in a sparse setting)
+		for (int i = 0; i < a.height(); ++i){
+			c_indices[cur_start_c_column + i] = i + (cur_col + cur_tab*b.width())*a.height();
+		}
+		for (auto cur_b_it = b_temp_begin; cur_b_it < b_temp_end; ++cur_b_it){
+			auto cur_b_data = b.data_at(cur_b_it - b.index_begin());
+			auto cur_b_row = b.row(*cur_b_it);
+			for (a_index_type a_rows = 0; a_rows < a.height(); ++a_rows){
+				c_data[cur_start_c_column + a_rows] += cur_b_data*a(a_rows, cur_b_row, cur_tab); //there is a chance that we are inserting zeros, but since we are multiplying by a dense lattice, we can assumes it's not full of zeros
+			}
+		}
+		cur_start_c_column += a.height();
         b_temp_begin=b_temp_end;
     }
     c_type ret(std::move(c_data),std::move(c_indices),a.height(),b.width(),this->depth());

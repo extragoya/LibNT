@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <numeric>
+#include <time.h>
 #include "SparsePermuteMex_Export.h" //must include before mex.h so mex.h can use macro definitions
 #include "mex.h"
 #include "IndexUtil.h"
@@ -15,18 +16,20 @@ template<class T>
 void perform_permute(T*a_data, mex_index_type  * a_indices, mwSize a_size, const std::vector<unsigned char> & curIdx, const std::vector<unsigned char> & desiredIdx, const std::vector<mex_index_type> & dims){
 	using namespace LibMIA::internal;
 	
-
+	
 	auto reverseShuffleSequence = getShuffleSequence(curIdx, desiredIdx); //get the shuffle sequence from new to old
 	std::vector<mex_unsigned_type> divisors;
 	std::vector<mex_unsigned_type> max_sizes;
 	auto shuffled_dims = dims;
 	reorder_from(dims, desiredIdx, shuffled_dims);
 	bool first_stage = setupPermute(reverseShuffleSequence, shuffled_dims, divisors, max_sizes);
-	auto dimensionality = std::accumulate(dims.begin(), dims.end(), 1);
+	auto dimensionality = std::accumulate(dims.begin(), dims.end(), mex_index_type(1), std::multiplies<mex_index_type>());
+	
 	//create RadixShuffle object
 	RadixShuffle<mex_index_type, T, 2048, 11, 3000> radixShuffle(max_sizes, divisors, dimensionality, first_stage);
 	//permute the sparse data based on the stage information provided
 	radixShuffle.permute(a_indices, a_data, a_size);
+	
 
 }
 
@@ -35,6 +38,7 @@ void perform_permute(T*a_data, mex_index_type  * a_indices, mwSize a_size, const
 //!assumes indices have already been changed to desired lexicographical order
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+	//auto t = clock();
 
 	
 	if (nrhs != 5)
@@ -105,8 +109,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		mexErrMsgTxt("Data type must be arithmetic");
 		break;
 	}
-
-
+	
+	//t = t - clock();
+	//mexPrintf("Total Time (%f seconds).\n", t / (double)CLOCKS_PER_SEC);
 
 }
 

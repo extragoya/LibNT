@@ -31,6 +31,8 @@ set(LibMIA_headers
      UniqueLabel.h     
 	${PROJECT_BINARY_DIR}/MIAConfig.h
      )
+
+
 add_library(LibMIA STATIC ${LibMIA_headers})
 set_target_properties(LibMIA PROPERTIES LINKER_LANGUAGE CXX)
 

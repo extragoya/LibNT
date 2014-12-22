@@ -266,8 +266,8 @@ template<unsigned int  Threshold,unsigned int IntroThreshold, unsigned int Radix
 inline int estimateNumberOfRuns(size_t length,size_t max_size){
 
     int numberOfRuns=1;
-    int radixRuns=std::ceil(std::log2(max_size)/std::log2(Radix));
-    size_t first_run=max_size/std::pow(Radix,radixRuns-1);
+    int radixRuns=static_cast<int>(std::ceil(std::log2(max_size)/std::log2(Radix)));
+    size_t first_run=max_size/static_cast<size_t>(std::pow(Radix,radixRuns-1));
     //std::cout << "First Run " << first_run << " radixRuns " << radixRuns << std::endl;
     length/=first_run;
     radixRuns--;
@@ -285,8 +285,8 @@ template<unsigned int IntroThreshold, unsigned int Radix>
 inline size_t getLengthThreshold(size_t max_size){
 
 
-    int radixRuns=std::ceil(std::log2(max_size)/std::log2(Radix));
-    size_t first_run=max_size/std::pow(Radix,radixRuns-1);
+	int radixRuns = static_cast<int>(std::ceil(std::log2(max_size) / std::log2(Radix)));
+    size_t first_run=max_size/static_cast<size_t>(std::pow(Radix,radixRuns-1));
     size_t thresholdLength=50;
     if(radixRuns>1){
         for(int i=0;i<radixRuns-2;++i){
@@ -350,8 +350,8 @@ private:
     std::vector<unsigned int> mShiftRightAmounts;
     std::vector<index_type> mScratch1;
     std::vector<data_type> mScratch2;
-    std::array<size_t,PowerOfTwoRadix> mCountBuffer;
-    std::array<size_t,PowerOfTwoRadix> mCountBuffer2;
+    std::array<size_t,PowerOfTwoRadix+1> mCountBuffer;
+    std::array<size_t,PowerOfTwoRadix+1> mCountBuffer2;
     const size_t mTotalMax;
     unsigned int mTotalBitSize;
     unsigned int mTotalRightAmount;
@@ -515,8 +515,8 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     auto curIt=begin+1;
     auto cur_divisor=mFastDivisors[stage_index]; //current divisors
     auto cur_num_divisor=mDivisors[stage_index];
-    auto curValue=((unsignedType)*begin)/cur_divisor; //get current value that defines to block to find
-    auto nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
+	index_type curValue = ((unsignedType)*begin) / cur_divisor; //get current value that defines to block to find
+    index_type nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
 
     size_t curOffset=0; //offset and number of elements in current block
     size_t curNumOfElements=1;
@@ -662,8 +662,8 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     auto curIt=begin+1;
     auto cur_divisor=mFastDivisors[stage_index]; //current divisors
     auto cur_num_divisor=mDivisors[stage_index];
-    auto curValue=((unsignedType)*begin)/cur_divisor; //get current value that defines to block to find
-    auto nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
+	index_type curValue = ((unsignedType)*begin) / cur_divisor; //get current value that defines to block to find
+    index_type nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
 
     size_t curOffset=0; //offset and number of elements in current block
     size_t curNumOfElements=1;

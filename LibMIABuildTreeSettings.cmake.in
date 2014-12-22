@@ -1,7 +1,7 @@
 set(LIBMIA_INCLUDE_DIRS
   "@PROJECT_SOURCE_DIR@/src/multi_index_array/"
-  "@PROJECT_BINARY_DIR@"  
-  "@SuperLU_INCLUDE@"
+  "@PROJECT_BINARY_DIR@"    
   "@Boost_install_include@"
   "@Eigen_ROOT@"
+  "@SparseHash_ROOT@"
   )

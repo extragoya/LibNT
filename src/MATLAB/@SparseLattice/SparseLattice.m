@@ -93,46 +93,63 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                 
                 
                 
-                t_vals=varargin{4};
+                obj.vals=varargin{4};
                 
-                t_vals=SparseLattice.error_check_nonzeros(t_vals);
+                do_transpose=SparseLattice.error_check_nonzeros(obj.vals);
+                if(do_transpose)
+                    obj.vals=obj.vals';
+                end
                 
-                
-                obj.nnz=length(t_vals);
+                obj.nnz=length(obj.vals);
                 
                 i=varargin{1};
                 j=varargin{2};
                 k=varargin{3};
-                t_inds = int64(sub2ind(obj, i, j, k));
-                t_inds=SparseLattice.error_check_idx(t_inds,obj.nnz,obj.m,obj.n,obj.p);     
-                obj.inds=t_inds;
+                obj.inds = int64(sub2ind(obj, i, j, k));
+                do_transpose=SparseLattice.error_check_idx(t_inds,obj.nnz,obj.m,obj.n,obj.p);  
+                if(do_transpose)
+                    obj.inds=obj.inds';
+                end
                 
-                [obj.inds,idx] = sort(obj.inds);
-                t_vals=t_vals(idx);
-                
-                
-                
-                obj.vals=t_vals;         
+                obj.sort();
                 
                
-            elseif nargin==5
+                
+                
+                  
+                
+               
+            elseif nargin==5 || nargin ==6
                 %S = SparseLattice(inds,vals,m,n,p)
+                if nargin==5
+                    do_sort=true;
+                else
+                    do_sort=~varargin{6};
+                end
                 obj.m=int64(varargin{3});
                 obj.n=int64(varargin{4});
                 obj.p=int64(varargin{5});
                 
                 SparseLattice.error_check_range(obj.m,obj.n,obj.p);
                 
-                t_vals=varargin{2};
-                obj.nnz=length(t_vals);
-                t_vals=SparseLattice.error_check_nonzeros(t_vals);
+                obj.vals=varargin{2};
+                obj.nnz=length(obj.vals);
+                do_transpose=SparseLattice.error_check_nonzeros(obj.vals);
+                if(do_transpose)
+                    obj.vals=obj.vals';
+                end
                 
                 
-                t_inds=int64(varargin{1}); 
-                t_inds=SparseLattice.error_check_idx(t_inds,obj.nnz,obj.m,obj.n,obj.p); 
-                [obj.inds,idx]=sort(t_inds);
-                t_vals=t_vals(idx);                
-                obj.vals=t_vals;     
+                obj.inds=int64(varargin{1}); 
+                do_transpose=SparseLattice.error_check_idx(obj.inds,obj.nnz,obj.m,obj.n,obj.p); 
+                if(do_transpose)
+                    obj.inds=obj.inds';
+                end
+               
+                if do_sort
+                    obj.sort();           
+                end
+               
                 
             elseif nargin==3
                 %S = SparseLattice(m,n,p)
@@ -180,7 +197,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
     
     methods (Access=protected)
         
-        
+        is_eq = compare(A,B,func)
         
         function [i j k]=ind2sub(obj,idx)
             if nargin==2
@@ -230,7 +247,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
     
    
         
-        function inds=error_check_idx(inds,nnz,m,n,p)
+        function do_transpose=error_check_idx(inds,nnz,m,n,p)
             if ~isvector(inds)
                 if(~isempty(inds))
                     error('Input vector for row, column, and depth indices')
@@ -240,7 +257,9 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                 error('Length of row, column, and depth indices must equal length of non-zero values')
             end
             if size(inds,1)==1
-                inds=inds';
+                do_transpose= true;
+            else
+                do_transpose= false;
             end
            
                   
@@ -266,14 +285,16 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
             
         end
         
-        function vals=error_check_nonzeros(vals)
+        function do_transpose=error_check_nonzeros(vals)
             if ~isvector(vals)
                 if(~isempty(vals))
                     error('Input vector for nonzero values')
                 end
             end
             if size(vals,1)==1
-                vals=vals';
+                do_transpose= true;
+            else
+                do_transpose= false;
             end
         end
         

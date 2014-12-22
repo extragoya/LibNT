@@ -125,13 +125,16 @@ classdef MIA
             end
         end
         
-        A=flatten(A,row_idx,col_idx)
         
         
         isequal=eq(a,b);
         B=toLattice(A,row_idx,col_idx,depth_idx);
         C=do_plus(A,B,permute_idx);
         C=do_minus(A,B,permute_idx);
+        C=mtimes(A,B); %just scalar multiplication
+        C=mrdivide(A,B); %just scalar division
+        B=SQRT(A);
+        Amatrix=flatten(A,row_inds,col_inds);
     end
     
     methods (Access=protected)

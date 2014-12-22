@@ -17,6 +17,7 @@ template<typename data_type>
 void multwork(size_t m1, size_t n1, size_t n2, size_t p){
     typedef LibMIA::DenseLattice<data_type> denseType;
     typedef LibMIA::SparseLattice<data_type> sparseType;
+
     denseType DenseLat1(m1,n1,p);
     denseType DenseLat2(n1,n2,p);
     denseType DenseLat3;
@@ -47,7 +48,7 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 //    std::cout << "**************Result " << std::endl;
 //    DenseLat3.print();
     SparseLat3=SparseLat1*SparseLat2;
-    //SparseLat3.print();
+//    SparseLat3.print();
     BOOST_CHECK_MESSAGE(DenseLat3.fuzzy_equals(SparseLat3,test_precision<data_type>()),std::string("Full Dimension Mult Test for ")+typeid(data_type).name());
 
     DenseLat1=denseType(1,n1,p);
@@ -138,7 +139,7 @@ BOOST_AUTO_TEST_CASE( SparseLatticeMultTests )
 {
 
 
-    //multwork<double>(5,5,5,5);
+    //multwork<double>(5,5,5,1);
     multwork<double>(20,20,20,20);
     multwork<float>(20,20,20,20);
     multwork<int>(20,20,20,20);

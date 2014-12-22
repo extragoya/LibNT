@@ -774,7 +774,7 @@ public:
 
     }
 
-    //should only be enabled when we've reduce two MIAs to a single number (ie pure inner product)
+    //should only be enabled when we've reduce two MIAs to a single number (ie pure inner product), in this case it just returns a POD number
     template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
                 typename boost::enable_if_c<
                     boost::mpl::size<
@@ -901,6 +901,93 @@ public:
 
     }
 
+
+//    //!Used to actually perform lattice products
+//    /*!Normally we can just perform a normal lattice product. But if we have two sparse MIAs, we can delegate to a poly-algorithm that
+//    performs different sparse matrix computations depending on the hyper-sparsity of the operands. This function is called when we do
+//    NOT have two sparse MIAs
+//
+//    */
+//    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
+//        typename boost::disable_if<
+//            boost::mpl::and_<
+//                internal::is_SparseMIA<typename std::remove_const<_MIA>::type>,
+//                internal::is_SparseMIA<typename std::remove_const<otherMIA>::type>
+//            >,
+//            int
+//        >::type=0
+//    >
+//    auto doProduct(otherMIA & r_mia, MIA_return_type* cMIA )->
+//        typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type *
+//    {
+//        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+//        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+//
+//        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
+//
+//        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
+//
+//
+//        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+//
+//        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+//        MIA_return_type* cMIA;
+//
+//        auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+//        auto cLat=aLat*bLat;
+//        cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+//
+//        return cMIA;
+//    }
+//
+//    //!Used to actually perform lattice products
+//    /*!Normally we can just perform a normal lattice product. But if we have two sparse MIAs, we can delegate to a poly-algorithm that
+//    performs different sparse matrix computations depending on the hyper-sparsity of the operands. This function is called when we have two
+//    sparse MIAs
+//
+//    */
+//    template<class otherMIA,class r_Seq,bool otherOwnership,size_t other_inter_number,
+//        typename boost::enable_if<
+//            boost::mpl::and_<
+//                internal::is_SparseMIA<typename std::remove_const<_MIA>::type>,
+//                internal::is_SparseMIA<typename std::remove_const<otherMIA>::type>
+//            >,
+//            int
+//        >::type=0
+//    >
+//    auto doProduct(otherMIA & r_mia, MIA_return_type* cMIA )->
+//        typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type *
+//    {
+//        typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
+//        typedef typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::MIA_return_type MIA_return_type;
+//
+//        auto cMIA_dims=mia_expr_helper::run(*m_mia,*(Rhs.m_mia));
+//
+//        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
+//
+//
+//        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
+//
+//        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
+//        MIA_return_type* cMIA;
+//        if(check_if_copy_needed<otherOwnership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
+//            typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
+//            bMIACopyType temp(*(Rhs.m_mia));
+//            auto cLat=sparseMIAMultPolyAlg<m_lattice_expr_helper>(*m_mia,*(Rhs.m_mia));
+//            auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);
+//            auto cLat=aLat*bLat;
+//
+//            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+//        }
+//        else{
+//            auto bLat=lattice_permutation_delegator::right_lattice_apply<otherMIA,m_lattice_expr_helper,otherOwnership>(*(Rhs.m_mia));
+//            auto cLat=aLat*bLat;
+//            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
+//        }
+//
+//
+//        return MIA_Atom<MIA_return_type,typename MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);
+//    }
 
 
     //when multiplication only has inter or outer products, we don't need to create a lattice, call specialized function in mia

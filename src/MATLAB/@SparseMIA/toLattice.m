@@ -10,4 +10,4 @@ if numel([row_idx col_idx depth_idx])>1
     A=A.permute([row_idx col_idx depth_idx]);
 end
 
-B=SparseLattice(A.indices,A.data,a_row_size,a_col_size,a_depth_size);
+B=SparseLattice(A.indices,A.data,a_row_size,a_col_size,a_depth_size,true);

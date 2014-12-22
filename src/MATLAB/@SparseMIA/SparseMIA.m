@@ -3,7 +3,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
     properties
         
         mDims
-        indices %linear indices, can be in arbitrary lexicographical order
+        indices @int64 vector %linear indices, can be in arbitrary lexicographical order
         lexOrder
         isSorted
         
@@ -15,7 +15,7 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
             
             if nargin ==0
                 obj.mDims=[];
-                obj.indices=[];
+                obj.indices=int64([]);
                 obj.data=[];
                 obj.lexOrder=[];
                 obj.isSorted=[];
@@ -99,8 +99,8 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
         A=sort(A);
         A=permute(A,newLinIdx);
         A=changeLexOrder(A,newLinIdx);
-        B=flatten(A,row_idx,col_idx);
-        C=mtimes(A,B)
+        
+        matrix = flatten(obj,row_inds,col_inds);
         
         C=do_plus(A,B,permute_idx);
         isequal=eq(a,b);
