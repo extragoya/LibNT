@@ -17,6 +17,7 @@
 #ifndef SPARSELATTICEBASE_H
 #define SPARSELATTICEBASE_H
 #include <algorithm>
+#include <chrono>
 #include <vector>
 #include <type_traits>
 #include <cmath>
@@ -38,7 +39,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/numeric/conversion/converter.hpp>
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 
 
 #include "MIAConfig.h"
@@ -124,7 +125,9 @@ struct MultHelper{
 
     MultHelper(SparseLatticeBase<Derived> & lat):mLat(lat){}
 
-
+    ~MultHelper(){
+        mLat.clearDCSCVectors();
+    }
     void initMultHelpers(typename SparseLatticeBase<Derived>::index_iterator tab_begin,typename SparseLatticeBase<Derived>::index_iterator tab_end){
         mFastDivisor=mLat.createDCSCVectors(tab_begin,tab_end);
     }
@@ -152,7 +155,7 @@ struct MultHelper{
             a_column_end=0;
         }
         else{
-            auto pos=jc_it-this->JC.begin();
+            auto pos=jc_it-mLat.JC.begin();
             a_column_begin=mLat.CP[pos];
             a_column_end=mLat.CP[pos+1];
         }
@@ -170,6 +173,9 @@ struct MultHelper<Derived,false>{
 
     MultHelper(SparseLatticeBase<Derived> & lat):mLat(lat){}
 
+    ~MultHelper(){
+        mLat.clearCP();
+    }
 
     void initMultHelpers(typename SparseLatticeBase<Derived>::index_iterator tab_begin,typename SparseLatticeBase<Derived>::index_iterator tab_end){
         mLat.createCP(tab_begin,tab_end);
@@ -483,6 +489,7 @@ public:
         return m_linIdxSequence;
     }
 
+    //!Just changes the internal variables storing linIdxSequence and sorted flag - but doesn't alter any of the data
     void set_linIdxSequence(bool _linIdxSequence,bool _is_sorted=true){
         m_is_sorted=_is_sorted;
         m_linIdxSequence=_linIdxSequence;
@@ -642,10 +649,10 @@ public:
 
 
 
-    void transpose(bool do_sort=false){
-        inPlaceTranspose(do_sort);
+    void transpose(){
+        inPlaceTranspose();
     }
-    void inPlaceTranspose(bool do_sort=false);
+    void inPlaceTranspose();
 
 
     template<class otherDerived>
@@ -716,11 +723,15 @@ public:
     template <class otherDerived>
     typename SparseProductReturnType<Derived,otherDerived>::type outer_times(SparseLatticeBase<otherDerived> &b);
 
-    template <class otherDerived>
+    template <bool ColSparse, class otherDerived>
     typename SparseProductReturnType<Derived,otherDerived>::type csc_times(SparseLatticeBase<otherDerived> &b);
 
+    template <bool ColSparse, class otherDerived>
+    typename SparseProductReturnType<Derived,otherDerived>::type csc_no_accum(SparseLatticeBase<otherDerived> &b);
 
 
+    std::vector<index_type> CP,JC,AUX,IR;
+    void createCP(index_iterator tab_begin, index_iterator tab_end);
 protected:
 
     template<class b_index_type, class b_data_type,class ret_index_type,class super_data_type,bool RowSparse>
@@ -813,18 +824,22 @@ protected:
 
 
 
-    std::vector<index_type> CP,JC,AUX,IR;
+
 
     fast_divisor createDCSCVectors(index_iterator tab_begin, index_iterator tab_end);
 
+    void clearDCSCVectors();
+
     fast_divisor createAUX(index_iterator tab_begin, index_iterator tab_end);
+
 
 
     void createJCCPIR(index_iterator tab_begin, index_iterator tab_end);
 
 
-    void createCP(index_iterator tab_begin, index_iterator tab_end);
 
+
+    void clearCP();
 
     template <class otherDerived, bool LSQR>
     typename SparseSolveReturnType<Derived,otherDerived>::type perform_solve(SparseLatticeBase<otherDerived> &b);
@@ -879,25 +894,12 @@ bool SparseLatticeBase<Derived>::below_tolerance(const data_type & _data) const
     return false;
 }
 
+//!This just swaps height and width values, and swaps current linIdxSequence. If you want a lattice with same linIdxSequence then you'll need to call change_sort_order.
 template<typename Derived>
-void SparseLatticeBase<Derived>::inPlaceTranspose(bool do_sort)
+void SparseLatticeBase<Derived>::inPlaceTranspose()
 {
 
-
-
-    if(do_sort)
-    {
-
-        this->sort(!this->linIdxSequence());
-
-
-    }
-    else
-        this->change_sort_order(!this->linIdxSequence()); //switch second and first indices
-
-
-
-    this->set_linIdxSequence(!this->linIdxSequence(),do_sort); //now switch back to old linIdxSequence, making a transpose
+    this->set_linIdxSequence(!this->linIdxSequence()); //update now switch back to old linIdxSequence, making a transpose
 	auto temp= this->height();
 	this->set_height(this->width());
 	this->set_width(temp);
@@ -1138,15 +1140,18 @@ template <class Derived>
 template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
-    //boost::timer::cpu_timer timer,timer_minor;
+
     //std::cout << "Entered sparse*dense " << std::endl;
     this->check_mult_dims(b);
 
-    this->transpose(true);
+    this->transpose();
+
     //std::cout << "Finished transpose " << std::endl;
     typename SparseProductReturnType<Derived,otherDerived>::type ret=b.transpose()*(*this);
-    this->transpose(false);
-    ret.transpose(false);
+    //std::cout << "Finished mult " << std::endl;
+    this->transpose();
+    //std::cout << "Finished final sparse transpose " << std::endl;
+    ret.transpose();
     //std::cout << "Sparse x dense time " << boost::timer::format(timer.elapsed()) << std::endl;
     return ret;
 //    typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
@@ -1413,7 +1418,12 @@ typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<
 
 
 
-
+//!Only creates the column index array needed for CSC format
+template<class Derived>
+void SparseLatticeBase<Derived>::clearCP(){
+    this->CP.clear();
+    this->IR.clear();
+}
 
 
 //!Only creates the column index array needed for CSC format
@@ -1529,7 +1539,7 @@ auto SparseLatticeBase<Derived>::createAUX(index_iterator tab_begin, index_itera
         {
             this->AUX[curchunk++] = reg;
         }
-        std::cout << "ChunkSize " << chunksize << std::endl;
+        //std::cout << "ChunkSize " << chunksize << std::endl;
         return fast_divisor(chunksize);
 }
 
@@ -1542,12 +1552,29 @@ auto SparseLatticeBase<Derived>::createDCSCVectors(index_iterator tab_begin, ind
 }
 
 
+template<class Derived>
+void SparseLatticeBase<Derived>::clearDCSCVectors(){
 
+        this->JC.clear();
+        this->CP.clear();
+        this->IR.clear();
+        this->AUX.clear();
+}
+
+
+//!should be able to handle all mixtures of hyper-sparse and sparse cases, ultimately this should be altered to use some form of poly-algorithm
 template <class Derived>
 template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> &b){
+    return this->csc_no_accum<true>(b);
+}
 
 
+template <class Derived>
+template <bool ColumnSparse,class otherDerived>
+typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::csc_no_accum(SparseLatticeBase<otherDerived> &b){
+
+	using namespace std::chrono;
     this->check_mult_dims(b);
     typedef typename ScalarPromoteType<Derived,otherDerived>::type super_data_type;
 
@@ -1575,8 +1602,6 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 	b.sort(ColumnMajor);
 
 
-
-
     //determine whether we want to binary search or just scan through elements
     bool a_search_flag=false, b_search_flag=false;
     if(this->depth()*log2(this->size())<this->size())
@@ -1584,8 +1609,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     if(b.depth()*log2(b.size())<b.size())
         b_search_flag=true;
 
-    size_t _bucket_count=0,_size=0;
-    float  _load_factor=0;
+
     while(a_temp_begin<a_index_end && b_temp_begin<b_index_end){
 
 
@@ -1612,20 +1636,21 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
                 continue;
         }
 
-        boost::timer::cpu_timer init_t;
+
         a_temp_end=this->find_tab_end_idx(cur_tab,a_temp_begin,a_index_end,a_search_flag);
         b_temp_end=b.find_tab_end_idx(cur_tab,b_temp_begin,b_index_end,b_search_flag);
 
-        MultHelper<Derived,false> multHelper(*this);
+        MultHelper<Derived,ColumnSparse> multHelper(*this);
         multHelper.initMultHelpers(a_temp_begin,a_temp_end);
         //auto chunksize=this->createDCSCVectors(a_temp_begin,a_temp_end);
 
         //row_hash.reserve(this->JC.size());
-        std::cout << "Init:" << boost::timer::format(init_t.elapsed()) << std::endl;
+        //std::cout << "Init:" << boost::timer::format(init_t.elapsed()) << std::endl;
 
 
-        boost::timer::cpu_timer hash_t;
 
+        //typedef std::chrono::duration<float> float_seconds;
+        //high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
         //iterate through every element of b
         b_index_type cur_column;
@@ -1633,7 +1658,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         auto cur_tab_adder=cur_tab*this->height()*b.width();
         b_index_type cur_b_tab_adder=cur_tab*b.height()*b.width();
         auto cur_b = b_temp_begin;
-        index_type cur_adder;
+
         while (cur_b<b_temp_end)
         {
 
@@ -1667,14 +1692,15 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
                 cur_offset_end=cur_tab_adder+this->height()*cur_column;
                 for(auto it=c_indices.begin()+old_c_size; it<c_indices.end(); ++it)                {
 
-					*it +=cur_adder; //decompresses the index
+					*it +=cur_offset_end; //decompresses the index
                 }
             }
         }
-
+        //high_resolution_clock::time_point t2 = high_resolution_clock::now();
+        //std::cout << "Pure mult time: " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
         a_temp_begin=a_temp_end;
         b_temp_begin=b_temp_end;
-        std::cout << "Pure Mult Time:" << boost::timer::format(hash_t.elapsed()) << std::endl;
+        //std::cout << "Pure Mult Time:" << boost::timer::format(hash_t.elapsed()) << std::endl;
     }
 
     return RType(std::move(c_data),std::move(c_indices),this->height(),b.width(),this->depth(),true);
@@ -1706,10 +1732,19 @@ void SparseLatticeBase<Derived>::mult_scatter(const index_iterator a_begin, cons
         c_data.reserve(2*c_data.capacity());
     }
 
-	for(auto cur_row=_begin;cur_row<_end;++cur_row){
-		c_indices.push_back(*cur_row); //push back the compressed row (this will have to be remapped afterwards)
-		c_data.push_back(beta*(*_data_it++));
+	c_data.resize(c_data.size() + (_end - _begin));
+	for (int i = c_data.size() - (_end - _begin); i < c_data.size(); ++i){
+		c_data[i] = beta*(*_data_it++);
 	}
+	c_indices.resize(c_indices.size() + (_end - _begin));
+	std::copy(_begin, _end, c_indices.end() - (_end - _begin));
+
+	//for (auto cur_row = _begin; cur_row<_end; ++cur_row){
+	//	c_indices.push_back(*cur_row); //push back the compressed row (this will have to be remapped afterwards)
+	//	c_data.push_back(beta*(*_data_it++));
+	//}
+
+
 }
 
 
@@ -1754,8 +1789,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     if(b.depth()*log2(b.size())<b.size())
         b_search_flag=true;
 
-    size_t _bucket_count=0,_size=0;
-    float  _load_factor=0;
+
     while(a_temp_begin<a_index_end && b_temp_begin<b_index_end){
 
 
@@ -1806,7 +1840,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
             else{
                 auto b_cur_end=b_cur_it;
                 auto a_cur_end=a_cur_it;
-                int a_length,b_length;
+
                 while(a_cur_end<a_temp_end && this->column(*a_cur_end)==a_cur_column){
                     a_cur_end++;
                     //std::cout << "a looking: " << this->row(*a_cur_end) << " " << this->column(*(a_cur_end++)) << std::endl;
@@ -1821,17 +1855,17 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
                     c_indices.reserve(2*c_indices.capacity());
                     c_data.reserve(2*c_data.capacity());
                 }
-                for(;a_cur_it<a_cur_end;++a_cur_it){
+                for(;b_cur_it<b_cur_end;++b_cur_it){
 
 
 
-                    for(auto b_cur_inner=b_cur_it;b_cur_inner<b_cur_end;++b_cur_inner){
-                        c_indices.push_back(this->row(*a_cur_it)+b.column(*b_cur_inner)*old_m);
-                        c_data.push_back(this->data_at(a_cur_it)*b.data_at(b_cur_inner));
+                    for(auto a_cur_inner=a_cur_it;a_cur_inner<a_cur_end;++a_cur_inner){
+                        c_indices.push_back(this->row(*a_cur_inner)+b.column(*b_cur_it)*old_m);
+                        c_data.push_back(this->data_at(a_cur_inner)*b.data_at(b_cur_it));
                     }
 
                 }
-                b_cur_it=b_cur_end;
+                a_cur_it=a_cur_end;
             }
 
 
@@ -1877,7 +1911,7 @@ void SparseLatticeBase<Derived>::mult_scatter(index_iterator a_tab_begin,b_index
 
 
     //std::cout << "Index of column at " << b_row << " is " << a_cur_it-this->index_begin() << std::endl;
-    size_t cur_a_row;
+
     if(c_indices.capacity()<c_indices.size()+a_column_end-a_column_begin)
         c_indices.reserve(c_indices.capacity()*2);
 
@@ -1905,7 +1939,7 @@ void SparseLatticeBase<Derived>::mult_scatter(index_iterator a_tab_begin,b_index
 
 //#define LM_SPARSE_LATTICE_MULT_DEBUG
 template <class Derived>
-template <class otherDerived>
+template <bool ColSparse,class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::csc_times(SparseLatticeBase<otherDerived> &b)
 {
 
@@ -1934,8 +1968,9 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
     typename RType::Indices c_indices;
     typename RType::Data c_data;
-    c_indices.reserve(this->size());
-    c_data.reserve(this->size());
+    c_indices.reserve(10000);
+    c_data.reserve(c_indices.capacity());
+
 
     //determine whether we want to binary search or just scan through elements
     bool a_search_flag=false, b_search_flag=false;
@@ -1977,7 +2012,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
         a_temp_end=this->find_tab_end_idx(cur_tab,a_temp_begin,a_index_end,a_search_flag);
         b_temp_end=b.find_tab_end_idx(cur_tab,b_temp_begin,b_index_end,b_search_flag);
 
-        MultHelper<Derived,false> multHelper(*this);
+        MultHelper<Derived,ColSparse> multHelper(*this);
         multHelper.initMultHelpers(a_temp_begin,a_temp_end);
 
         b_index_type cur_column;

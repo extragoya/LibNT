@@ -11,7 +11,7 @@
 
 #else
 #include <boost/test/unit_test.hpp>
-#include <boost/timer/timer.hpp>
+
 #endif
 
 

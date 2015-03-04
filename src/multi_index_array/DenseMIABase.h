@@ -547,11 +547,12 @@ bool DenseMIABase<Derived>::fuzzy_equals(const MIA<otherDerived> & otherMIA,data
     if(this->dims()!=otherMIA.dims())
         return false;
 
-    for(size_t idx=0;idx<this->dimensionality();++idx)
+    for(size_t idx=0;idx<this->dimensionality();++idx){
         if(!isEqualFuzzy(this->atIdx(idx),otherMIA.atIdx(idx),precision)){
-            //std::cout << "Triggered " << *it1 << " " << *it2 << std::endl;
+            //std::cout << "Triggered " << this->atIdx(idx) << " " << otherMIA.atIdx(idx) << std::endl;
             return false;
         }
+    }
 
     return true;
 

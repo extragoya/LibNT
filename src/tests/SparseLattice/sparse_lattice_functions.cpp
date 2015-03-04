@@ -15,7 +15,7 @@
 #else
 #include <boost/test/unit_test.hpp>
 #endif
-#include <boost/timer/timer.hpp>
+//#include <boost/timer/timer.hpp>
 
 template<typename data_type>
 void do_work(size_t m, size_t n, size_t p){
@@ -35,18 +35,18 @@ void do_work(size_t m, size_t n, size_t p){
     BOOST_CHECK_MESSAGE(sparseLat1==sparseLat2,std::string("Assignment and comparison test for ")+typeid(data_type).name());
 
 
-    boost::timer::cpu_timer ltensor;
+    //boost::timer::cpu_timer ltensor;
     sparseLat1.sort(LibMIA::RowMajor);
-    std::cout << "special sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
+    //std::cout << "special sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
 
 
 
 
     sparseLat2.set_sorted(false);
-    ltensor=boost::timer::cpu_timer ();
+    //ltensor=boost::timer::cpu_timer ();
 
     sparseLat2.sort(LibMIA::RowMajor);
-    std::cout << "normal sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
+    //std::cout << "normal sort time " << boost::timer::format(ltensor.elapsed()) << std::endl;
     //sparseLat1.print();
     //sparseLat2.print();
 

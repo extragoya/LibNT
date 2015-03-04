@@ -4,6 +4,7 @@ classdef MIAExpr
     
         m_mia %references MIA that is part of expression
         m_indices %the indices used in the expression
+        m_last_inter=0;
     
     end
     
@@ -36,6 +37,7 @@ classdef MIAExpr
          C=mtimes(A,B);
          C=plus(A,B);
          C=minus(A,B);
+         
     end
     methods (Access=protected)
         [a_inner_idx, a_inter_idx, a_outer_idx, b_inner_idx, b_inter_idx, b_outer_idx]=pull_mult_indices(A,B);

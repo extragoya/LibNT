@@ -1,6 +1,9 @@
 function C= do_plus(A,B,permute_idx)
 %perform addition based on the permutation idx of B
 
+if(isa(B,'SparseMIA')) %if B is a sparseMIA we can safely convert it to MIA because it's the same size as A
+    B=MIA(B);
+end
 
 do_permute=true;
 a_size=size(A);

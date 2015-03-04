@@ -443,20 +443,20 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_
     auto & a=*this;
     typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
     typedef typename Derived::index_type a_index_type;
-	
+
     typename c_type::Indices c_indices;
     c_indices.reserve(b.size());
     typename c_type::Data c_data;
     c_data.reserve(b.size());
-    
+
     //timer_minor=boost::timer::cpu_timer();
 
     b.sort(ColumnMajor);
-
+    //std::cout << "Sorted " << std::endl;
     auto b_temp_begin=b.index_begin();
     auto b_temp_end=b_temp_begin;
 	size_t cur_start_c_column = 0;
-	
+
     while(b_temp_begin<b.index_end()){
         auto cur_tab=b.tab(*b_temp_begin);
         auto cur_col=b.column(*b_temp_begin);
@@ -487,7 +487,7 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_
     }
     c_type ret(std::move(c_data),std::move(c_indices),a.height(),b.width(),this->depth());
     ret.set_linIdxSequence(ColumnMajor);
-    //std::cout << "dense x sparse time " << boost::timer::format(timer.elapsed()) << std::endl;
+    //std::cout << "dense x sparse time " << std::endl;
     return ret;
 
 

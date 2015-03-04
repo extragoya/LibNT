@@ -44,6 +44,7 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
 
     DenseLat3_dense=DenseLat1*DenseLat2;
+
     DenseLat3_sparse=SparseLat1*DenseLat2;
 
 
@@ -53,7 +54,6 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
-
 
     BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Full Dimension Mult Test 2 for ")+typeid(data_type).name());
 
@@ -70,8 +70,9 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     SparseLat1=DenseLat1;
     SparseLat2=DenseLat2;
-
+    //std::cout << "About to dense mult" << std::endl;
     DenseLat3_dense=DenseLat1*DenseLat2;
+    //std::cout << "About to mixed mult" << std::endl;
     DenseLat3_sparse=SparseLat1*DenseLat2;
 
     BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Inner Product Mult Test 1 for ")+typeid(data_type).name());
@@ -96,9 +97,11 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p){
 
     DenseLat3_dense=DenseLat1*DenseLat2;
     DenseLat3_sparse=SparseLat1*DenseLat2;
+
     BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Outer Product Mult Test 1 for ")+typeid(data_type).name());
 
     DenseLat3_sparse=DenseLat1*SparseLat2;
+
     BOOST_CHECK_MESSAGE(DenseLat3_dense.fuzzy_equals(DenseLat3_sparse,test_precision<data_type>()),std::string("Repeated Outer Product Mult Test 2 for ")+typeid(data_type).name());
 
     DenseLat1=denseType(m1,n1,1);

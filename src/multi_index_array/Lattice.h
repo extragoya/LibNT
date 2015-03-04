@@ -76,7 +76,7 @@ public:
     typedef typename internal::index_type<Lattice>::type index_type;
     typedef typename internal::data_iterator<Lattice>::type data_iterator;
 	typedef typename std::make_unsigned<index_type>::type unsigned_index_type;
-	
+
 	typedef libdivide::divider<unsigned_index_type> fast_divisor;
 	typedef std::array<unsigned_index_type, 3> accumulator_type;
 	typedef std::array<unsigned_index_type, 3> multiplier_type;
@@ -113,6 +113,7 @@ public:
         return ret;
     }
 
+
     void set_height(index_type _height){
         m_height=_height;
 		m_fast_height = fast_divisor(_height);
@@ -127,7 +128,7 @@ public:
 
     void set_depth(index_type _depth){
         m_depth=_depth;
-		
+
     }
 
     index_type dimensionality() const
@@ -234,7 +235,7 @@ protected:
 
     }
 
-	
+
 
 
 	inline const fast_divisor& width_divisor() const
@@ -261,7 +262,7 @@ private:
 	fast_divisor m_fast_height;
 	fast_divisor m_fast_width;
 	fast_divisor m_tab_divisor;
-	
+
 
 
 

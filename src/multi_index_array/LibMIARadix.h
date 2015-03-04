@@ -284,10 +284,13 @@ inline int estimateNumberOfRuns(size_t length,size_t max_size){
 template<unsigned int IntroThreshold, unsigned int Radix>
 inline size_t getLengthThreshold(size_t max_size){
 
-
+    assert(max_size);
+    size_t thresholdLength=50;
+    if (max_size==1)
+        return thresholdLength;
 	int radixRuns = static_cast<int>(std::ceil(std::log2(max_size) / std::log2(Radix)));
     size_t first_run=max_size/static_cast<size_t>(std::pow(Radix,radixRuns-1));
-    size_t thresholdLength=50;
+
     if(radixRuns>1){
         for(int i=0;i<radixRuns-2;++i){
             thresholdLength*=Radix;
@@ -414,8 +417,10 @@ public:
     template<class RandomIt, class FollowIt>
     void permute(RandomIt begin, FollowIt  followBegin,size_t length)
     {
-        if(length<Threshold)
+        if(length<Threshold){
             Introsort(begin,begin+length,std::less<index_type>(),internal::DualSwapper<RandomIt,FollowIt>(begin,followBegin));
+            return;
+        }
 
 
         if(mFirstSortOrFind==false)  //if we are currently finding and not sorting
@@ -539,9 +544,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
 
                 if(curNumOfElements>shuffleLengthThreshold)
-                    eliminator=curValue*straightEliminatorMult;
-                else
                     eliminator=curValue*nextEliminatorMult;
+                else
+                    eliminator=curValue*straightEliminatorMult;
 
                 for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
                     *it-=eliminator;
@@ -601,9 +606,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     if ( curNumOfElements >= Threshold )
     {
         if(curNumOfElements>shuffleLengthThreshold)
-            eliminator=curValue*straightEliminatorMult;
-        else
             eliminator=curValue*nextEliminatorMult;
+        else
+            eliminator=curValue*straightEliminatorMult;
 
         for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
             *it-=eliminator;
@@ -686,9 +691,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
 
                 if(curNumOfElements>shuffleLengthThreshold)
-                    eliminator=curValue*straightEliminatorMult;
+                    eliminator=curValue*nextEliminatorMult ;
                 else
-                    eliminator=curValue*nextEliminatorMult;
+                    eliminator=curValue*straightEliminatorMult;
 
                 for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
                     *it-=eliminator;
@@ -731,9 +736,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     if ( curNumOfElements >= Threshold )
     {
         if(curNumOfElements>shuffleLengthThreshold)
-            eliminator=curValue*straightEliminatorMult;
+            eliminator=curValue*nextEliminatorMult ;
         else
-            eliminator=curValue*nextEliminatorMult;
+            eliminator=curValue*straightEliminatorMult;
 
         for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
             *it-=eliminator;

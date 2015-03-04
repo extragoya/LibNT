@@ -365,7 +365,7 @@ public:
     }
 
     void resize(size_t _size){
-        assert(_size<=this->dimesionality());
+        assert(_size<=this->dimensionality());
         this->m_data.resize(_size);
         this->m_indices.resize(_size);
     }

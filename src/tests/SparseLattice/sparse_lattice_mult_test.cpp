@@ -145,6 +145,16 @@ BOOST_AUTO_TEST_CASE( SparseLatticeMultTests )
     multwork<int>(20,20,20,20);
     multwork<long>(20,20,20,20);
 
+    multwork<double>(40,20,20,20);
+    multwork<float>(40,20,20,20);
+    multwork<int>(40,20,20,20);
+    multwork<long>(40,20,20,20);
+
+    multwork<double>(20,20,40,20);
+    multwork<float>(20,20,40,20);
+    multwork<int>(20,20,40,20);
+    multwork<long>(20,20,40,20);
+
 
 
 }

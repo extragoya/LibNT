@@ -5,7 +5,11 @@ if (isa(otherMIA,'SparseMIA'))
     obj=SparseMIA;
     obj=obj.assign(otherMIA,assign_order);
 elseif(isa(otherMIA,'MIA') )
-    obj.data=permute(otherMIA.data,assign_order);
+    if otherMIA.order>1
+        obj.data=permute(otherMIA.data,assign_order);
+    else
+        obj.data=otherMIA.data;
+    end
     
 else %TODO as SparseMIA (above MIA)
     error('Incompatible object used in assignment');

@@ -1,4 +1,21 @@
 cmake_minimum_required (VERSION 2.6)
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
+macro (add_sources)
+    file (RELATIVE_PATH _relPath "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+    foreach (_src ${ARGN})
+        if (_relPath)
+            list (APPEND SRCS "${_relPath}/${_src}")
+        else()
+            list (APPEND SRCS "${_src}")
+        endif()
+    endforeach()
+    if (_relPath)
+        # propagate SRCS to parent directory
+        set (SRCS ${SRCS} PARENT_SCOPE)
+    endif()
+endmacro()
+
+
 PROJECT(LibMIA)
 ENABLE_TESTING()
 set (LibMIA_VERSION_MAJOR 0)
@@ -37,13 +54,13 @@ else()
 endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH  "Installation directory for CMake files")
 
-# Make relative paths absolute (needed later on)
-foreach(p LIB BIN INCLUDE CMAKE)
-  set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-  endif()
-endforeach()
+# # Make relative paths absolute (needed later on)
+# foreach(p LIB BIN INCLUDE CMAKE)
+  # set(var INSTALL_${p}_DIR)
+  # if(NOT IS_ABSOLUTE "${${var}}")
+    # set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  # endif()
+# endforeach()
 
 # add a target to generate API documentation with Doxygen
 find_package(Doxygen)
@@ -62,32 +79,52 @@ endif(DOXYGEN_FOUND)
 
 add_subdirectory (src)
 
-# Add all targets to the build-tree export set
-export(TARGETS LibMIA
-  FILE "${PROJECT_BINARY_DIR}/LibMIALibraryDepends.cmake")
-  
-# Export the package for use from the build-tree
-# (this registers the build-tree with a global CMake-registry)
-export(PACKAGE LibMIA)
 
-# Create a LibMIABuildTreeSettings.cmake file for the use from the build tree
-configure_file(LibMIABuildTreeSettings.cmake.in
-  "${PROJECT_BINARY_DIR}/LibMIABuildTreeSettings.cmake" @ONLY)
- 
-# Create the LibMIAConfig.cmake and LibMIAConfigVersion files
-file(RELATIVE_PATH CONF_REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-   "${INSTALL_INCLUDE_DIR}")
-configure_file(LibMIAConfig.cmake.in
-  "${PROJECT_BINARY_DIR}/LibMIAConfig.cmake" @ONLY)
-configure_file(LibMIAConfigVersion.cmake.in
-  "${PROJECT_BINARY_DIR}/LibMIAConfigVersion.cmake" @ONLY)
- 
-# Install the LibMIAConfig.cmake and LibMIAConfigVersion.cmake
+add_library(LibMIAHeaders INTERFACE)
+target_include_directories(LibMIAHeaders INTERFACE
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}/src/multi_index_array>
+  $<INSTALL_INTERFACE:include/LibMIAHeaders>
+)
+
+install(TARGETS LibMIAHeaders EXPORT libMIAExport)
+install(EXPORT libMIAExport NAMESPACE Upstream::
+  DESTINATION lib/cmake/LibMIA
+)
+
+set(LibMIA_headers ${PROJECT_BINARY_DIR}/MIAConfig.h ${SRCS})
+add_custom_target(LibMIA SOURCES ${LibMIA_headers})
+
 install(FILES
-  "${PROJECT_BINARY_DIR}/LibMIAConfig.cmake"
-  "${PROJECT_BINARY_DIR}/LibMIAConfigVersion.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+    ${LibMIA_headers}
+  DESTINATION include/LibMIAHeaders
+)
+
+# # Add all targets to the build-tree export set
+# export(TARGETS LibMIA
+  # FILE "${PROJECT_BINARY_DIR}/LibMIALibraryDepends.cmake")
+  
+# # Export the package for use from the build-tree
+# # (this registers the build-tree with a global CMake-registry)
+# export(PACKAGE LibMIA)
+
+# # Create a LibMIABuildTreeSettings.cmake file for the use from the build tree
+# configure_file(LibMIABuildTreeSettings.cmake.in
+  # "${PROJECT_BINARY_DIR}/LibMIABuildTreeSettings.cmake" @ONLY)
  
-# Install the export set for use with the install-tree
-install(EXPORT LibMIALibraryDepends DESTINATION
-  "${INSTALL_CMAKE_DIR}" )
+# # Create the LibMIAConfig.cmake and LibMIAConfigVersion files
+# file(RELATIVE_PATH CONF_REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
+   # "${INSTALL_INCLUDE_DIR}")
+# configure_file(LibMIAConfig.cmake.in
+  # "${PROJECT_BINARY_DIR}/LibMIAConfig.cmake" @ONLY)
+# configure_file(LibMIAConfigVersion.cmake.in
+  # "${PROJECT_BINARY_DIR}/LibMIAConfigVersion.cmake" @ONLY)
+ 
+# # Install the LibMIAConfig.cmake and LibMIAConfigVersion.cmake
+# install(FILES
+  # "${PROJECT_BINARY_DIR}/LibMIAConfig.cmake"
+  # "${PROJECT_BINARY_DIR}/LibMIAConfigVersion.cmake"
+  # DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+ 
+# # Install the export set for use with the install-tree
+# install(EXPORT LibMIALibraryDepends DESTINATION
+  # "${INSTALL_CMAKE_DIR}" )

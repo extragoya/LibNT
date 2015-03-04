@@ -38,7 +38,15 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
                         obj.indices=int64(idx);
                         obj.lexOrder=1:numel(obj.dims);
                         obj.isSorted=true;                        
-                        
+                    elseif ismatrix(arg) %assuming just a set of indices
+                        if(size(arg,1)~=1)
+                            error('Must input row vector for dimensions')
+                        end
+                        obj.mDims=arg;
+                        obj.indices=int64([]);
+                        obj.data=[];
+                        obj.lexOrder=1:numel(obj.dims);
+                        obj.isSorted=[];
                     else
                         error('SparseMIA constructor called with incomptabile parameters. Please view help.')
                     end
@@ -95,7 +103,32 @@ classdef (InferiorClasses = {?MIA}) SparseMIA <MIA
         function ret=dims(obj)
             ret=obj.mDims;
         end
-        %TODO mldivide
+        
+        function obj=insert(obj,data,index)
+            if(~ismatrix(index))
+                error('Must Input scalar or vector for index values');
+            end
+            if(size(index,2)==1)
+                idx=index;
+            else
+                mult=obj.dims;
+                mult=mult(obj.lexOrder); %change the dimensions to the current lexOrder
+                mult=cumprod(mult); %compute cumulative product
+                mult=[1 mult(1:end-1)];
+                index=index(:,obj.lexOrder); %change indices to current lexOrder                
+                idx=(index-1)*mult'+1;%compress them to linearized index
+            end
+            if(any(idx>obj.dimensionality()))
+                error('Index must not be larger than dimensionality');
+            end
+            %adds arguments to object's data and indices arrays
+            obj.data=[obj.data;data];
+            obj.indices=[obj.indices;idx];
+            obj.isSorted=false;
+            
+        end
+        
+        
         A=sort(A);
         A=permute(A,newLinIdx);
         A=changeLexOrder(A,newLinIdx);

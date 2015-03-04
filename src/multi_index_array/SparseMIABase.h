@@ -605,7 +605,7 @@ public:
                 return;
             }
 
-           
+
 
             auto reverseShuffleSequence=internal::getShuffleSequence(oldLinIdxSequence,_linIdxSequence); //get the shuffle sequence from new to old
 			std::vector<unsigned_Type> divisors;
@@ -613,8 +613,8 @@ public:
 			auto shuffled_dims = this->dims();
 			internal::reorder_from(this->dims(), _linIdxSequence, shuffled_dims);
 			bool first_stage = internal::setupPermute(reverseShuffleSequence, shuffled_dims, divisors, max_sizes);
-			
-           
+
+
 
             //create RadixShuffle object
 			internal::RadixShuffle<index_type, data_type, 2048, 11, 3000> radixShuffle(max_sizes, divisors, this->dimensionality(), first_stage);
@@ -714,18 +714,6 @@ public:
 
 
     }
-
-//    //!don't use - just here for benchmark purposes - will probably disappear in later versions
-//    void old_sort()
-//    {
-//        if(!mIsSorted)
-//        {
-//            std::sort(storage_begin(),storage_end(),[] (const full_tuple& left,const full_tuple& right)
-//                {
-//                    return std::get<1>(left)<std::get<1>(right);
-//                } );
-//        }
-//    }
 
     //!Prints non-zero values and indices
     void print(bool do_sort=true)
@@ -2128,6 +2116,137 @@ auto SparseMIABase<Derived>::find_end_idx(index_iterator start_it, index_iterato
 
 
 }
+
+
+////!Poly algorithm that chooses which type of sparse multiplication to perform based on whether operands are sparse, hyper-sparse, row-sparse, or column-sparse
+//template<typename Derived1, typename Derived2, typename array_type,size_t Inner,size_t Inter,size_t L_outer,size_t R_outer>
+//auto  sparseMIAMultPolyAlg(SparseMIABase<Derived1> &a,SparseMIABase<Derived2> &b,const std::array<array_type,L_outer>&l_row_idx,const std::array<array_type,Inner>&l_col_idx,const std::array<array_type,Inter>&l_tab_idx,const std::array<array_type,Inner>&r_row_idx,
+//                           const std::array<array_type,R_outer>&r_col_idx,const std::array<array_type,Inter>&r_tab_idx)
+//->typename MIAProductReturnType<Derived1,Derived2,L_outer+R_outer+Inter>::type *
+//{
+//
+//    static_assert(L_outer+Inner+Inter==internal::order<Derived1>::value,"All indices must be accounted for when multiplying MIAs");
+//    static_assert(R_outer+Inner+Inter==internal::order<Derived2>::value,"All indices must be accounted for when multiplying MIAs");
+//
+//    typedef typename MIAProductReturnType<Derived1,Derived2,L_outer+R_outer+Inter>::type retType;
+//    typedef typename internal::index_type<retType>::type retIndexType;
+//    retIndexType * cMIA;
+//
+//    auto l_row_size=dimensionality_from(a.dims(),l_row_idx);
+//    auto inner_size=dimensionality_from(a.dims(),l_col_idx);
+//    auto inter_size=dimensionality_from(a.dims(),l_tab_idx);
+//    auto r_col_size=dimensionality_from(b.dims(),r_col_idx);
+//
+//    std::array<retIndexType,L_outer+R_outer+Inter> cMIA_dims;
+//    size_t curIdx=0;
+//    internal::reorder_from(a.dims(),l_row_idx,cMIA_dims,curIdx);
+//    internal::reorder_from(b.dims(),r_col_idx,cMIA_dims,curIdx);
+//    internal::reorder_from(a.dims(),l_tab_idx,cMIA_dims,curIdx);
+//
+//    auto a_per_tab_size=static_cast<double>(a.size())/inter_size; //valid if nonzeros distributed uniformly
+//    auto b_per_tab_size=static_cast<double>(b.size())/inter_size;
+//
+//    bool l_row_sparse=(a_per_tab_size/l_row_size < 1);
+//    bool l_col_sparse=(a_per_tab_size/inner_size < 1);
+//    bool r_row_sparse=(b_per_tab_size/inner_size < 1);
+//    bool r_col_sparse=(b_per_tab_size/r_col_size < 1);
+//
+//    //create the linIdxSequence if the resulting lattice ends up being sorted in RowMajor Order
+//    auto _first =createAscendingIndex<R_outer>(L_outer);
+//    auto _second=createAscendingIndex<L_outer>(0);
+//    auto _third=createAscendingIndex<Inter>(L_outer+R_outer);
+//    auto rowMajorLinIdx=std::array<size_t,L_outer+R_outer+Inter>;
+//    internal::concat_arrays(_first,_second,_third,rowMajorLinIdx);
+//
+//    bool doOuter=false;
+//    bool colMajor=true;
+//    bool doAccum=true;
+//
+//
+//    //both are hypersparse, perform outer-product algorithm
+//    if((l_col_sparse&& r_row_sparse) ){
+//        doOuter=true;
+//    }
+//    else if(!l_row_sparse && !l_col_sparse){ //if A is not hypersparse, but B is hypersparse in some way we just perform CSC mult
+//        doAccum=true;
+//        if(!l_row_sparse&&!l_col_sparse&&!r_row_sparse&&!r_col_sparse){ //exception is if both operands are NOT hypersparse, then choose one with smallest combo of nonzeros and dimenions
+//            if (a.size()<b.size()){ //if |A|+number of rows is bigger than |B| and number of columns, it should be cheaper to perform CSR multiplication
+//                colMajor=false;
+//            }
+//            else{
+//                colMajor=true;
+//            }
+//        else{
+//            colMajor=true;
+//        }
+//
+//    }
+//    else if(!r_row_sparse && !r_col_sparse){ //if B is not hypersparse, but A is hypersparse in some way we just perform CSR mult
+//        colMajor=false;
+//        doAccum=true;
+//
+//    }
+//    else if(l_row_sparse && !l_col_sparse){ //if A is row sparse, and B is hypersparse in some way, we perform CSC mult but with no sparse accumulator
+//        doAccum=false;
+//        if(r_col_sparse && !r_row_sparse){ //exception is if B is row sparse
+//            if (a.size()<b.size()){
+//                colMajor=false;
+//            }
+//            else{
+//                colMajor=true;
+//            }
+//        }
+//        else{
+//            colMajor=true;
+//        }
+//    }
+//    else if(r_col_sparse && !r_row_sparse){ //if B is column sparse, and A is hypersparse in some way, we perform CSR mult but with no sparse accumulator
+//        colMajor=false;
+//        doAccum=false;
+//    }
+//
+//    //Now we actually perform the multiplication
+//
+//    if(doOuter){ //doing an outer product mult
+//        auto aLat=a.toLatticeExpression(l_row_idx,l_col_idx,l_tab_idx,true);
+//        auto bLat=b.toLatticeExpression(r_row_idx,r_col_idx,r_tab_idx,false);
+//        auto cLat=aLat.outer_times(bLat);
+//        cMIA=new retType(cMIA_dims,std::move(cLat));
+//    }
+//    else if(colMajor){
+//        auto aLat=a.toLatticeExpression(l_row_idx,l_col_idx,l_tab_idx,true); //column major
+//        auto bLat=b.toLatticeExpression(r_row_idx,r_col_idx,r_tab_idx,true); //colum major
+//        if(doAccum){
+//            auto cLat=aLat.csc_times<false>(bLat);
+//            cMIA=new retType(cMIA_dims,std::move(cLat));
+//        }
+//        else{
+//            auto cLat=aLat.csc_no_accum<false>(bLat);
+//            cMIA=new retType(cMIA_dims,std::move(cLat));
+//        }
+//    }
+//    else{ //rowMajor
+//        auto aLat=a.toLatticeExpression(l_row_idx,l_col_idx,l_tab_idx,false); //row major
+//        auto bLat=b.toLatticeExpression(r_row_idx,r_col_idx,r_tab_idx,false); //row major
+//        aLat.inPlaceTranspose(); //transpose them - they now both are column major
+//        bLat.inPlaceTranspose();
+//        if(doAccum){
+//            auto cLat=bLat.csc_times<false>(aLat);
+//            cLat.inPlaceTranspose(); //flip row and column dimensions around
+//            cMIA =new retType(cMIA_dims,std::move(cLat),rowMajorLinIdx);
+//        }
+//        else{
+//            auto cLat=bLat.csc_no_accum<false>(aLat);
+//            cLat.inPlaceTranspose(); //flip row and column dimensions around
+//            cMIA =new retType(cMIA_dims,std::move(cLat),rowMajorLinIdx);
+//        }
+//
+//    }
+//    return cMIA;
+//
+//
+//}
+
 
 /*! @} */
 

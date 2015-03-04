@@ -371,6 +371,28 @@ public:
 
     }
 
+    //!  Constructs SparseMIA of specified size with a given SparseLattice and sort_order
+    /*!
+        Will swap the contents of the SparseLattice, meaning passed in containers will now be empty, invalidating all previous references, etc.
+
+        \param[in] _dims array parameter to specify size. Will assert a compile failure if array_index_type of variables making
+                            up _dims are not convertible to index_type
+        \param[in] _lat an rvalue reference to a SparseLattice. Do not use the SparseLattice reference after calling this constructor
+        \param[in] _sort_order an array designating the sort order of the MIA based on the given lattice data
+
+    */
+    template<class array_index_type>
+    SparseMIA(const std::array<array_index_type,_order> &_dims,SparseLattice<data_type>&& _lat,const std::array<size_t,_order> & _sort_order):SparseMIABase<SparseMIA<T,_order> >(_dims,_lat.is_sorted()),m_data(),m_indices()
+    {
+
+
+        this->setLinIdxSequence(_sort_order);
+        m_data.swap(_lat.data());
+        m_indices.swap(_lat.indices());
+
+
+    }
+
     //!  Constructs SparseMIA of specified size with a given raw scalar data and index data.
     /*!
         Will copy the contents of the raw scalar and index data.

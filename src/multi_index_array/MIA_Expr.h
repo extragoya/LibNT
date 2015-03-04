@@ -857,10 +857,6 @@ public:
         >
     {
 
-
-
-
-
         typedef solve_product_expr_helper<m_Seq,r_Seq> mia_expr_helper;
 #ifdef LIBMIA_CHECK_DIMS
 
@@ -965,17 +961,13 @@ public:
 //
 //        typedef lattice_expr_helper<product_lattice_expr_helper<mia_expr_helper>> m_lattice_expr_helper;
 //
-//
-//        auto aLat=lattice_permutation_delegator::left_lattice_apply<_MIA,m_lattice_expr_helper,mHasOwnership>(*m_mia);
-//
 //        constexpr size_t _inter_product_number=MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
 //        MIA_return_type* cMIA;
 //        if(check_if_copy_needed<otherOwnership>(m_mia,Rhs.m_mia)){ //is the mia type is sparse and they refer to the same object, then we must make a copy, because the lattice making process uses sort rather than a copy
 //            typedef typename MIANonlinearFuncType<otherMIA>::type bMIACopyType; //if the MIA is a 'mapped' datatype, we need to copy it to a MIA type that owns its data
 //            bMIACopyType temp(*(Rhs.m_mia));
-//            auto cLat=sparseMIAMultPolyAlg<m_lattice_expr_helper>(*m_mia,*(Rhs.m_mia));
-//            auto bLat=lattice_permutation_delegator::right_lattice_apply<bMIACopyType,m_lattice_expr_helper,true>(temp);
-//            auto cLat=aLat*bLat;
+//            auto cLat=sparseMIAMultPolyAlg(*m_mia,temp,m_lattice_expr_helper::left_row_inds,m_lattice_expr_helper::left_col_inds,m_lattice_expr_helper::left_tab_inds
+//                                           m_lattice_expr_helper::right_row_inds,m_lattice_expr_helper::right_col_inds,m_lattice_expr_helper::right_tab_inds);
 //
 //            cMIA=new MIA_return_type(cMIA_dims,std::move(cLat));
 //        }
@@ -1048,10 +1040,6 @@ public:
             MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
-
-
-
-
         //std::cout << "ALat done" << std::endl;
         //aLat.print();
 
@@ -1081,15 +1069,7 @@ public:
         }
 
 
-
-
-
-
-
-
         constexpr size_t _inter_product_number=MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number;
-
-
 
         //create an MIA from cLat
         return MIA_Atom<MIA_return_type,typename MIASolveUtil<_MIA,otherMIA,m_Seq,r_Seq>::final_sequence,true,_inter_product_number>(cMIA);

@@ -24,10 +24,10 @@ if(NOT MIA_USE_HEADER_ONLY_TESTS) #otherwise, try to find the precompiled libs f
 	set(Boost_USE_MULTITHREADED      OFF)
 	set(Boost_USE_STATIC_RUNTIME    OFF)
 	set (Boost_USE_DEBUG_RUNTIME OFF)
-	find_package(Boost REQUIRED COMPONENTS unit_test_framework timer system chrono)
+	find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 	if(Boost_FOUND)
 		include_directories(${Boost_INCLUDE_DIRS}) 
-		message(${Boost_LIBRARIES})
+		#message(${Boost_LIBRARIES})
 	endif()
 	
 else(NOT MIA_USE_HEADER_ONLY_TESTS) #if we're using the single-header option in boost::test, only include the boost directories
@@ -61,3 +61,6 @@ endif(MIA_BUILD_TESTS)
 if(MIA_BUILD_MATLAB)
 	add_subdirectory(MATLAB)
 endif(MIA_BUILD_MATLAB)
+
+#propagate source list up one directory
+set (SRCS ${SRCS} PARENT_SCOPE) 

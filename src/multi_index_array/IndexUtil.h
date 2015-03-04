@@ -350,20 +350,7 @@ dimType ind2sub(idxType idx, const dimType & dims,const orderType & _order)
     return indices;
 }
 
-//template<class indexType1,class indexType2,size_t _size>
-//inline std::array<libdivide::divider<size_t>,_size> createDimAccumulatorLibDivide(const std::array<indexType1,_size>& dims,const std::array<indexType2,_size>& index_order)
-//{
-//
-//    std::array<libdivide::divider<size_t>,_size> dim_accumulator;
-//
-//    for(size_t i=0;i<_size;++i){
-//        dim_accumulator[i]=libdivide::divider<size_t>((size_t)std::accumulate(dims.begin(),dims.begin()+i,1,std::multiplies<indexType1>()));
-//    }
-//
-//    dim_accumulator=internal::reorder_to(dim_accumulator,index_order); //reorder the denominators based on the reshuffle order
-//    return dim_accumulator;
-//
-//}
+
 
 template<class indexType1,class indexType2,size_t _size>
 inline std::array<size_t, _size> createDimAccumulator(const std::array<indexType1, _size>& restrict_libmia dims, const std::array<indexType2, _size>& restrict_libmia index_order)
@@ -706,19 +693,19 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 		else{ //otherwise current index is a sort index
 			sort_or_find.push_back(true); //push back that the current index is a sort index
 			auto tempCurIndex = curIndex - 1;
-			
+
 			divisors.push_back(divisor_list[curIndex]);
 			max_sizes.push_back(dims[curIndex]);
 
 
 		//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
 		//add any previous indices that are also sort indices to the current sort stage
-			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){				
+			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){
 				divisors.back() = divisor_list[tempCurIndex];
-				max_sizes.back() *= dims[tempCurIndex];				
+				max_sizes.back() *= dims[tempCurIndex];
 				tempCurIndex--;
 			}
-			
+
 			curIndex = tempCurIndex;
 		}
 
@@ -909,6 +896,7 @@ std::array<index_param_type,_size> reverseOrder(const std::array<index_param_typ
     return output_order;
 }
 
+//!given a shuffle sequence, returns the inverse of the shuffle sequence
 template<class index_param_type1,class index_param_type2, size_t _size>
 void reverseOrder(const std::array<index_param_type1,_size> & init_order,std::array<index_param_type2,_size>& output_order)
 {

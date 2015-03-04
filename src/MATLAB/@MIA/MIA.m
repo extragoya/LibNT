@@ -39,6 +39,7 @@ classdef MIA
                     end
                     
                 elseif isa(arg,'SparseMIA');
+                    arg.permute([1:arg.order]);
                     dims=arg.dims;
                     obj.data=zeros(dims);
                     indices=arg.indices;      
@@ -103,11 +104,7 @@ classdef MIA
             end
         end
         
-        function ret=sqrt(obj)
-            ret=obj;
-            ret.data=sqrt(ret.data);
-        
-        end
+    
         
         function ret=uminus(obj)
             ret=obj;
@@ -125,7 +122,10 @@ classdef MIA
             end
         end
         
-        
+        function ret=dimensionality(obj)
+            ret=prod(obj.dims);
+            
+        end
         
         isequal=eq(a,b);
         B=toLattice(A,row_idx,col_idx,depth_idx);
@@ -133,7 +133,8 @@ classdef MIA
         C=do_minus(A,B,permute_idx);
         C=mtimes(A,B); %just scalar multiplication
         C=mrdivide(A,B); %just scalar division
-        B=SQRT(A);
+        B=sqrt(A);
+        B=exp(A);
         Amatrix=flatten(A,row_inds,col_inds);
     end
     
