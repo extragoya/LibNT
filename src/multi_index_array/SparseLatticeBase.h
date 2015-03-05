@@ -42,7 +42,7 @@
 //#include <boost/timer/timer.hpp>
 
 
-#include "MIAConfig.h"
+
 #include <Eigen/Sparse>
 #include <Eigen/Core>
 //#include <sparsehash/dense_hash_map>
@@ -1141,8 +1141,11 @@ template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
 
-    //std::cout << "Entered sparse*dense " << std::endl;
+    std::cout << "Entered sparse*dense " << std::endl;
+#ifdef LIBMIA_CHECK_DIMS
     this->check_mult_dims(b);
+#endif
+
 
     this->transpose();
 

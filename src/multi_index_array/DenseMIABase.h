@@ -356,7 +356,7 @@ public:
         print_array(this->dims(),"Dimensions");
         std::cout << "Index\t Data" << std::endl;
         for(size_t idx=0; idx<this->dimensionality();++idx){
-            if(this->atIdx(idx))
+            //if(this->atIdx(idx))
                 std::cout << idx << "\t " << this->atIdx(idx) << std::endl;
         }
         std::cout << std::endl;

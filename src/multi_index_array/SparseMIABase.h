@@ -725,7 +725,7 @@ public:
 //            this->sort(mDefaultLinIdxSequence);
         print_array(this->dims(),"Dimensions");
         std::cout << "Nonzeros " << this->size() << std::endl;
-        std::cout << "Dimens" << std::endl;
+
 
         print_array(this->linIdxSequence(),"Linear Index Sequence");
         std::cout << "Index\t Indices\t Data" << std::endl;
@@ -733,7 +733,7 @@ public:
         for(auto it=this->storage_begin();it<this->storage_end();++it){
             std::cout << index_val(*it) << "\t ";
             print_array_on_line(this->ind2sub(index_val(*it)));
-            std::cout << "\t" << data_val(*it) << std::endl;
+            std::cout << "\t\t" << data_val(*it) << std::endl;
         }
         std::cout << std::endl;
 

@@ -450,7 +450,7 @@ DenseLatticeBase<Derived>::operator*(SparseLatticeBase<otherDerived> & restrict_
     c_data.reserve(b.size());
 
     //timer_minor=boost::timer::cpu_timer();
-
+    b.set_sorted(false);
     b.sort(ColumnMajor);
     //std::cout << "Sorted " << std::endl;
     auto b_temp_begin=b.index_begin();

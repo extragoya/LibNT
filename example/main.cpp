@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-
+#include "SparseMIA.h"
 #include "DenseMIA.h"
 #include "Index.h"
 
@@ -11,28 +11,49 @@
 
 int main(){
 
+    using namespace LibMIA;
+	//declare a set of indices (must use the MIAINDEX macro, line by line)
+    MIAINDEX i;
+    MIAINDEX j;
+    MIAINDEX k;
+    MIAINDEX l;
+    MIAINDEX m;
+    MIAINDEX n;
 
-	//declare a set of indices
-    LibMIA::MIAINDEX i;
-    LibMIA::MIAINDEX j;
-    LibMIA::MIAINDEX k;
-    LibMIA::MIAINDEX l;
-    LibMIA::MIAINDEX m;
-    LibMIA::MIAINDEX n;
-
-    //declare our operands
-	LibMIA::DenseMIA<double,4> a(5,4,5,4);
-	LibMIA::DenseMIA<double,4> b(4,4,5,5);
+    //declare our operands along with their size. Template arguments are datatype, then MIA degree (or order)
+	DenseMIA<double,4> a(5,5,5,5);
+	DenseMIA<double,4> b(5,5,5,5);
     //and our resulting MIA
-	LibMIA::DenseMIA<double,5> c;
+	DenseMIA<double,5> c;
+    DenseMIA<double,4> c2;
 
+    //initialize DenseMIAs with random values
+	a.randu(-2,2);
+    b.randu(-2,2);
 
-    //initialize DenseMIAs with ones
-	a.ones();
-    b.ones();
+    //modify a value within an array
+    a.at(1,2,1,2)=2;
 
 	//calculate a mixed product of inner, outer, and element-wise products
     c(i,k,m,n,l)=a(i,j,k,!l)*b(j,!l,m,n);
+
+    //perform a solution of equations
+    c2(i,j,k,l)=a(m,n,i,j)|b(m,n,k,l);
+
+    SparseMIA<double,3> d(4,4,4), e(4,4,4);
+
+    //push back data, index pairs (need to do some work on making this easier, as right now it's a linearized index)
+    d.push_back(5,0);
+    d.push_back(3,20);
+    d.push_back(-6,5);
+
+    e.push_back(8,8);
+    e.push_back(-4,30);
+    e.push_back(10.3,17);
+
+    //perform a destructive add
+    e(i,j,k)+=d(k,i,j);
+    e.print();
 
 }
 
