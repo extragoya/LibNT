@@ -83,12 +83,12 @@ void mult_work(size_t dim1, size_t dim2){
     c_mixed(i,k,m,n)=dense_a(i,j,k,l)*b(j,l,m,n);
     BOOST_CHECK_MESSAGE(c_mixed.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 1b for ")+typeid(_data_type).name() );
 
-    std::cout << "dense * dense " << std::endl;
+
     dense_c(i,k,m,n)=dense_a(i,l,k,j)*dense_b(l,j,m,n);
-    std::cout << "sparse * dense " << std::endl;
+
     c_mixed(i,k,m,n)=a(i,l,k,j)*dense_b(l,j,m,n);
-    dense_c.print();
-    c_mixed.print();
+
+
     BOOST_CHECK_MESSAGE(c_mixed.fuzzy_equals(dense_c,test_precision<_data_type>()),std::string("Inner/Outer Product 2a for ")+typeid(_data_type).name());
 
     c_mixed(i,k,m,n)=dense_a(i,l,k,j)*b(l,j,m,n);
@@ -214,7 +214,7 @@ void mult_work(size_t dim1, size_t dim2){
 BOOST_AUTO_TEST_CASE( MixedMIAMultTests )
 {
 
-    mult_work<double>(3,3);
+    //mult_work<double>(3,3);
     //mult_work<float>(3,3);
     //mult_work<int>(3,3);
     //mult_work<long>(3,3);
@@ -222,17 +222,17 @@ BOOST_AUTO_TEST_CASE( MixedMIAMultTests )
 //
 
 
-//    mult_work<double>(8,5);
-//    mult_work<float>(8,5);
-//    mult_work<int>(8,5);
-//    mult_work<long>(8,5);
-//
-//
-//
-//    mult_work<double>(5,8);
-//    mult_work<float>(5,8);
-//    mult_work<int>(5,8);
-//    mult_work<long>(5,8);
+    mult_work<double>(8,5);
+    mult_work<float>(8,5);
+    mult_work<int>(8,5);
+    mult_work<long>(8,5);
+
+
+
+    mult_work<double>(5,8);
+    mult_work<float>(5,8);
+    mult_work<int>(5,8);
+    mult_work<long>(5,8);
 
 
 }

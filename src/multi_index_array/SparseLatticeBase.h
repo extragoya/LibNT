@@ -1141,18 +1141,18 @@ template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
 
-    std::cout << "Entered sparse*dense " << std::endl;
+    //std::cout << "Entered sparse*dense " << std::endl;
 #ifdef LIBMIA_CHECK_DIMS
     this->check_mult_dims(b);
 #endif
 
-
-    this->transpose();
+    typename SparseProductReturnType<Derived,Derived>::type temp(*this);
+    temp.transpose();
 
     //std::cout << "Finished transpose " << std::endl;
-    typename SparseProductReturnType<Derived,otherDerived>::type ret=b.transpose()*(*this);
+    typename SparseProductReturnType<Derived,otherDerived>::type ret=b.transpose()*(temp);
     //std::cout << "Finished mult " << std::endl;
-    this->transpose();
+
     //std::cout << "Finished final sparse transpose " << std::endl;
     ret.transpose();
     //std::cout << "Sparse x dense time " << boost::timer::format(timer.elapsed()) << std::endl;
