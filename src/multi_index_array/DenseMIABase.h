@@ -22,6 +22,10 @@
 #include <numeric>
 #include <functional>
 #include <boost/dynamic_bitset.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/mpl/int.hpp>
+#include <boost/mpl/less.hpp>
+#include <boost/mpl/comparison.hpp>
 
 #include "LibMIAUtil.h"
 #include "ImplicitMIA.h"
@@ -431,27 +435,36 @@ protected:
             int
         >::type=0
     >
-    ImplicitMIA<data_type,new_order,true> do_view( std::array<Range<index_type>,mOrder> & ranges) const;
+	ImplicitMIA<data_type, new_order, true> do_view(std::array<Range<index_type>, internal::order<DenseMIABase>::value> & ranges) const;
 
-    template
-    <
-        size_t new_order=mOrder,
-        typename boost::enable_if_c<
-            new_order<internal::order<Derived>::value,
-            int
-        >::type=0
-    >
-    ImplicitMIA<data_type,new_order,true> do_view( std::array<Range<index_type>,mOrder> & ranges) const;
+	
+
+	
+	template
+	<
+		size_t new_order,
+		typename boost::enable_if<
+			boost::mpl::less<
+				boost::mpl::int_<new_order>,
+				internal::order<Derived>::value
+			>,
+			int
+		>::type
+	>
+	ImplicitMIA<data_type, new_order, true> do_view(std::array<Range<index_type>, internal::order<DenseMIABase>::value> & ranges) const;
 
 
-
+	
+	
 
 
 
     //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
-    template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type = 0>
-    typename MIAMergeReturnType<Derived,otherDerived>::type
-    implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const;
+    template<typename otherDerived, typename Op,typename index_param_type>
+	typename MIAMergeReturnType<Derived, otherDerived>::type
+	implicit_merge(const DenseMIABase<otherDerived> &b, const Op& op, const std::array<index_param_type, internal::order<DenseMIABase>::value>& index_order) const;
+
+	
 
 
     //! Common routine for merge operations, such as add or subtract that result in an ImplicitMIA
@@ -564,12 +577,15 @@ template<typename Derived>
 template
     <
         size_t new_order,
-        typename boost::enable_if_c<
-            new_order < internal::order<Derived>::value,
+        typename boost::enable_if<
+            boost::mpl::less<
+				boost::mpl::int_<new_order>,
+				internal::order<Derived>::value
+			>,
             int
         >::type
     >
-auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges)const->ImplicitMIA<data_type,new_order,true>  {
+	auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>, internal::order<DenseMIABase>::value> &ranges)const->ImplicitMIA<data_type, new_order, true>  {
 #ifdef LIBMIA_CHECK_DIMS
     size_t constant_count=0;
     for(auto &i:ranges){
@@ -638,7 +654,7 @@ template
             int
         >::type
     >
-auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges) const->ImplicitMIA<data_type,new_order,true> {
+	auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>, internal::order<DenseMIABase>::value> &ranges) const->ImplicitMIA<data_type, new_order, true> {
 #ifdef LIBMIA_CHECK_DIMS
     for(auto &i:ranges){
         if(i.mEnd<i.mBegin)
@@ -680,10 +696,11 @@ auto DenseMIABase<Derived>::do_view(std::array<Range<index_type>,mOrder> &ranges
     return retType(func,retDims);
 }
 
+
 template<typename Derived>
-template<typename otherDerived, typename Op,typename index_param_type,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>
-typename MIAMergeReturnType<Derived,otherDerived>::type
-DenseMIABase<Derived>::implicit_merge(const MIA<otherDerived> &b,const Op& op,const std::array<index_param_type,DenseMIABase::mOrder>& index_order) const
+template<typename otherDerived, typename Op,typename index_param_type>
+auto
+DenseMIABase<Derived>::implicit_merge(const DenseMIABase<otherDerived> &b, const Op& op, const std::array<index_param_type, internal::order<DenseMIABase>::value>& index_order) const ->typename MIAMergeReturnType<Derived, otherDerived>::type
 {
 
 
@@ -698,6 +715,7 @@ DenseMIABase<Derived>::implicit_merge(const MIA<otherDerived> &b,const Op& op,co
 
 
 }
+
 
 template<typename Derived>
 template<typename otherDerived, typename Op,typename boost::enable_if< internal::is_DenseMIA<otherDerived>, int >::type>

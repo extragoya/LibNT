@@ -45,10 +45,10 @@ auto create_ones(Dims...dims)->ImplicitMIA<data_type,sizeof...(Dims)>{
 
     retType ret({dims...});
 
-    auto _function=[](index_type idx){
+	auto _function = [](index_type idx)->data_type{
         return data_type(1);
     };
-    ret.get_function()=_function;
+    //ret.get_function()=_function;
     return ret;
 }
 

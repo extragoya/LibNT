@@ -24,6 +24,7 @@
 #include <boost/mpl/logical.hpp>
 #include <boost/mpl/bool.hpp>
 #include <boost/mpl/vector.hpp>
+#include <boost/mpl/vector_c.hpp>
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/plus.hpp>
 #include <boost/mpl/begin_end.hpp>
@@ -51,6 +52,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/mpl/reverse_iter_fold.hpp>
 
+#include <boost/mpl/insert.hpp>
 
 #include "LibMIAUtil.h"
 using namespace boost::mpl::placeholders;
@@ -267,7 +269,7 @@ struct pull_sequence_from_list<Seq,indices,false>
 
     //recursively search for index position of remaining indices
     typedef pull_sequence_from_list<Seq,poppedIndices,boost::mpl::empty<poppedIndices>::value> next_pull_sequence_from_list;
-
+	
 
     //iterate through Seq, and if any indices in Seq matches first_index, push its location to the front of the sequence list
         typedef typename boost::mpl::reverse_iter_fold<
@@ -275,17 +277,17 @@ struct pull_sequence_from_list<Seq,indices,false>
                 typename next_pull_sequence_from_list::sequence,
                 boost::mpl::if_<
                     boost::is_same<
-                        boost::mpl::deref<_2>,
+					boost::mpl::deref<boost::mpl::placeholders::_2>,
                         first_index
                     >,
                     boost::mpl::push_front<
-                        _1,
+					boost::mpl::placeholders::_1,
                         boost::mpl::distance<
                             typename boost::mpl::begin<Seq>::type,
-                            _2
+							boost::mpl::placeholders::_2
                         >
                     >,
-                    _1
+					boost::mpl::placeholders::_1
                 >
     >::type sequence;
 
@@ -348,14 +350,14 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
                 boost::mpl::int_<first_LSeq::elemval>,
                 boost::mpl::int_<0>
             >
-        >,
+        >,		
         typename boost::mpl::push_front<
             typename next_pull_left_operand_index_sequence::match_order_sequence,
-            boost::mpl::int_<recursive_depth>
+			boost::mpl::integral_c<int,recursive_depth>
         >::type,
         typename next_pull_left_operand_index_sequence::match_order_sequence
     >::type match_order_sequence;
-
+	
 
     //if we couldn't find the current index in RSeq and push the current recursive depth onto the top of no_match_order_sequence list
     typedef typename boost::mpl::if_<
@@ -368,7 +370,7 @@ struct pull_left_operand_index_sequence<LSeq,RSeq,false,recursive_depth,Pred>
             boost::mpl::int_<recursive_depth>>::type,
         typename next_pull_left_operand_index_sequence::no_match_order_sequence
     >::type no_match_order_sequence;
-
+	
     //if the occurence count is equal to 1 and the current index IS an element-wise index, push the current recursive depth onto the top of inter_match_order_sequence list
     typedef typename boost::mpl::if_<
         boost::mpl::and_<

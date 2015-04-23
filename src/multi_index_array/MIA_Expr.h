@@ -30,6 +30,7 @@
 #include <boost/type_traits/is_same.hpp>
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/equal.hpp>
+#include <boost/preprocessor/repetition/enum.hpp>
 
 #include "kennytm/vtmp.hpp"
 #include "LibMIAUtil.h"
@@ -52,16 +53,23 @@ http://stackoverflow.com/questions/10830406/copy-an-mplvector-c-to-a-static-arra
 template <typename MPLVectorType>
 class to_std_array
 {
-    typedef typename MPLVectorType::value_type element_type;
-    static constexpr size_t length = boost::mpl::size<MPLVectorType>::value;
-    typedef std::array<element_type, length> array_type;
+    
+	typedef boost::mpl::vector_c<int> numbers;
+	//convert to a mpl::vector_c, as the intel compiler seemed to pass mpl::vector instead to this struct, so just make sure we are actually working with an mpl vector_c
+	typedef boost::mpl::copy<
+		MPLVectorType
+		, boost::mpl::back_inserter< numbers >
+	>::type result;
+	
+	static constexpr size_t length = boost::mpl::size<result>::value;
+    typedef std::array<int, length> array_type;
 
     template <size_t... indices>
     static constexpr array_type
             make(const utils::vtmp::integers<indices...>&) noexcept
     {
         return array_type{{
-            boost::mpl::at_c<MPLVectorType, indices>::type::value...
+				boost::mpl::at_c<result, indices>::type::value...
         }};
     }
 
@@ -75,6 +83,24 @@ public:
 http://stackoverflow.com/questions/10830406/copy-an-mplvector-c-to-a-static-array-at-compile-time*/
 
 
+
+//template <typename MPLVectorType>
+//class to_std_array
+//{
+//	
+//	static constexpr size_t length = boost::mpl::size<MPLVectorType>::value;
+//	typedef std::array<int, length> array_type;
+//
+//	
+//
+//public:
+//	static constexpr array_type make() noexcept
+//	{
+//		#define LIBMIA_ARRAY_CONVERSION_MACRO(z, i, data) boost::mpl::at_c<data,i>::value
+//		static const array_type _array = { BOOST_PP_ENUM(N, LIBMIA_ARRAY_CONVERSION_MACRO, MPLVectorType) };
+//		return _array;
+//	}
+//};
 
 
 }
@@ -412,7 +438,7 @@ struct consecutive_sequence_checker{
             int,0,boost::mpl::size<final_sequence>::value
         >,
         final_sequence,
-        boost::mpl::equal_to<_1,_2>
+		boost::mpl::equal_to<boost::mpl::placeholders::_1, boost::mpl::placeholders::_2>
     >::type is_consecutive;
 
 };

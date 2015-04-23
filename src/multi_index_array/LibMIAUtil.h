@@ -113,6 +113,8 @@ const double __declspec(selectany)  SparseTolerance<double>::tolerance = 1.11e-1
 #else
 
 #define libmia_constexpr constexpr
+
+
 //comparison tolerances for non zeros after operations like solving
 template <class T> struct Tolerance
 {

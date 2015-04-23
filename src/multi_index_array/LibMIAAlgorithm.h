@@ -508,7 +508,7 @@ namespace introsort_detail {
 
     /* Cache how many elements there are. */
     const size_t numElems = size_t(end - begin);
-
+	
     /* If there are fewer elements in the range than the block size, we're
      * done.
      */
@@ -531,7 +531,7 @@ namespace introsort_detail {
 
     /* Swap the pivot in place. */
     swapper(pivot, begin);
-
+	
     /* Get the partition point and sort both halves. */
     RandomIterator partitionPoint = Partition(begin, end, comp,swapper);
     IntrosortRec(begin, partitionPoint, depth - 1, comp,swapper);

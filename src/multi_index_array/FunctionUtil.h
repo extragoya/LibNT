@@ -644,7 +644,8 @@ template<class index_it, class data_it,class Collector>
 size_t collect_duplicates_function(index_it index_begin, index_it index_end, data_it data_begin,Collector collector)
 {
 
-
+	if (index_begin == index_end)
+		return 0;
     auto result_idx = index_begin;
     auto result_data= data_begin;
     auto first=result_idx;

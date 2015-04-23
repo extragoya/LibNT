@@ -1,7 +1,13 @@
 
 #ifndef LIBMIA_RADIX_H
 #define LIBMIA_RADIX_H
+#include <array>
+#include <vector>
+#include "LibMIAUtil.h"
 #include "LibMIAAlgorithm.h"
+
+#include "libdivide.h"
+
 namespace LibMIA
 {
 
@@ -452,6 +458,7 @@ public:
             }
 
         }
+		
         InsertionSortImproved(begin,begin+length,followBegin,std::less<index_type>());
     }
 private:
@@ -514,14 +521,18 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 {
 
 
-    if(stage_index>=mFastDivisors.size()-1) //if this is the last stage (which is also a user error), just return, as there's no reason to do a find
+    
+	
+
+	if(stage_index>=mFastDivisors.size()-1) //if this is the last stage (which is also shouldn't happen), just return, as there's no reason to do a find
         return;
 
     auto curIt=begin+1;
     auto cur_divisor=mFastDivisors[stage_index]; //current divisors
     auto cur_num_divisor=mDivisors[stage_index];
 	index_type curValue = ((unsignedType)*begin) / cur_divisor; //get current value that defines to block to find
-    index_type nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
+	
+	index_type nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
 
     size_t curOffset=0; //offset and number of elements in current block
     size_t curNumOfElements=1;
@@ -532,9 +543,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     getNextShifts(stage_index,straightshiftRightAmount,straightEliminatorMult,nextEliminatorMult,shuffleLengthThreshold );
     //std::cout << " nextMaxSize " << nextMaxSize << " newStraightMaxSize " << newStraightMaxSize << std::endl;
     //std::cout << "next_bit_size " << next_bit_size << " number_shifts " << number_shifts << " straightshiftRightAmount " << straightshiftRightAmount << " shuffleLengthThreshold " << shuffleLengthThreshold << std::endl;
-
+	//std::cout << "****Cur Value***** " << curValue;
     for(;curIt<begin+length;++curIt){
-
+		
         if(*curIt>=nextValue){
 
 
@@ -586,22 +597,36 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
                 introsort_detail::IntrosortRec(begin+curOffset, begin+curOffset+curNumOfElements,introsort_detail::IntrosortDepth(begin+curOffset, begin+curOffset+curNumOfElements),
                     std::less<index_type>(),internal::DualSwapper<RandomIt,FollowIt>(begin+curOffset,followBegin+curOffset));
+				if (inputArrayIsDestination){
+					std::copy(begin + curOffset, begin + curOffset + curNumOfElements, begin2 + curOffset);
+					std::copy(followBegin + curOffset, followBegin + curOffset + curNumOfElements, followBegin2 + curOffset);
+				}
             }
+			else{
+				InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
+				if (inputArrayIsDestination){
+					std::copy(begin + curOffset, begin + curOffset + curNumOfElements, begin2 + curOffset);
+					std::copy(followBegin + curOffset, followBegin + curOffset + curNumOfElements, followBegin2 + curOffset);
+				}
+
+			}
 
             curOffset=curIt-begin;
             curNumOfElements=1;
 
             curValue=((unsignedType)*curIt)/cur_divisor;
             nextValue=(curValue+1)*cur_num_divisor;
-
+			//std::cout << "****Cur Value***** " << curValue;
+			//std::cout << "cur it" << *curIt << std::endl;
         }
         else{
             ++curNumOfElements;
+			//std::cout << "cur it" << *curIt << std::endl;
         }
 
 
     }
-
+	
     //perform last section
     if ( curNumOfElements >= Threshold )
     {
@@ -643,13 +668,23 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
         }
 
     }
-    else if(curNumOfElements>InsertThreshold)    {
+	else if (curNumOfElements>InsertThreshold){
 
+		introsort_detail::IntrosortRec(begin + curOffset, begin + curOffset + curNumOfElements, introsort_detail::IntrosortDepth(begin + curOffset, begin + curOffset + curNumOfElements),
+			std::less<index_type>(), internal::DualSwapper<RandomIt, FollowIt>(begin + curOffset, followBegin + curOffset));
+		if (inputArrayIsDestination){
+			std::copy(begin + curOffset, begin + curOffset + curNumOfElements, begin2 + curOffset);
+			std::copy(followBegin + curOffset, followBegin + curOffset + curNumOfElements, followBegin2 + curOffset);
+		}
+	}
+	else{
+		InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
+		if (inputArrayIsDestination){
+			std::copy(begin + curOffset, begin + curOffset + curNumOfElements, begin2 + curOffset);
+			std::copy(followBegin + curOffset, followBegin + curOffset + curNumOfElements, followBegin2 + curOffset);
+		}
 
-        introsort_detail::IntrosortRec(begin+curOffset, begin+curOffset+curNumOfElements,introsort_detail::IntrosortDepth(begin+curOffset, begin+curOffset+curNumOfElements),
-                                       std::less<index_type>(),internal::DualSwapper<RandomIt,FollowIt>(begin+curOffset,followBegin+curOffset));
-
-    }
+	}
 
 
 }
@@ -908,9 +943,9 @@ RadixShuffleSort( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  begin2, 
     {
         size_t offset=count[i];
         size_t numOfElements = count[ i+1 ] - count[ i ];
-
+		
         if ( numOfElements >= Threshold ){
-            //std::cout << "Doing a radix recursion i " << i << " " << offset << " " << numOfElements << std::endl;
+            
             if(stageDone){
                 RadixShuffleFind(begin2+offset,followBegin2+offset,begin1+offset,followBegin1+offset,numOfElements,stage_index,inputArrayIsDestination);
             }
@@ -919,6 +954,7 @@ RadixShuffleSort( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  begin2, 
             }
         }
         else {
+		
             if(numOfElements>InsertThreshold){
 
                 introsort_detail::IntrosortRec(begin2+offset,begin2+offset+numOfElements,introsort_detail::IntrosortDepth(begin2+offset,begin2+offset+numOfElements),
@@ -930,6 +966,9 @@ RadixShuffleSort( RandomIt1  begin1, FollowIt1  followBegin1,RandomIt2  begin2, 
             }
         }
     }
+
+	
+	
 
 
 }

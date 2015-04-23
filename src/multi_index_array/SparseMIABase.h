@@ -1050,16 +1050,7 @@ public:
 
     }
 
-    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA is a temp object. Calls the same function as toLatticeExpression.
-    /*!
-        For SparseMIAs, this function calls toLatticeSort, which will modify the ordering and indexing of data (but not it's actual data content)
-    */
-    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
-    MappedSparseLattice<data_type> toLatticeDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder=true)
-    {
-        return toLatticeSort(row_indices, column_indices, tab_indices,columnSortOrder);
 
-    }
 
     //! Flattens the MIA to a Lattice by creating a copy of the data.
     /*!
@@ -1074,7 +1065,6 @@ public:
     MappedSparseLattice<data_type> toLatticeSort(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices,bool columnSortOrder=true);
 
     MappedSparseLattice<data_type> toStraightLattice(size_t number_of_row_indices, size_t number_of_column_indices,bool columnMajor=true);
-
 
 
 
@@ -1572,6 +1562,8 @@ auto SparseMIABase<Derived>::toLatticeSort(const std::array<idx_typeR,R> & row_i
 
 
 }
+
+
 
 template<class Derived>
 template<class otherDerived>

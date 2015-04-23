@@ -287,8 +287,8 @@ public:
         //std::cout << "MOVED sparse lattice" << std::endl;
         m_data.swap(_data);
         m_indices.swap(_indices);
-        if (_data.size()!=_indices.size())
-            throw LatticeParameterException("Data and Indices vectors must be the same size.");
+		assert(_data.size() == _indices.size());
+            
         this->init(_height,_width,_depth);
         this->sparse_init(_isSorted,ColumnMajor);
         //this->print();
@@ -327,11 +327,11 @@ public:
     {
 
 
-
+		this->init(b.height(), b.width(), b.depth(), b.solveInfo());
         this->resize(b.size());
         std::copy(b.index_begin(),b.index_end(),this->index_begin());
         std::copy(b.data_begin(),b.data_end(),this->data_begin());
-        this->init(b.height(),b.width(),b.depth(),b.solveInfo());
+        
         this->sparse_init(b.is_sorted(),b.linIdxSequence());
     }
 
@@ -340,11 +340,11 @@ public:
     {
 
 
-
+		this->init(b.height(), b.width(), b.depth(), b.solveInfo());
         this->resize(b.size());
         std::copy(b.index_begin(),b.index_end(),this->index_begin());
         std::copy(b.data_begin(),b.data_end(),this->data_begin());
-        this->init(b.height(),b.width(),b.depth(),b.solveInfo());
+        
         this->sparse_init(b.is_sorted(),b.linIdxSequence());
 
         return *this;
@@ -529,7 +529,8 @@ protected:
 
     }
 
-
+private:
+	template <class E1> friend class SparseMIABase;
 
 };
 

@@ -566,6 +566,7 @@ public:
 
     }
 
+	//! Assumes index is in same lexicographical order as this->linIdxSequence()
     void push_back(const data_type & _data, const index_type& _index)
     {
         m_indices.push_back(_index);
@@ -676,6 +677,23 @@ public:
 
     template<typename otherDerived, typename Op>
     void merge(DenseMIABase<otherDerived> &b,const Op& op);
+
+    //! Flattens the MIA to a Lattice. This function is called in MIA expressions by MIA_Atom when the MIA is a temp object. Calls the same function as toLatticeExpression. ONLY USE IF *this WILL NOT BE USED AGAIN
+    /*!
+        For SparseMIAs, this function calls toLatticeSort, which will modify the ordering and indexing of data (but not it's actual data content)
+    */
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t Tlength>
+    SparseLattice<data_type> toLatticeDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,Tlength> & tab_indices,bool columnSortOrder=true)
+    {
+
+
+		return toLatticeSortDiscard(row_indices, column_indices, tab_indices,columnSortOrder);
+
+    }
+
+    template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t Tlength>
+    SparseLattice<data_type> toLatticeSortDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,Tlength> & tab_indices,bool columnSortOrder=true);
+
 
 protected:
 
@@ -1037,6 +1055,68 @@ void  SparseMIA<T,_order>::merge(SparseMIABase<otherDerived> &b,const Op& op,con
 
 
 
+
+
+}
+
+
+template<class T, size_t _order>
+template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t Tlength>
+auto SparseMIA<T,_order>::toLatticeSortDiscard(const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,Tlength> & tab_indices,bool columnMajor) ->SparseLattice<data_type>
+{
+
+    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
+    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
+    std::array<size_t,mOrder> _linIdxSequence;
+
+    if(columnMajor){
+
+        _linIdxSequence=internal::concat_index_arrays(row_indices,column_indices,tab_indices);
+        this->sort(_linIdxSequence);
+    }
+    else{
+
+        _linIdxSequence=internal::concat_index_arrays(column_indices,row_indices,tab_indices);
+        this->sort(_linIdxSequence);
+
+    }
+
+
+
+    //statically check number of indices match up
+    index_type row_size=1, column_size=1, tab_size=1;
+
+
+    //std::cout <<"Tab " << tab_indices[0] << " " << tab_indices.size() << "\n";
+    //std::cout <<"Dims " << this->m_dims[0] << " " << this->m_dims.size() << "\n";
+
+    for(auto _row: row_indices)
+    {
+
+        row_size*=this->dim(_row);
+    }
+
+
+
+    for(auto _column: column_indices)
+    {
+
+        column_size*=this->dim(_column);
+
+    }
+
+
+    for(auto _tab: tab_indices)
+    {
+
+        tab_size*=this->dim(_tab);
+
+    }
+    this->setSorted(false); //we don't know what will be done to the lattice data, so to be careful, we make sure we set sorted to false for the MIA.
+                            //However there is no recourse if the user changes the lattice sort_order to something different.
+
+    return SparseLattice<data_type>(std::move(this->m_data),std::move(this->m_indices),row_size,column_size,tab_size,this->is_sorted());
 
 
 }
