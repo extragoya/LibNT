@@ -192,7 +192,8 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
         is_eq=fuzzy_eq(A,B,tol)
         A=transpose(A);
         A=ctranspose(A);
-        A_MIA=toMIA(A,row_size,col_size,depth_size);
+        A_MIA=toMIA(A,row_size,col_size,depth_size,transposed);
+        C=specialized_mult(A,B,algorithm);
     end %public methods
     
     methods (Access=protected)

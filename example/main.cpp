@@ -1,4 +1,4 @@
-/*Example file on how to get started using LibMIA*/
+/*Example file on how to get started using LibNT*/
 
 #include <iostream>
 
@@ -13,19 +13,19 @@ int main(){
 
     using namespace LibMIA;
 	//declare a set of indices (must use the MIAINDEX macro, line by line)
-    MIAINDEX i;
-    MIAINDEX j;
-    MIAINDEX k;
-    MIAINDEX l;
-    MIAINDEX m;
-    MIAINDEX n;
+    NTINDEX i;
+	NTINDEX j;
+	NTINDEX k;
+	NTINDEX l;
+	NTINDEX m;
+	NTINDEX n;
 
     //declare our operands along with their size. Template arguments are datatype, then MIA degree (or order)
-	DenseMIA<double,4> a(5,5,5,5);
-	DenseMIA<double,4> b(5,5,5,5);
+	DenseNT<double,4> a(5,5,5,5);
+	DenseNT<double, 4> b(5, 5, 5, 5);
     //and our resulting MIA
-	DenseMIA<double,5> c;
-    DenseMIA<double,4> c2;
+	DenseNT<double, 5> c;
+	DenseNT<double, 4> c2;
 
     //initialize DenseMIAs with random values
 	a.randu(-2,2);
@@ -40,7 +40,7 @@ int main(){
     //perform a solution of equations
     c2(i,j,k,l)=a(m,n,i,j)|b(m,n,k,l);
 
-    SparseMIA<double,3> d(4,4,4), e(4,4,4);
+    SparseNT<double,3> d(4,4,4), e(4,4,4);
 
     //push back data, index pairs (need to do some work on making this easier, as right now it's a linearized index)
     d.push_back(5,0);

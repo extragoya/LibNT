@@ -4,9 +4,9 @@ function [A, A2]=sparse_mia_sort_test_work(dims)
 a_data=rand(dims);
 a_data(a_data<0.5)=0;
 
-DenseA=MIA(a_data);
-A=SparseMIA(DenseA);
-A2=SparseMIA(DenseA);
+DenseA=DenseNT(a_data);
+A=SparseNT(DenseA);
+A2=SparseNT(DenseA);
 P = randperm(A.nnz);
 A.indices=A.indices(P);
 A2.indices=A2.indices(P);

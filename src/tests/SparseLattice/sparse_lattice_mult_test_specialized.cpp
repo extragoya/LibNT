@@ -39,10 +39,11 @@ void multwork(size_t m1, size_t n1, size_t n2, size_t p,double hypersparsity){
 
     C_test=A.template csc_times<false>(B);
     BOOST_CHECK_MESSAGE(C.fuzzy_equals(C_test,test_precision<data_type>()),std::string("CSC Mult Test Accum for ")+typeid(data_type).name());
+	
 
     C_test=A.template csc_no_accum<false>(B);
     BOOST_CHECK_MESSAGE(C.fuzzy_equals(C_test,test_precision<data_type>()),std::string("CSC Mult Test No Accum for ")+typeid(data_type).name());
-
+	
     C_test=A.template csc_times<true>(B);
     BOOST_CHECK_MESSAGE(C.fuzzy_equals(C_test,test_precision<data_type>()),std::string("DCSC Mult Test Accum for ")+typeid(data_type).name());
 
@@ -61,7 +62,7 @@ BOOST_AUTO_TEST_CASE( SparseLatticeMultTestsSpecial )
 {
 
 
-    //multwork<double>(5,5,5,1);
+    //multwork<double>(5,5,5,5,1);
     multwork<double>(20,20,20,20,1);
     multwork<float>(20,20,20,20,1);
     multwork<int>(20,20,20,20,1);

@@ -8,11 +8,11 @@ if(nargin==3)
 end
 a_data=rand(a_dims);
 a_data(a_data<0.5)=0;
-DenseA=MIA(a_data);
-A=SparseMIA(DenseA);
+DenseA=DenseNT(a_data);
+A=SparseNT(DenseA);
 A=A.permute(lexOrder);
-B=SparseMIA;
-DenseB=MIA;
+B=SparseNT;
+DenseB=DenseNT;
 B(b_indices)=A(a_indices);
 DenseB(b_indices)=DenseA(a_indices);
 

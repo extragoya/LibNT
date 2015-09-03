@@ -31,6 +31,7 @@
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/equal.hpp>
 #include <boost/preprocessor/repetition/enum.hpp>
+#include <boost/mpl/copy.hpp>
 
 #include "kennytm/vtmp.hpp"
 #include "LibMIAUtil.h"
@@ -1030,6 +1031,8 @@ public:
             MIAProductUtil<_MIA,otherMIA,m_Seq,r_Seq>::inter_product_number
         >
     {
+
+
 
 
         //std::cout << "Pure outer/inter started " << std::endl;

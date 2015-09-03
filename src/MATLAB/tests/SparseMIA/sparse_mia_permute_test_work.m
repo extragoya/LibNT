@@ -5,9 +5,9 @@ if nargin==2
     a_data=rand(dims);
     a_data(a_data<0.5)=0;
     
-    DenseA=MIA(a_data);
-    A=SparseMIA(DenseA);
-    A2=SparseMIA(DenseA);
+    DenseA=DenseNT(a_data);
+    A=SparseNT(DenseA);
+    A2=SparseNT(DenseA);
     
 end
 A=A.permute(newLinIdx);

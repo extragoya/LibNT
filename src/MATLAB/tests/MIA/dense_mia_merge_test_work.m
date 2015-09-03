@@ -9,8 +9,8 @@ inverse_idx=permute_idx;
 inverse_idx( permute_idx ) = 1:length(permute_idx);
 b_dims=a_dims(inverse_idx);
 b_data=rand(b_dims);
-A=MIA(a_data);
-B=MIA(b_data);
+A=DenseNT(a_data);
+B=DenseNT(b_data);
 %testing assignment with indices has its own dedicated test, so just pull
 %the MIA from resulting Expr class
 if(doplus)

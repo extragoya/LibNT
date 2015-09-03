@@ -26,6 +26,7 @@
 #include <boost/mpl/integral_c_tag.hpp>
 #include <boost/mpl/aux_/config/static_constant.hpp>
 #define __UNIQUE_ID__ __COUNTER__           //should work in gcc 4.3 and later and also MS compiler
+#define NTINDEX ProdInd<__UNIQUE_ID__>
 #define MIAINDEX ProdInd<__UNIQUE_ID__>
 namespace LibMIA
 {

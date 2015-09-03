@@ -14,7 +14,13 @@ macro (add_sources)
         set (SRCS ${SRCS} PARENT_SCOPE)
     endif()
 endmacro()
-
+macro (add_executable _name)
+    # invoke built-in add_executable
+    _add_executable(${ARGV})
+    if (TARGET ${_name})
+        target_link_libraries(${_name} ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+    endif()
+endmacro()
 
 PROJECT(LibMIA)
 ENABLE_TESTING()
@@ -25,21 +31,61 @@ set(LibMIA_VERSION ${LibMIA_VERSION_MAJOR}.${LibMIA_VERSION_MINOR})
 #set C++11 flag
 # GCC specifics
 if(CMAKE_COMPILER_IS_GNUCXX OR MINGW OR CYGWIN)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict_libmia=__restrict__ -save-temps -finline-functions -ftemplate-depth-128")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -finline-functions -ftemplate-depth-128")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=gnu++0x -Drestrict_libmia=__restrict__ ")  
   
 endif()
 
 # Visual Studio specifics - C++11 is on automatically
 if(MSVC)
+  SET(INTEL_COMPILER TRUE CACHE BOOL "if you are using Intel compiler, will add intel-specific optimization flags. You still need to manually tell Visual Studio to use Intel compiler if you are using that IDE")
   #msvc doesn't support constexpr yet, so we need to define an empty macro and also add an appropriate compiler flag
-  add_definitions(-Drestrict_libmia=__restrict)
-  add_definitions(-DNO_CONST_EXPR_LIBMIA)
+  
+  if(INTEL_COMPILER)
+		
+		add_definitions(-Drestrict_libmia=restrict)
+		
+		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Ob2 -Qipo -Zc:forScope -MD -nologo -Qopt-matmul -Ot -Oi -Qansi_alias -QxHost -Quse-intel-optimized-headers")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qrestrict -Qstd=c++11")
+		
+  else(INTEL_COMPILER)
+		add_definitions(-Drestrict_libmia=__restrict)
+		add_definitions(-DNO_CONST_EXPR_LIBMIA)
+		message("MSVC compiler used. No support for MIA Functions, but MATLAB wrapper can be built")
+  endif()
   add_definitions(-D_ALLOW_KEYWORD_MACROS)
-  message("MSVC compiler used. No support for MIA Functions, but MATLAB wrapper can be built")
+  
   # Warning Level 4 for Debug builds 
   list(APPEND CMAKE_CXX_FLAGS_DEBUG "/W4")
   list(REMOVE_DUPLICATES CMAKE_CXX_FLAGS)
+endif()
+FIND_PACKAGE( OpenMP)
+if(OPENMP_FOUND)
+	
+	if(INTEL_COMPILER)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Qopenmp")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qopenmp")
+	else(INTEL_COMPILER)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+	endif()
+		
+	
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+SET(USE_MKL FALSE CACHE BOOL "dense tensor multiplication routines can use mkl")
+if(USE_MKL)
+	SET(MKL_ROOT CACHE PATH /path/to/mkl)
+	include_directories("${MKL_ROOT}/include") 
+	LINK_DIRECTORIES(${MKL_ROOT}/lib/intel64/)
+	set(MKL_LIBS "mkl_intel_lp64")
+	set(MKL_LIBS1 "mkl_core")
+	if(OPENMP_FOUND)
+		set(MKL_LIBS2 "mkl_intel_thread")	
+	else(OPENMO_FOUND)
+		set(MKL_LIBS2 "mkl_sequential")
+	endif()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_USE_MKL_ALL")
 endif()
 
 
@@ -76,6 +122,8 @@ MESSAGE("Doxygen found, use make doc to build class api documentation")
 endif(DOXYGEN_FOUND)
 
 
+
+mark_as_advanced(CLEAR BOOST_ROOT)
 
 add_subdirectory (src)
 

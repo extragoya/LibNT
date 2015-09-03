@@ -337,7 +337,7 @@ public:
         }
     }
 
-    std::size_t size() const
+    index_type size() const
     {
         return derived().size();
 
@@ -360,7 +360,7 @@ public:
 
 
 
-
+		
         if(!is_sorted()) //if *this is not sorted, we need to do a straight-up sort
         {
 
@@ -1153,22 +1153,71 @@ template <class Derived>
 template <class otherDerived>
 typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> &b){
 
-
+	//TODO, right now this function doesn't check whether *this is row-sparse. If so, then the code execute as below. However, if not, then a sparse accumulator can be used. Should check for this
     //std::cout << "Entered sparse*dense " << std::endl;
 #ifdef LIBMIA_CHECK_DIMS
     this->check_mult_dims(b);
 #endif
 
-    typename SparseProductReturnType<Derived,Derived>::type temp(*this);
-    temp.transpose();
-
-    //std::cout << "Finished transpose " << std::endl;
-    typename SparseProductReturnType<Derived,otherDerived>::type ret=b.transpose()*(temp);
+	typedef typename SparseProductReturnType<Derived, otherDerived>::type CType;
+	typedef typename internal::data_type<CType>::type c_data_type;
+	typedef typename internal::index_type<CType>::type c_index_type;
+	CType ret(this->height(), b.width(), this->depth());
+	ret.reserve(std::min(b.dimensionality(), this->size()));
     //std::cout << "Finished mult " << std::endl;
 
-    //std::cout << "Finished final sparse transpose " << std::endl;
-    ret.transpose();
-    //std::cout << "Sparse x dense time " << boost::timer::format(timer.elapsed()) << std::endl;
+	if (!this->size()){
+		return ret;
+	}
+	this->sort(ColumnMajor);
+	
+	c_data_type cur_c_data;
+	c_index_type c_column_begin = 0;
+	c_index_type c_column_size = 0;
+	index_iterator a_cur_it;
+	index_iterator a_tab_begin=this->index_begin();
+	index_iterator a_index_end = this->index_end();
+	index_iterator a_temp_end;
+	index_type a_cur_column;
+	size_t old_c_size;
+	bool a_search_flag = false;
+	if (this->depth()*log2(this->size())<this->size())
+		a_search_flag = true;
+	
+	while (a_tab_begin < a_index_end){ //we iterate through each tab of A
+		index_type cur_tab = this->tab(*a_tab_begin); //get the current tab
+		a_temp_end = this->find_tab_end_idx(cur_tab, a_tab_begin, a_index_end, a_search_flag); //find the end of current tab
+		for (index_type b_cur_column = 0; b_cur_column < b.width(); ++b_cur_column){ //now iterate through each column of B			
+			a_cur_it = a_tab_begin;
+			old_c_size = ret.size();
+			while (a_cur_it < a_temp_end){ //for each column of B, we iterate completely through A, and accumulate values for corresponding column of C
+				a_cur_column = this->column(*a_cur_it);
+				
+				while (a_cur_it < a_temp_end && this->column(*a_cur_it) == a_cur_column){ //collect non-zeros of C arising form cur column of A
+					cur_c_data = this->data_at(a_cur_it)*b(a_cur_column, b_cur_column, cur_tab);
+					if (std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
+						ret.push_back(cur_c_data, this->row(*a_cur_it));						
+					}
+					a_cur_it++;
+				}
+				
+				
+				
+			}
+			//now sort and sum duplicate non-zero values, producing the resulting column of C
+			internal::RadixSortInPlace_PowerOf2Radix_Unsigned(ret.index_begin() + old_c_size, ret.data_begin() + old_c_size, ret.size() - old_c_size, this->height());
+			auto diff = collect_duplicates_function(ret.index_begin() + old_c_size, ret.index_end(), ret.data_begin() + old_c_size, std::plus<c_data_type>());
+			ret.resize(diff + old_c_size);
+			//update the indices so that they are the full indices, and not just row indices
+			for (auto cur_c_it = ret.index_begin() + old_c_size; cur_c_it < ret.index_end(); ++cur_c_it){
+				(*cur_c_it) += this->height()*(b_cur_column + b.width()*cur_tab);
+			}
+		}
+		a_tab_begin = a_temp_end;
+
+	}
+
+
     return ret;
 //    typedef typename SparseProductReturnType<Derived,otherDerived>::type c_type;
 //    typedef typename otherDerived::index_type b_index_type;
@@ -1662,15 +1711,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
         MultHelper<Derived,ColumnSparse> multHelper(*this);
         multHelper.initMultHelpers(a_temp_begin,a_temp_end);
-        //auto chunksize=this->createDCSCVectors(a_temp_begin,a_temp_end);
-
-        //row_hash.reserve(this->JC.size());
-        //std::cout << "Init:" << boost::timer::format(init_t.elapsed()) << std::endl;
-
-
-
-        //typedef std::chrono::duration<float> float_seconds;
-        //high_resolution_clock::time_point t1 = high_resolution_clock::now();
+		
 
         //iterate through every element of b
         b_index_type cur_column;
@@ -1716,6 +1757,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
                 }
             }
         }
+		
         //high_resolution_clock::time_point t2 = high_resolution_clock::now();
         //std::cout << "Pure mult time: " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
         a_temp_begin=a_temp_end;
@@ -1895,7 +1937,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
 
         }
-		std::cout << "Outer f " << c_indices.size() - old_c_size << std::endl;
+		//std::cout << "Outer f " << c_indices.size() - old_c_size << std::endl;
         if(c_indices.size()-old_c_size){
             internal::RadixSortInPlace_PowerOf2Radix_Unsigned(c_indices.begin()+old_c_size, c_data.begin()+old_c_size,c_indices.size()-old_c_size,tab_size );
     //internal::Introsort(c_indices.begin()+old_c_size,c_indices.end(),std::less<index_type>(),internal::DualSwapper<index_iterator,data_iterator>(c_indices.begin()+old_c_size,c_data.begin()+old_c_size));
@@ -2058,6 +2100,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 #endif
 			auto beta = b.data_at(cur_b - b.index_begin());
 			auto test = b.row(*cur_b);
+
 			//do the first entry in the current b column, as it can be done faster
 			index_type a_column_begin, a_column_end;			
 			multHelper.getColumnOffset(b.row(*cur_b), a_column_begin, a_column_end);
@@ -2090,7 +2133,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 			bool need_sorted = false;
 			while (cur_b<b_temp_end && *cur_b<cur_offset_end)
 			{
-				
+				beta = b.data_at(cur_b - b.index_begin());
 				//see Tim Davis' book on Direct Sparse Methods for an explanation of mult_scatter (although this one is slightly different as CSC format isn't used)
 				need_sorted = need_sorted | mult_scatter(cur_a_tab_offset, b.row(*cur_b), cur_column, beta, row_marker, data_collector, c_indices, multHelper);
 				cur_b++;
@@ -2574,7 +2617,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
             {
                 std::stringstream t;
                 t << "Could not perform facotrization on tab " << k << " due to error : " << _solver.lastErrorMessage() << ".";
-                std::cout << A << std::endl;
+                //std::cout << A << std::endl;
 
                 throw RankDeficientException(t.str());
             }
@@ -2629,7 +2672,10 @@ template <class otherDerived,bool LSQR>
 typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Derived>::perform_solve(const DenseLatticeBase<otherDerived> &b)
 {
 
-    std::cout << "Entered sparse solve with dense " << std::endl;
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
+	std::cout << "Entered sparse solve with dense " << std::endl;
+#endif
+	
 
     this->check_solve_dims(b);
     typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
@@ -2640,8 +2686,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     sort(ColumnMajor); //tab/column major for A
 
-
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
     std::cout << "Finished sort" << std::endl;
+#endif
     //iterators for for indices and data
     index_iterator a_temp_begin=this->index_begin();
     auto a_index_end=this->index_end();
@@ -2657,8 +2704,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
     std::cout << "Allocated" << std::endl;
-
+#endif
     for (int k=0; k<this->depth(); k++) //loop through every tab
     {
 
@@ -2687,7 +2735,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                         throw RankDeficientException(t.str());
                     }
                     cur_column++;
-                    //std::cout << "Moving to column " << cur_column << std::endl;
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
+                    std::cout << "Moving to column " << cur_column << std::endl;
+#endif
                     a_columns[cur_column]=a_cur_it-a_temp_begin;
                 }
                 *a_cur_it=this->row(*a_cur_it); //remap indices to rows
@@ -2699,7 +2749,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
-            std::cout << "Made ccs matrix" << std::endl;
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
+			std::cout << "Made ccs matrix" << std::endl;
+#endif
             //compute LU decomposition
             //get solver
             typedef sparse_lattice_solver<LSQR,MappedSparseMatrix_cm> solverType;
@@ -2718,7 +2770,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 auto c_vector=c.column_vector(col_idx,k);
                 auto b_vector=b.column_vector(col_idx,k);
                 _solver._solve(b_vector,c_vector);
-                std::cout << "solved" << std::endl;
+               
                 if(_solver.info()!=Eigen::Success)
                 {
                     this->mSolveInfo=RankDeficient;
@@ -2755,8 +2807,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
     }
 
-
+#ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
     std::cout << "Finished sparse solve with dense " << std::endl;
+#endif
     return c;
 }
 

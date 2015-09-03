@@ -2,8 +2,8 @@ function [C, DenseC]=sparse_mia_mult_test_work(a_dims,b_dims,a_indices,b_indices
 
 a_data=rand(a_dims);
 a_data(a_data<0.5)=0;
-DenseA=MIA(a_data);
-A=SparseMIA(DenseA);
+DenseA=DenseNT(a_data);
+A=SparseNT(DenseA);
 A=A.permute(a_lexOrder);
 if(~a_sorted)
     P = randperm(A.nnz);
@@ -13,8 +13,8 @@ if(~a_sorted)
 end
 b_data=rand(b_dims);
 b_data(b_data<0.5)=0;
-DenseB=MIA(b_data);
-B=SparseMIA(DenseB);
+DenseB=DenseNT(b_data);
+B=SparseNT(DenseB);
 B=B.permute(b_lexOrder);
 if(~b_sorted)
     P = randperm(B.nnz);

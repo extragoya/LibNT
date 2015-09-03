@@ -12,17 +12,53 @@
 
 
 template<class T>
-mwSize perform_mult(mxArray *plhs[], mxClassID a_id, T*a_data, mex_index_type  * a_indices, T*b_data, mex_index_type * b_indices, mex_index_type *a_subs, mwSize a_size, mex_index_type *b_subs, mwSize b_size){
+mwSize perform_mult(mxArray *plhs[], mxClassID a_id, T*a_data, mex_index_type  * a_indices, T*b_data, mex_index_type * b_indices, mex_index_type *a_subs, mwSize a_size, mex_index_type *b_subs, mwSize b_size,int algorithm){
 
     T * c_data;
 	mex_index_type * c_indices;
 
-    LibMIA::MappedSparseLattice<T> latA(a_data,a_indices,a_size,a_subs[0],a_subs[1],a_subs[2]);
-    LibMIA::MappedSparseLattice<T> latB(b_data,b_indices,b_size,b_subs[0],b_subs[1],b_subs[2]);
+    
 
     try{
-        LibMIA::SparseLattice<T> latC=latA*latB;
-
+		LibMIA::SparseLattice<T> latC; 
+		switch (algorithm){
+		case 0:{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2]);
+			latC = latA*latB;
+			}
+			break;
+		case 1: //CSC
+		{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2]);
+			latC = latA.template csc_times<false>(latB);
+		}
+			break;
+		case 2: //DCSC
+		{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2]);
+			latC = latA.template csc_times<true>(latB);
+		}
+			break;
+		case 3: //CSCNA
+		{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2]);
+			latC = latA.template csc_no_accum<false>(latB);
+		}
+			break;
+		case 4: //outer-product
+		{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2], LibMIA::RowMajor); //your b data must be in row major
+			latC = latA.outer_times(latB);
+		}
+			break;
+		default:
+			mexErrMsgTxt("Must specify a multiplication algorithm between 0 and 4.");
+		}
         c_data = (T *)mxCalloc(latC.size() , sizeof(T));
 		c_indices = (mex_index_type *)mxCalloc(latC.size(), sizeof(mex_index_type));
         std::copy(latC.data_begin(),latC.data_end(),&c_data[0]);
@@ -62,19 +98,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		mexErrMsgTxt("Two output arguments, c_data c_indices, required to multiply SparseLattices.");
 	else if (nlhs == 0)
 		mexErrMsgTxt("No output");
-    mxClassID a_id=check_sparse_params_lattice(nrhs, prhs,&a_subs,&b_subs,&a_data_length,&b_data_length);
+    mxClassID a_id=check_sparse_params_lattice(nrhs, prhs,&a_subs,&b_subs,&a_data_length,&b_data_length,true);
+	int algorithm = 0;
+	if (nrhs == 7){
+		algorithm=(int)check_passed_double(nrhs, prhs, 6);
+	}
+
 
     switch (a_id)
     {
     case mxDOUBLE_CLASS:
 
-		perform_mult(plhs, a_id, (double *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (double *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
+		perform_mult(plhs, a_id, (double *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (double *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length,algorithm);
         break;
     case mxSINGLE_CLASS:
-		perform_mult(plhs, a_id, (float *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (float *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
+		perform_mult(plhs, a_id, (float *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (float *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length, algorithm);
         break;
     case mxINT32_CLASS:
-		perform_mult(plhs, a_id, (int *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (int *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length);
+		perform_mult(plhs, a_id, (int *)mxGetData(prhs[0]), (mex_index_type *)mxGetData(prhs[1]), (int *)mxGetData(prhs[3]), (mex_index_type *)mxGetData(prhs[4]), a_subs, a_data_length, b_subs, b_data_length, algorithm);
         break;
     case mxUNKNOWN_CLASS:
         mexErrMsgTxt("Unrecognized lattice data type");

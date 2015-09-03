@@ -5,8 +5,8 @@ function [C, c_data]=dense_mia_mult_test_work(a_dims,b_dims,a_indices,b_indices,
 a_data=rand(a_dims);
 b_data=rand(b_dims);
 
-A=MIA(a_data);
-B=MIA(b_data);
+A=DenseNT(a_data);
+B=DenseNT(b_data);
 
 %we will test indexed assignment in its own test, so just save the
 %resulting MIAExpr and pull its MIA.

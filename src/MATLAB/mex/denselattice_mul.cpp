@@ -1,27 +1,32 @@
+
+
 #include "DenseLatticeMultMex_Export.h" //must include before mex.h so mex.h can use macro definitions
 #include "mex.h"
-
+#include <chrono>
 
 #include "MappedDenseLattice.h"
 #include "DenseLattice.h"
 #include "LibMIAException.h"
 
 
-
+using namespace std::chrono;
+typedef std::chrono::duration<float> float_seconds;
 
 template<class T>
 void perform_mult(T * C,T*A,  T*B, const mwSize*a_subs,const mwSize*b_subs){
-
+	
 
     const LibMIA::MappedDenseLattice<T> latA(A,a_subs[0],a_subs[1],a_subs[2]);
     const LibMIA::MappedDenseLattice<T> latB(B,b_subs[0],b_subs[1],b_subs[2]);
+	LibMIA::MappedDenseLattice<T> latC(C, a_subs[0], b_subs[1], b_subs[2]);
     
 
     
 
     try{
-        auto latC=latA*latB;		
-		std::copy(latC.data_begin(), latC.data_end(), C);
+		latC.perform_mult(latA, latB);
+		
+		
 		
     }
     catch(LibMIA::LatticeException& e){
@@ -79,7 +84,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     plhs[0]=mxCreateNumericArray(3, c_subs,   a_id, mxREAL);
     //plhs[0]=mxCreateNumericArray(0, 0,   a_id, mxREAL);
-
+	
     switch (a_id)
     {
     case mxDOUBLE_CLASS:
@@ -99,7 +104,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mexErrMsgTxt("Data type must be arithmetic");
         break;
     }
-
+	
 
 
     //int fields =mxGetNumberOfFields(prhs[0]);

@@ -429,7 +429,7 @@ protected:
     */
     template
     <
-        size_t new_order=mOrder,
+        size_t new_order,
         typename boost::enable_if_c<
             new_order==internal::order<Derived>::value,
             int
@@ -446,10 +446,10 @@ protected:
 		typename boost::enable_if<
 			boost::mpl::less<
 				boost::mpl::int_<new_order>,
-				internal::order<Derived>::value
+				boost::mpl::int_<internal::order<Derived>::value>
 			>,
 			int
-		>::type
+		>::type=0
 	>
 	ImplicitMIA<data_type, new_order, true> do_view(std::array<Range<index_type>, internal::order<DenseMIABase>::value> & ranges) const;
 
@@ -580,7 +580,7 @@ template
         typename boost::enable_if<
             boost::mpl::less<
 				boost::mpl::int_<new_order>,
-				internal::order<Derived>::value
+				boost::mpl::int_<internal::order<Derived>::value>
 			>,
             int
         >::type
@@ -754,7 +754,8 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
     std::sort(copy_contract.begin(),copy_contract.end());
     auto other_indices=internal::get_remaining_indices<size_t,no_con_indices+no_attract_indices,mOrder>(copy_contract);
     //get their dimensionality
-    std::array<index_type,other_indices.size()> otherDims;
+	constexpr size_t otherSize = mOrder - no_con_indices - no_attract_indices;
+	std::array<index_type, otherSize> otherDims;
     auto other_dimensionality=internal::reorder_from(this->dims(), other_indices,otherDims);
 
 
@@ -781,7 +782,7 @@ DenseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & c
 
     }
     //add the attraction index ranges to the otherDims to get the returning dimensionality
-    std::array<index_type,other_indices.size()+no_attract_partition>  retDims;
+	std::array<index_type, otherSize + no_attract_partition>  retDims;
     internal::concat_arrays(otherDims,attract_index_ranges,retDims);
 
 

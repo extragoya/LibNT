@@ -4,10 +4,16 @@
 
 
 
-mxClassID check_sparse_params_lattice(int nrhs, const mxArray *prhs[], mex_index_type  *a_subs[], mex_index_type  *b_subs[], mwSize* a_data_length, mwSize* b_data_length){
+mxClassID check_sparse_params_lattice(int nrhs, const mxArray *prhs[], mex_index_type  *a_subs[], mex_index_type  *b_subs[], mwSize* a_data_length, mwSize* b_data_length,bool allowed_seven){
 
-    if (nrhs!=6)
-		mexErrMsgTxt("Wrong number of arguments. Input must be two vectors representing a_data a_indices and a vector of dimensions [row cols tabs]. This is followed by the same info for b]");
+	if (!allowed_seven){
+		if (nrhs != 6)
+			mexErrMsgTxt("Wrong number of arguments. Input must be two vectors representing a_data a_indices and a vector of dimensions [row cols tabs]. This is followed by the same info for b");
+	}
+	else{
+		if (nrhs < 6 && nrhs>7)
+			mexErrMsgTxt("Wrong number of arguments. Input must be two vectors representing a_data a_indices and a vector of dimensions [row cols tabs]. This is followed by the same info for b. You are optionally allowed a seventh argrument indicating the multiplication to perform");
+	}
     
     
 	mwSize a_index_length,b_index_length;
@@ -93,6 +99,8 @@ double check_passed_double(int nrhs, const mxArray *prhs[], int param_index)
 	return mxGetScalar(prhs[param_index]);
 
 }
+
+
 
 mxClassID check_sparse_params_merge(int nrhs, const mxArray *prhs[],  mwSize* a_data_length, mwSize* b_data_length,double * op){
 

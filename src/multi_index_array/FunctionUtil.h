@@ -17,6 +17,7 @@
 #ifndef FUNCTION_UTIL_H
 #define FUNCTION_UTIL_H
 #define LIBMIA_LOG2E 1.44269504088896340736
+#include <chrono>
 #include <iostream>
 #include <boost/numeric/conversion/converter.hpp>
 
@@ -141,22 +142,73 @@ typename internal::data_type<MIAType2>::type collect_contract_partitions(const M
 
 }
 
+template<class Operand1, class Operand2, class index_type, size_t degree>
+index_type performShuffledOperation(Operand1 & restrict_libmia operand1, const Operand2 & restrict_libmia operand2, const std::array<index_type, degree> & dims, const std::array<index_type, degree> & multiplier, size_t curIndex, index_type sourceIdx, index_type destIdx){
+	if (curIndex == 0){
+		const index_type end = destIdx + dims[0];
+		
+		
+			
+		for (; destIdx < end; ++destIdx,sourceIdx+=multiplier[0]){
+			operand1.atIdx(destIdx) = operand2.atIdx(sourceIdx);
+				
+		}
+		
+	}		
+	else{
+		
+		for (index_type dim_idx = 0; dim_idx < dims[curIndex]; ++dim_idx){
+			destIdx = performShuffledOperation(operand1, operand2, dims, multiplier, curIndex - 1, sourceIdx, destIdx);
+			sourceIdx += multiplier[curIndex];
+		}
+	}
+	return destIdx;
+}
+
+template<class Operand1, class Operand2, class index_type, size_t degree>
+index_type performShuffledOperationParallel(Operand1 & restrict_libmia operand1, const Operand2 & restrict_libmia operand2, const std::array<index_type, degree> & dims, const std::array<index_type, degree> & multiplier, size_t curIndex, index_type sourceIdx, index_type destIdx){
+	
+	if (curIndex == 0){
+		const index_type end = destIdx + dims[0];
+		
+		
+		#pragma omp parallel for
+		for (index_type temp_idx = 0; temp_idx<dims[0]; ++temp_idx){
+			operand1.atIdx(destIdx + temp_idx) = operand2.atIdx(sourceIdx + temp_idx*multiplier[0]);
+			
+		}
+		
+	}
+	else{
+		const index_type multiplier_dest = operand1.dimensionality() / dims.back();
+		#pragma omp parallel for
+		for (index_type dim_idx = 0; dim_idx < dims[curIndex]; ++dim_idx){
+			performShuffledOperation(operand1, operand2, dims, multiplier, curIndex - 1, sourceIdx + dim_idx*multiplier[curIndex], destIdx + multiplier_dest*dim_idx);
+			//sourceIdx += multiplier[curIndex];
+		}
+	}
+	return destIdx;
+}
+
 template<typename Derived, class idx_typeR, class idx_typeC, class idx_typeT, size_t R, size_t C, size_t T>
 auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_indices, const std::array<idx_typeC,C> & column_indices,const std::array<idx_typeT,T> & tab_indices)
 ->DenseLattice<typename internal::data_type<Derived>::type>
 {
 
-
+	using namespace std::chrono;
+	typedef std::chrono::duration<float> float_seconds;
+	high_resolution_clock::time_point t1, t2;
+	//t1 = high_resolution_clock::now();
     //print_array(row_indices,"row_indices");
     //print_array(column_indices,"column_indices");
     //print_array(tab_indices,"tab_indices");
-    typedef typename internal::index_type<Derived>::type index_type;
+	typedef typename MIA<Derived>::unsigned_index_type unsigned_index_type;
     typedef typename internal::data_type<Derived>::type data_type;
     constexpr auto order= internal::order<Derived>::value ;
-    static_assert(internal::check_index_compatibility<index_type,idx_typeR>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeC>::type::value,"Must use an array convertable to index_type");
-    static_assert(internal::check_index_compatibility<index_type,idx_typeT>::type::value,"Must use an array convertable to index_type");
-    static_assert(R+C+T==order,"Size of all three arrays must equal mOrder");
+	static_assert(internal::check_index_compatibility<unsigned_index_type, idx_typeR>::type::value, "Must use an array convertable to index_type");
+	static_assert(internal::check_index_compatibility<unsigned_index_type, idx_typeC>::type::value, "Must use an array convertable to index_type");
+	static_assert(internal::check_index_compatibility<unsigned_index_type, idx_typeT>::type::value, "Must use an array convertable to index_type");
+	static_assert(R + C + T == order, "Size of all three arrays must equal mOrder");
     //statically check number of indices match up
     size_t row_size=1, column_size=1, tab_size=1;
 
@@ -167,7 +219,7 @@ auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_in
     column_size=internal::dimensionality_from(mia.dims(), column_indices);
     tab_size=internal::dimensionality_from(mia.dims(), tab_indices);
 
-    std::array<index_type,R+C+T> shuffled_dims;
+	std::array<unsigned_index_type, R + C + T> shuffled_dims;
     std::array<size_t,R+C+T> index_order;
     concat_arrays(row_indices,column_indices,tab_indices,index_order);
     internal::reorder_from(mia.dims(),index_order,shuffled_dims);
@@ -182,10 +234,12 @@ auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_in
     typename MIA<Derived>::multiplier_type multiplier;
     internal::create_shuffle_needs(shuffled_dims,mia.dims(),index_order,dim_accumulator,fast_dim_accumulator,multiplier);
 
+	if (mia.dimensionality() >= PARALLEL_TOL)
+		performShuffledOperationParallel(lat, mia, shuffled_dims, multiplier, size_t(R + C + T - 1), unsigned_index_type(0), unsigned_index_type(0));
+	else
+		performShuffledOperation(lat, mia, shuffled_dims, multiplier, size_t(R + C + T - 1), unsigned_index_type(0), unsigned_index_type(0));
 
-
-
-    if(mia.dimensionality()>=PARALLEL_TOL){
+    /*if(mia.dimensionality()>=PARALLEL_TOL){
         #pragma omp parallel for
         for(index_type idx=0;idx<mia.dimensionality();++idx){
             lat.atIdx(idx)=mia.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator));
@@ -196,10 +250,11 @@ auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_in
             lat.atIdx(idx)=mia.atIdx(internal::reShuffleLinearIndex(idx,multiplier,fast_dim_accumulator,dim_accumulator));
         }
 
-    }
+    }*/
 
 
-
+	/*t2 = high_resolution_clock::now();
+	std::cout << "\t" << duration_cast<float_seconds>(t2 - t1).count();*/
 
 
     return lat;
@@ -500,10 +555,12 @@ void get_range_array(ItType it){
     return;
 }
 
+
+
 //if the current variable in the varadic template is an integral type, create a Range object for that type and add it using the current array iterator
 template<typename ItType,typename T,typename...Ranges>
-void get_range_array(ItType *it,T t,Ranges...ranges){
-    typedef ItType RangeType;
+void get_range_array(ItType it,T t,Ranges...ranges){
+    typedef typename ItType::value_type RangeType;
     typedef typename RangeType::index_type index_type;
     *it=create_range<index_type>(t);
 

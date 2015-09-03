@@ -21,10 +21,10 @@ classdef Lattice
                     %create a spares lattice based from a full matrix or lattice
                     obj.vals=arg;
                     if numel(size(arg))==2
-                        [obj.m obj.n]=size(arg);
+                        [obj.m, obj.n]=size(arg);
                         obj.p=1;
                     else
-                        [obj.m obj.n obj.p]=size(arg);
+                        [obj.m, obj.n, obj.p]=size(arg);
                     end
                 else
                     error('Only 2 or 3-indexed numeric arrays may be converted to a Lattice object')

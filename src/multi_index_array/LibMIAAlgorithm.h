@@ -625,11 +625,9 @@ inline void  InsertionSortImproved(RandomIterator begin, RandomIterator end,Foll
         }
         // Perform no work at all if the first comparison fails - i.e. never assign an element to itself!
     }
-
-
-
-
 }
+
+
 
 
 /* Implementation of introsort. */

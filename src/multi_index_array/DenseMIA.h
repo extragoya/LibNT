@@ -134,7 +134,7 @@ public:
     //! order of the MIA
     constexpr static size_t mOrder=_order;
     //! smart pointer type used to reference raw data
-    typedef std::unique_ptr<T restrict_libmia [] > smart_raw_pointer;
+    typedef std::unique_ptr<T  [] > smart_raw_pointer;
 
 
     //! final derived type
@@ -413,7 +413,7 @@ public:
     void assign(const DenseMIABase<otherDerived>& otherMIA,const std::array<index_param_type,_order>& index_order);
 
     template<typename other_data_type,typename index_param_type>
-    void assign(const ImplicitMIA<other_data_type,mOrder>& restrict_libmia otherMIA,const std::array<index_param_type,_order>& index_order);
+	void assign(const ImplicitMIA<other_data_type, _order>& restrict_libmia otherMIA, const std::array<index_param_type, _order>& index_order);
 
     //!  Assignment based on given order using an rvalue reference.
     /*!
@@ -436,10 +436,10 @@ public:
         If the data_type of otherMIA is not the same as this, the scalar data will be converted.
     */
     template<typename other_data_type>
-    DenseMIA& operator=(const DenseMIA<other_data_type,mOrder>& otherMIA);
+	DenseMIA& operator=(const DenseMIA<other_data_type, _order>& otherMIA);
 
     template<typename other_data_type>
-    DenseMIA& operator=(const ImplicitMIA<other_data_type,mOrder>& restrict_libmia otherMIA);
+	DenseMIA& operator=(const ImplicitMIA<other_data_type, _order>& restrict_libmia otherMIA);
 
     template<typename otherDerived>
     DenseMIA& operator=(const SparseMIABase<otherDerived>& otherMIA);
@@ -669,9 +669,9 @@ public:
     */
     template< class idx_typeR, class idx_typeC, class idx_typeT, size_t R_size, size_t C_size, size_t T_size>
     auto toLatticeDiscard(const std::array<idx_typeR,R_size> & row_indices, const std::array<idx_typeC,C_size> & column_indices,const std::array<idx_typeT,T_size> & tab_indices)
-    ->decltype(this->toLatticePermute(row_indices, column_indices, tab_indices))
+    ->decltype(this->toLatticeCopy(row_indices, column_indices, tab_indices))
     {
-        return this->toLatticePermute(row_indices, column_indices, tab_indices);
+		return this->toLatticeCopy(row_indices, column_indices, tab_indices);
 
     }
 
@@ -679,7 +679,7 @@ public:
 
 protected:
     template<typename other_data_type>
-    DenseMIA& straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA);
+	DenseMIA& straight_assign(const DenseMIA<other_data_type, _order>& otherMIA);
 
     template<typename otherDerived>
     DenseMIA& straight_assign(const SparseMIABase<otherDerived>& otherMIA);
@@ -882,7 +882,7 @@ void DenseMIA<T,_order>::inplace_permute(const std::array<index_param_type,inter
 
 template<class T, size_t _order>
 template<typename other_data_type>
-DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const ImplicitMIA<other_data_type,mOrder>& otherMIA){
+auto DenseMIA<T, _order>::operator=(const ImplicitMIA<other_data_type, _order>& otherMIA)->DenseMIA<T, _order>&{
     //if the otherMIA is implicit, we need to get its explicit values in case it's part of an expression that includes *this
 
 
@@ -898,7 +898,7 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const ImplicitMIA<other_data_t
 
 template<class T, size_t _order>
 template<typename other_data_type>
-DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const DenseMIA<other_data_type,mOrder>& otherMIA)
+DenseMIA<T, _order>& DenseMIA<T, _order>::operator=(const DenseMIA<other_data_type, _order>& otherMIA)
 {
 
     return this->straight_assign(otherMIA);
@@ -926,7 +926,7 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::operator=(const SparseMIABase<otherDeriv
 
 template<class T, size_t _order>
 template<typename other_data_type>
-DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const DenseMIA<other_data_type,mOrder>& otherMIA)
+DenseMIA<T, _order>& DenseMIA<T, _order>::straight_assign(const DenseMIA<other_data_type, _order>& otherMIA)
 {
 
 
@@ -998,7 +998,7 @@ DenseMIA<T,_order>& DenseMIA<T,_order>::straight_assign(const SparseMIABase<othe
 
 template<class T, size_t _order>
 template<typename other_data_type,typename index_param_type>
-void DenseMIA<T,_order>::assign(const ImplicitMIA<other_data_type,mOrder>& otherMIA,const std::array<index_param_type,_order>& index_order)
+void DenseMIA<T, _order>::assign(const ImplicitMIA<other_data_type, _order>& otherMIA, const std::array<index_param_type, _order>& index_order)
 {
 
 
@@ -1339,10 +1339,14 @@ void  DenseMIA<T,_order>::merge(const MIA<otherDerived>  & restrict_libmia b,con
 
 
 }
-
+//typedef to take into acocunt the new name from MIA to NT - later fixes will change the class names
+template <class T, size_t _order>
+using DenseNT = DenseMIA<T, _order>;
 
 /*! @} */
 
 }
+
+
 
 #endif // DENSEMIA_H_INCLUDED

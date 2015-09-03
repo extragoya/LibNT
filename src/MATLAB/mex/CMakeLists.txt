@@ -6,6 +6,9 @@ basis_mexext()
 #makes sure symbols aren't exported by default (probably not an issue when creating mex files, since there's not many symbols anyway)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
+
+
 #MSVC has a warning when you use std::copy with pointers. Can't see a way to avoid this right now with the mex interface, so turn it off here.
 if(MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SCL_SECURE_NO_WARNINGS")
@@ -89,15 +92,15 @@ GENERATE_EXPORT_HEADER( SparseDenseLatticeMultMex
              STATIC_DEFINE SparseDenseLatticeMultMex_BUILT_AS_STATIC
 )
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-TARGET_LINK_LIBRARIES(DenseLatticeMultMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(DenseLatticeSolveMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseLatticeMultMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseLatticeSolveMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseMergeMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseSortMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseChangeLinIdxMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparsePermuteMex libmx libmex libmat)
-TARGET_LINK_LIBRARIES(SparseDenseLatticeMultMex libmx libmex libmat)
+TARGET_LINK_LIBRARIES(DenseLatticeMultMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(DenseLatticeSolveMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseLatticeMultMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseLatticeSolveMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseMergeMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseSortMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseChangeLinIdxMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparsePermuteMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
+TARGET_LINK_LIBRARIES(SparseDenseLatticeMultMex libmx libmex libmat ${MKL_LIBS} ${MKL_LIBS1} ${MKL_LIBS2})
 #Change the extension to the appropriate MATLAB one
 set_target_properties(DenseLatticeMultMex PROPERTIES SUFFIX  .${MEX_EXT})
 set_target_properties(DenseLatticeSolveMex PROPERTIES SUFFIX  .${MEX_EXT})

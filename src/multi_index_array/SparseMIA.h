@@ -1121,9 +1121,13 @@ auto SparseMIA<T,_order>::toLatticeSortDiscard(const std::array<idx_typeR,R> & r
 
 }
 
-
+//typedef to take into acocunt the new name from MIA to NT - later fixes will change the class names
+template <class T, size_t _order>
+using SparseNT = SparseMIA<T, _order>;
 /*! @} */
 
 }
+
+
 
 #endif // SparseMIA_H_INCLUDED

@@ -7,7 +7,8 @@ end
 if isa(C,'SparseLattice')
     A.inds=A.inds-1;
     C.inds=C.inds-1;
-    b_data=SparseLatticeSolveMex(A.vals,A.inds,[A.m A.n A.p],C.vals,C.inds,[C.m C.n C.p]);    
+    b_data=SparseLatticeSolveMex(A.vals,A.inds,[A.m A.n A.p],C.vals,C.inds,[C.m C.n C.p]);
+    b_data=reshape(b_data,[A.n C.n A.p]);
     B=Lattice(b_data);    
     A.inds=A.inds+1;
     C.inds=C.inds+1;

@@ -401,7 +401,7 @@ public:
             scratch2.resize(this->size());
 
 
-            internal::RadixSortStraight(this->index_begin(),this->data_begin(),scratch1.begin(),scratch2.begin(),this->size(),this->dimensionality());
+			internal::RadixSortStraight<2048, 11, 3000>(this->index_begin(), this->data_begin(), scratch1.begin(), scratch2.begin(), this->size(), this->dimensionality());
         }
         else if(option==9){
             internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(),this->size(),this->dimensionality() );
@@ -418,9 +418,13 @@ public:
     //! used to test different permutation algorithms -
     void test_sort(const std::array<size_t,mOrder> & _linIdxSequence,const int option=0)
     {
-        auto oldLinIdxSequence=this->linIdxSequence();
-
-        change_linIdx_sequence(_linIdxSequence);
+        
+		
+		auto oldLinIdxSequence=this->linIdxSequence();
+		
+		change_linIdx_sequence(_linIdxSequence); //change the linear indices to the new lexicographical precedence
+		
+        
 
         std::vector<index_type> scratch1;
         std::vector<data_type> scratch2;
@@ -445,7 +449,11 @@ public:
         }
 
         else if(option==11){
-            internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(),this->size(),this->dimensionality() );
+            
+			
+			internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(), this->size(), this->dimensionality());
+			
+			
             return;
         }
         else if(option==12){
@@ -585,6 +593,7 @@ public:
 
 //        print_array(this->linIdxSequence(),"this->linIdxSequence()");
 //        print_array(_linIdxSequence,"_linIdxSequence");
+		
         typedef typename std::make_unsigned<index_type>::type unsigned_Type;
         if(!mIsSorted){
 
@@ -595,7 +604,10 @@ public:
 
 
             auto oldLinIdxSequence=this->linIdxSequence();
+			
             change_linIdx_sequence(_linIdxSequence); //change the linear indices to the new lexicographical precedence
+			
+			
             //auxiliary buffers
             std::vector<index_type> scratch1;
             std::vector<data_type> scratch2;
@@ -620,13 +632,16 @@ public:
 			internal::RadixShuffle<index_type, data_type, 2048, 11, 3000> radixShuffle(max_sizes, divisors, this->dimensionality(), first_stage);
             //permute the sparse data based on the stage information provided
             radixShuffle.permute(this->index_begin(),this->data_begin(),this->size());
+			
 
-
-            return;
+            
 
         }
-
+		
         this->setSorted(true);
+		
+		
+
     }
 
 
@@ -1900,9 +1915,9 @@ SparseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & 
     auto copy_contract=internal::concat_index_arrays(contract_indices,attract_indices);
     std::sort(copy_contract.begin(),copy_contract.end());
     auto other_indices=internal::get_remaining_indices<size_t,no_con_indices+no_attract_indices,mOrder>(copy_contract);
-
+	constexpr size_t otherSize = mOrder - no_con_indices - no_attract_indices;
     //get their dimensionality
-    std::array<index_type,other_indices.size()> otherDims;
+	std::array<index_type, otherSize> otherDims;
     auto other_dimensionality=internal::reorder_from(this->dims(), other_indices,otherDims);
 
     //sort a using other_indices as major, followed by attract indices and contract indices
@@ -1933,7 +1948,7 @@ SparseMIABase<Derived>::contract_attract(const std::array<int,no_con_indices> & 
 
     }
     //add the attraction index ranges to the otherDims to get the returning dimensionality
-    std::array<index_type,other_indices.size()+no_attract_partition> retDims;
+	std::array<index_type, otherSize + no_attract_partition> retDims;
     internal::concat_arrays(otherDims,attract_index_ranges,retDims);
     retType ret(retDims);
 

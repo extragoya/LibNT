@@ -220,8 +220,28 @@ public:
 
     }
 
+	template<typename otherDerived1, typename otherDerived2>
+	void perform_mult(const DenseLatticeBase<otherDerived1> & restrict_libmia a, const DenseLatticeBase<otherDerived2> & restrict_libmia b) restrict_libmia{
+
+		if (a.depth() != b.depth())
+			throw LatticeParameterException("Lattice depths must the same to be multipled.");
+		if (a.width() != b.height())
+			throw LatticeParameterException("Lattice width must be the same as Lattice height to be multiplied.");
+		if (a.depth() != this->depth())
+			throw LatticeParameterException("LHS Lattice depth must be the same as RHS Lattice depth.");
+		if (b.width() != this->width())
+			throw LatticeParameterException("LHS Lattice width must be the same as RHS Lattice width.");
+		if (a.height() != this->height())
+			throw LatticeParameterException("LHS Lattice height must be the same as RHS Lattice height.");
+
+		for (int i = 0; i<this->depth(); i++)
+		{
+
+			this->tab_matrix(i).noalias() = (a.tab_matrix(i))*(b.tab_matrix(i));
 
 
+		}
+	}
 
 
 protected:

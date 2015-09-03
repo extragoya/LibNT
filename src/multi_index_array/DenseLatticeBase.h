@@ -409,7 +409,9 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & rest
 {
 
 
-    this->check_mult_dims(b);
+	this->check_mult_dims(b);
+
+  
 
 
     typedef typename DenseProductReturnType<Derived,otherDerived>::type RType;
@@ -420,7 +422,7 @@ DenseLatticeBase<Derived>::operator*(const DenseLatticeBase<otherDerived> & rest
     for (int i=0; i<this->depth(); i++)
     {
 
-        c.derived().tab_matrix(i)=(this->derived().tab_matrix(i))*(b.derived().tab_matrix(i));
+        c.derived().tab_matrix(i).noalias()=(this->derived().tab_matrix(i))*(b.derived().tab_matrix(i));
 
 
     }

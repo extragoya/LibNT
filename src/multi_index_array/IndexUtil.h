@@ -647,7 +647,7 @@ inline indexType1 getShuffleLinearIndex_POD_static( indexType1 idx, const std::a
 template<class containerType1, class containerType2, class unsigned_index_type>
 inline bool setupPermute(const containerType1 & reverseShuffleSequence, const containerType2 & dims, std::vector<unsigned_index_type> & divisors, std::vector<unsigned_index_type> & max_sizes)
 {
-
+	
 	assert(dims.size() == reverseShuffleSequence.size());
 	//otherwise, we need to examine the the new lexicographical precedenec compared to the old
 	auto divisor_list=dims;
@@ -671,16 +671,19 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 			}
 		}
 	}
+
 	auto curIndex = _order - 1;
 
 	//now based on whether indices are sort or find, we will create sort and find stages for the radix shuffle to perform
 	while (curIndex > 0){
-
+		//std::cout << "curIndex " << curIndex << std::endl;
 		if (sort_or_find_indices[curIndex] == false){ //if the current index doesn't need to be sorted
-			sort_or_find.push_back(false); //create a find stage, with accompanying divisors and max sizes
-			divisors.push_back(divisor_list[curIndex]);
-			max_sizes.push_back(dims[curIndex]);
-			//std::cout << "Make a new find index divisor " << divisors.back() << " index " << curIndex << std::endl;
+			if (!sort_or_find.size() || sort_or_find.back() != false){ //if we've removed a stage where the max size is only one, we need to combine this stage with the previous one
+				sort_or_find.push_back(false); //create a find stage, with accompanying divisors and max sizes
+				divisors.push_back(divisor_list[curIndex]);
+				max_sizes.push_back(dims[curIndex]);
+			}
+			
 			//if the previous indices are also find indices, add them to the current find stage
 			auto tempCurIndex = curIndex - 1;
 			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == false){
@@ -688,25 +691,34 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 				max_sizes.back() *= dims[tempCurIndex];
 				tempCurIndex--;
 			}
+			//std::cout << "Make a new find index divisor " << divisors.back() << " index " << curIndex << std::endl;
 			curIndex = tempCurIndex;
 		}
 		else{ //otherwise current index is a sort index
-			sort_or_find.push_back(true); //push back that the current index is a sort index
+			if (!sort_or_find.size() || sort_or_find.back() != true){ //if we've removed a stage where the max size is only one, we need to combine this stage with the previous one
+				sort_or_find.push_back(true); //push back that the current index is a sort index
+				divisors.push_back(divisor_list[curIndex]);
+				max_sizes.push_back(dims[curIndex]);
+			}
 			auto tempCurIndex = curIndex - 1;
 
-			divisors.push_back(divisor_list[curIndex]);
-			max_sizes.push_back(dims[curIndex]);
+			
 
 
-		//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
+		
 		//add any previous indices that are also sort indices to the current sort stage
 			while (tempCurIndex > 0 && sort_or_find_indices[tempCurIndex] == true){
 				divisors.back() = divisor_list[tempCurIndex];
 				max_sizes.back() *= dims[tempCurIndex];
 				tempCurIndex--;
 			}
-
+			//std::cout << "Sort index divisor " << divisors.back() << " max size " << max_sizes.back() << std::endl;
 			curIndex = tempCurIndex;
+		}
+		if (max_sizes.back() == 1){
+			max_sizes.pop_back();
+			divisors.pop_back();
+			sort_or_find.pop_back();
 		}
 
 	}
@@ -714,8 +726,10 @@ inline bool setupPermute(const containerType1 & reverseShuffleSequence, const co
 	if (sort_or_find.back() == false){
 		divisors.pop_back();
 		max_sizes.pop_back();
-
+		sort_or_find.pop_back();
 	}
+	
+
 	return sort_or_find.front();
 }
 

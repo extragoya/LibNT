@@ -5,20 +5,20 @@ function [B, B_test]=dense_mia_solve_test_work(a_dims,b_dims,a_indices,b_indices
 a_data=rand(a_dims);
 b_data=rand(b_dims);
 
-A=MIA(a_data);
-B=MIA(b_data);
+A=DenseNT(a_data);
+B=DenseNT(b_data);
 
 CExpr=A(a_indices)\B(b_indices); %solve
 C=CExpr.m_mia;
 %now redo the A*C multiplication to verify C actually solved the equations
 
 if(~LSQR)
-    B_test=MIA;
+    B_test=DenseNT;
     B_test(b_indices)=A(a_indices)*C(CExpr.m_indices);
 else
-    D=MIA;
+    D=DenseNT;
     D(CExpr.m_indices)=A(a_indices)*B(b_indices);
-    D2=MIA;
+    D2=DenseNT;
     D2(CExpr.m_indices)=A(a_indices)*(A(a_indices)*C(CExpr.m_indices));
     B=D;
     B_test=D2;

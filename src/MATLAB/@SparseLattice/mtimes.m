@@ -28,7 +28,7 @@ if isa(B,'SparseLattice') && isa(A,'SparseLattice')
     B.inds=B.inds-1;
     [c_data, c_inds]=SparseLatticeMultMex(A.vals,int64(A.inds),[A.m A.n A.p],B.vals,int64(B.inds),[B.m B.n B.p]);
     c_inds=c_inds+1;
-    C=SparseLattice(c_inds,c_data,m,n,p);
+    
     A.inds=A.inds+1;
     B.inds=B.inds+1;
 else
@@ -42,13 +42,14 @@ else
         B.inds=B.inds+1;
     end 
     c_inds=c_inds+1;
-    if length(c_data)/dimen <0.5
-        C=SparseLattice(c_inds,c_data,m,n,p);
-    else
-        c_vals=zeros(m,n,p);
-        c_vals(c_inds)=c_data;
-        C=Lattice(c_vals);
-    end
+end
+if length(c_data)/dimen <0.5
+    C=SparseLattice(c_inds,c_data,m,n,p);
+else
+    c_vals=zeros(m,n,p);
+    c_vals(c_inds)=c_data;
+    C=Lattice(c_vals);
+end
     
     
 end

@@ -7,8 +7,8 @@ function [B, b_data]=dense_mia_assign_test_work(a_dims,a_indices,b_indices,permu
 a_data=rand(a_dims);
 
 
-A=MIA(a_data);
-B=MIA;
+A=DenseNT(a_data);
+B=DenseNT;
 B(b_indices)=A(a_indices);
 
 b_data=permute(a_data,permute_idx);

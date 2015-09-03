@@ -1,4 +1,4 @@
-function [C DenseC]=sparse_mia_solve_test_work(a_dims,b_dims,a_indices,b_indices,a_lexOrder,b_lexOrder,a_sorted,b_sorted)
+function [C, DenseC]=sparse_mia_solve_test_work(a_dims,b_dims,a_indices,b_indices,a_lexOrder,b_lexOrder,a_sorted,b_sorted)
 
 
 flag=true;
@@ -7,8 +7,8 @@ while(flag)
     b_data=rand(b_dims);
     a_data(a_data<0.5)=0;
     b_data(b_data<0.5)=0;
-    DenseA=MIA(a_data);
-    DenseB=MIA(b_data);    
+    DenseA=DenseNT(a_data);
+    DenseB=DenseNT(b_data);    
     CExpr=DenseA(a_indices)\DenseB(b_indices);
     DenseC=CExpr.m_mia;
     if(DenseC.solveInfo>0)
@@ -16,7 +16,7 @@ while(flag)
     end
 end
 
-A=SparseMIA(DenseA);
+A=SparseNT(DenseA);
 A=A.permute(a_lexOrder);
 if(~a_sorted)
     P = randperm(A.nnz);
@@ -24,7 +24,7 @@ if(~a_sorted)
     A.data=A.data(P);
     A.isSorted=false;
 end
-B=SparseMIA(DenseB);
+B=SparseNT(DenseB);
 B=B.permute(b_lexOrder);
 if(~b_sorted)
     P = randperm(B.nnz);
