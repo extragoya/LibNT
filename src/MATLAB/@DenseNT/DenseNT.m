@@ -24,7 +24,7 @@ classdef DenseNT
                         obj.solveInfo=varargin{2};
                     end
                     
-                    obj.data=arg;
+                    obj.data=full(arg);
                     obj.data=squeeze(obj.data);
                     s=size(obj.data);
                     l=length(s);
@@ -39,8 +39,8 @@ classdef DenseNT
                     end
                     
                 elseif isa(arg,'SparseNT');
-                    arg.permute([1:arg.order]);
-                    dims=arg.dims;
+                    arg=arg.permute([1:arg.order]);
+                    dims=size(arg);
                     obj.data=zeros(dims);
                     indices=arg.indices;      
                     if size(indices,2)>1

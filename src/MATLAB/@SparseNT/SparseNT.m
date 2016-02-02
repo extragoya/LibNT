@@ -89,6 +89,9 @@ classdef (InferiorClasses = {?DenseNT}) SparseNT <DenseNT
         function ret=size(obj)
             
             ret=obj.dims;
+            if numel(ret)==1
+                ret=[ret 1];
+            end
             
         end
         function ret=nnz(obj)
@@ -114,27 +117,26 @@ classdef (InferiorClasses = {?DenseNT}) SparseNT <DenseNT
                 mult=obj.dims;
                 mult=mult(obj.lexOrder); %change the dimensions to the current lexOrder
                 mult=cumprod(mult); %compute cumulative product
-                mult=[1 mult(1:end-1)];
-                index=index(:,obj.lexOrder); %change indices to current lexOrder                
+                mult=[1 mult(1:end-1)];                              
                 idx=(index-1)*mult'+1;%compress them to linearized index
             end
+            
             if(any(idx>obj.dimensionality()))
                 error('Index must not be larger than dimensionality');
             end
-            %adds arguments to object's data and indices arrays
-            obj.data=[obj.data;data];
-            obj.indices=[obj.indices;idx];
-            obj.isSorted=false;
+            B=SparseNT(data,idx,obj.dims,1:obj.order);
+            obj=do_plus(obj,B,1:obj.order);
+            
             
         end
         
-        
+        [A, A_comp]=select_subNT(A,varargin);
         A=sort(A);
         A=permute(A,newLinIdx);
         A=changeLexOrder(A,newLinIdx);
-        
+        C=concat(A,B);
         matrix = flatten(obj,row_inds,col_inds);
-        
+        ret=delete(A,varargin);
         C=do_plus(A,B,permute_idx);
         isequal=eq(a,b);
         is_eq = fuzzy_eq(A,B,tol);
@@ -153,8 +155,12 @@ classdef (InferiorClasses = {?DenseNT}) SparseNT <DenseNT
     methods (Access=protected)
         A = assign(A,otherNT,assign_order);  
         is_equal=compare(A,B,func);
+        check_selections_args(A,varargin);
     end
     methods(Access=private, Static)
         new=reorder_from(old,index_order);
     end
+    
+    
+    
 end

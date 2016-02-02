@@ -2376,6 +2376,52 @@ struct sparse_lattice_solver<false,EigenSparseMatrix> {
     }
 
 };
+
+
+//template<class EigenSparseMatrix>
+//struct sparse_lattice_solver<false, EigenSparseMatrix> {
+//
+//	typedef Eigen::SimplicialLDLT<EigenSparseMatrix> solverTypeLU;
+//
+//	//typedef Eigen::SimplicialLDLT<EigenSparseMatrix> solverTypeChol;
+//	solverTypeLU _solverLU;
+//	//solverTypeChol _solverChol;
+//
+//	void initialize_solver(const EigenSparseMatrix & _matrix, SolveInfo &_solveInfo){
+//
+//
+//		_solverLU.compute(_matrix);
+//		if (_solverLU.info() != Eigen::Success){
+//			_solveInfo = RankDeficient;
+//
+//		}
+//		else{
+//			_solveInfo = FullyRanked;
+//		}
+//
+//
+//	}
+//
+//	template<typename BType, typename CType>
+//	void _solve(const BType & b, CType & c){
+//
+//		_solverLU._solve(b, c);
+//
+//
+//	}
+//	auto info()->decltype(_solverLU.info()){
+//
+//		return _solverLU.info();
+//	}
+//
+//	std::string lastErrorMessage(){
+//
+//		return "";
+//
+//
+//	}
+//
+//};
 }
 
 template <class Derived>
@@ -2607,9 +2653,9 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_rows.size(),&a_columns[0],&a_rows[0],&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
-
+			//SparseMatrix_cm A = A_temp;
             //get solver
-            typedef sparse_lattice_solver<LSQR,MappedSparseMatrix_cm> solverType;
+			typedef sparse_lattice_solver<LSQR, MappedSparseMatrix_cm> solverType;
             solverType _solver;
             _solver.initialize_solver(A,this->mSolveInfo);
 
@@ -2749,6 +2795,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 
             //created a CCS matrix by mapping row and column vectors and also the pre-existing data of *this lattice
             MappedSparseMatrix_cm A=MappedSparseMatrix_cm(this->height(),this->width(),a_columns.back(),&a_columns[0],&(*a_temp_begin),&(*(data_begin()+(a_temp_begin-this->index_begin())))); //map data to a compressed column matrix
+
 #ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
 			std::cout << "Made ccs matrix" << std::endl;
 #endif

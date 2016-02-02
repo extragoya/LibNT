@@ -33,14 +33,19 @@ assign_order=zeros(cur_order,1);
 for i=1:cur_order
     cur_a_index=split_indices{i};
     %remove any exclamation points    
-    cur_a_index=regexp(cur_a_index,reg,'match'); %unless make_cell_indices screwed up, there should only be one char
-    cur_a_index=cur_a_index{1};
+    %cur_a_index=regexp(cur_a_index,reg,'match'); %unless make_cell_indices screwed up, there should only be one char
+    
+    cur_a_index=regexprep(cur_a_index,'!','');
     for j=1:cur_order
         cur_b_index=other_indices{j};
-        cur_b_index=regexp(cur_b_index,reg,'match');
-        cur_b_index=cur_b_index{1};
+        cur_b_index=regexprep(cur_b_index,'!','');
+        
         if(strcmp(cur_a_index,cur_b_index))
-            assign_order(i)=j;
+            if (assign_order(i)~=0)
+                error('Cannot repeat indices on assignment');
+            else
+                assign_order(i)=j;
+            end
         end
     end
     %if we didn't find a match, throw an error

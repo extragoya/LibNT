@@ -42,7 +42,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
         
         
         
-        nnz %number of non zeros
+        
         
         
         
@@ -57,7 +57,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                 obj.m=0;
                 obj.n=0;
                 obj.p=0;
-                obj.nnz=0;
+                
             elseif nargin==1
                 arg=varargin{1};
                 if isa(arg,'SparseLattice');
@@ -78,7 +78,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                     obj.n=int64(t_n);
                     obj.p=int64(t_p);
                     obj.vals=t_vals;                              
-                    obj.nnz=length(t_vals);
+                   
                 else
                     error('Only 2 or 3-indexed numeric arrays may be converted to a SparseLattice object')
                 end
@@ -100,7 +100,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                     obj.vals=obj.vals';
                 end
                 
-                obj.nnz=length(obj.vals);
+                
                 
                 i=varargin{1};
                 j=varargin{2};
@@ -133,7 +133,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                 SparseLattice.error_check_range(obj.m,obj.n,obj.p);
                 
                 obj.vals=varargin{2};
-                obj.nnz=length(obj.vals);
+               
                 do_transpose=SparseLattice.error_check_nonzeros(obj.vals);
                 if(do_transpose)
                     obj.vals=obj.vals';
@@ -158,7 +158,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
                 obj.p=int64(varargin{3});
                 obj.vals=[];
                 obj.inds =int64([]);                
-                obj.nnz=0;
+                
                 
             else
                 error('SparseLattice constructor called with incomptabile parameters. Please view help.')
@@ -170,7 +170,9 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
             ret=[obj.m obj.n obj.p];
             
         end
-        
+        function ret=nnz(obj)
+            ret=length(obj.vals);
+        end
         function disp(obj)
             
             

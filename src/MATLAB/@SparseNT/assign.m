@@ -16,8 +16,7 @@ if(isa(otherNT,'SparseNT') && isa(obj,'SparseNT'))
     obj.lexOrder=reverse_order(otherNT.lexOrder);
     if(~otherNT.isSorted)
         obj.isSorted=false;
-    elseif(~isequal(assign_order',1:length(assign_order)))
-        obj.isSorted=false;
+    
     else
         obj.isSorted=true;
         

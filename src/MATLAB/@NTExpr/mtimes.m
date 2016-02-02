@@ -34,7 +34,15 @@ a_outer_size=a_size(a_outer_idx);
 b_outer_size=b_size(b_outer_idx);
 
 
-if(isa(A_nt,'SparseNT') && ~isa(B_nt,'SparseNT')) %we switch the operands around in this case
+
+% if(isa(A_nt,'SparseNT') && isa(B_nt,'SparseNT'))
+%     dispatch=3;
+% elseif(isa(A_nt,'SparseNT') && ~isa(B_nt,'SparseNT') && ~isa(B_nt,'DeltaNT'))
+%     dispatch=2;
+% elseif 
+%     
+
+if(isa(A_nt,'SparseNT') && ~isa(B_nt,'SparseNT') && ~isa(B_nt,'DeltaNT')) %we switch the operands around in this case
     A_lat=A_nt.toLattice(a_inner_idx,a_outer_idx,a_inter_idx);
     B_lat=B_nt.toLattice(b_outer_idx,b_inner_idx, b_inter_idx);
     %perform lattice product

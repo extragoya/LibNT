@@ -17,8 +17,8 @@ a_row_sparsity=(a_outer_size/A_nt.nnz) >3;
 
 a_sparse=~(a_col_sparsity || a_row_sparsity);
 a_hyper_sparse=a_col_sparsity && a_row_sparsity;
-a_row_sparsity=a_row_sparsity&a_hyper_sparse;
-a_col_sparsity=a_col_sparsity&a_hyper_sparse;
+a_row_sparsity=a_row_sparsity&~a_hyper_sparse;
+a_col_sparsity=a_col_sparsity&~a_hyper_sparse;
 
 b_dims=B_nt.dims();
 b_inner_dims=b_dims(b_inner_idx);
@@ -31,8 +31,8 @@ b_col_sparsity=(b_outer_size/B_nt.nnz) >3;
 
 b_sparse=~(b_col_sparsity || b_row_sparsity);
 b_hyper_sparse=b_col_sparsity && b_row_sparsity;
-b_row_sparsity=b_row_sparsity&b_hyper_sparse;
-b_col_sparsity=b_col_sparsity&b_hyper_sparse;
+b_row_sparsity=b_row_sparsity&~b_hyper_sparse;
+b_col_sparsity=b_col_sparsity&~b_hyper_sparse;
 
 if a_sparse
     if b_sparse %both are normal sparse, so just do CSC or CSR
