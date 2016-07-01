@@ -6,7 +6,7 @@
 #include <memory>
 #include "LibMIAUtil.h"
 #include "LibMIAAlgorithm.h"
-
+#include "IndexUtil.h"
 #include "libdivide.h"
 
 namespace LibMIA
@@ -41,6 +41,10 @@ inline typename std::make_unsigned<_Type1>::type extractDigit( _Type1 a, unsigne
     return digit;
     // extract the digit we are sorting based on return digit;
 }
+
+
+
+
 
 
 
@@ -111,9 +115,105 @@ inline void _RadixSort_Unsigned_PowerOf2Radix_L1( ForwardIt begin, FollowIt foll
 }
 
 
+// Adapted from Victor J. Duvanenko's article on In-Place Radix Sort http://www.drdobbs.com/parallel/parallel-in-place-radix-sort-simplified/229000734?pgno=1
 
-template< class ForwardIt,class FollowIt>
-inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  followBegin , size_t length, size_t max_size)
+// Function template In-place MSD Radix Sort implementation (simplified). This is one used to sort CO format, only implemented for testing and benchmarking purposes to compare against the LCO (it assumes each value in the CO format is less than 2^11)
+template<unsigned long PowerOfTwoRadix, unsigned long Log2ofPowerOfTwoRadix, long Threshold, class Swapper, class ForwardIt, class FollowIt,typename LinClass,typename Comp >
+inline void _RadixSort_Unsigned_PowerOf2Radix_L1(ForwardIt begin, FollowIt followBegin, size_t length,  unsigned long shiftRightAmount, const LinClass & linIdxMaker, const Comp & comp)
+{
+
+	//std::cout << "shiftRightAmount " << shiftRightAmount << std::endl;
+	typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
+
+	libmia_constexpr unsigned long BitMask = PowerOfTwoRadix - 1; //use constexpr workaround
+	std::array<unsigned long, PowerOfTwoRadix> count;
+
+	for (auto &e : count)
+		e = 0;
+	decltype (linIdxMaker(begin)) maxy=0;
+	for (auto it = begin; it < begin + length; ++it){
+		maxy = std::max(maxy, (linIdxMaker(it) >> shiftRightAmount) & BitMask);
+		count[(linIdxMaker(it) >> shiftRightAmount) & BitMask]++; // Scan the array and count the number of times each value appears
+	}
+
+	//std::cout << "Counted " << length << " max " << maxy << " " << count[maxy] << std::endl;
+	
+	auto swapper = Swapper(begin, followBegin);
+
+	std::array<long, PowerOfTwoRadix + 1> startOfBin;
+	std::array< long, PowerOfTwoRadix + 1> endOfBin;
+	long nextBin = 1;
+
+	startOfBin[0] = endOfBin[0] = 0;    startOfBin[PowerOfTwoRadix] = -1;         // sentinal
+	for (unsigned long i = 1; i < PowerOfTwoRadix; ++i)
+		startOfBin[i] = endOfBin[i] = startOfBin[i - 1] + count[i - 1];
+
+	//std::cout << endOfBin[maxy] << std::endl;
+	auto temp_it = begin + 2;
+	
+	for (long _current = 0; _current < length;)
+	{
+		unsigned long digit;
+		auto _current_element_it = (begin + _current); 
+		//auto _current_element_follow = *(followBegin + _current); // get the compiler to recognize that a register can be used for the loop instead of a[_current] memory location
+		//std::cout << "About to cycle length: " << length << " _current: " << _current << " digit: " << (unsigned long)((linIdxMaker(_current_element_it) >> shiftRightAmount)& BitMask) << " endOfBin[digit]: " << endOfBin[digit = (unsigned long)(linIdxMaker(_current_element_it) >> shiftRightAmount& BitMask)] << std::endl;
+		//std::cout << linIdxMaker(_current_element_it) << std::endl;
+		while (endOfBin[digit = (unsigned long)((linIdxMaker(_current_element_it) >> shiftRightAmount)& BitMask)] != _current){			
+
+			/*if (endOfBin[digit] >= length){
+				std::cout << "Crap!" << std::endl;
+				std::cout << " digit: " << digit << " endOfBin[digit]: " << endOfBin[digit] << " linIdxMaker: " << linIdxMaker(_current_element_it) << std::endl;
+			}*/
+			auto it = begin + endOfBin[digit];
+			auto old = linIdxMaker(_current_element_it);
+			auto old2 = linIdxMaker(it);
+			//std::cout << *(_current_element_it.m_iter) << " " << *(_current_element_it.m_iter + 1) << " " << *(it.m_iter) << " " << *(it.m_iter + 1) << std::endl;
+			
+			swapper(_current_element_it, (begin + endOfBin[digit])); //will also swap follower
+			//std::cout << *(_current_element_it.m_iter) << " " << *(_current_element_it.m_iter + 1) << " " << *(it.m_iter) << " " << *(it.m_iter + 1) << std::endl;
+			
+
+			endOfBin[digit]++;
+			//std::cout << *(_current_element_it.m_iter) << " " << *(_current_element_it.m_iter + 1) << " " << *(it.m_iter) << " " << *(it.m_iter + 1) << std::endl;
+			//exit(0);
+			//std::swap(_current_element_follow, *(followBegin + endOfBin[digit]++));
+		}
+		
+		//*(followBegin + _current) = _current_element_follow;
+		
+		endOfBin[digit]++;
+		while (endOfBin[nextBin - 1] == startOfBin[nextBin])
+			++nextBin;   // skip over empty and full bins, when the end of the current bin reaches the start of the next bin
+		_current = endOfBin[nextBin - 1];
+		//std::cout << "Finished cylcing " << nextBin << std::endl;
+	}
+	//std::cout << "Performed radix pass" << std::endl;
+	if (shiftRightAmount == 0){
+		return;
+
+	}
+	else{
+		shiftRightAmount -= Log2ofPowerOfTwoRadix; //should always be a multiple of Log2ofPowerOfTwoRadix
+	}
+
+
+
+	for (unsigned long i = 0; i < PowerOfTwoRadix; ++i)
+	{
+		long numberOfElements = endOfBin[i] - startOfBin[i];
+		if (numberOfElements >= Threshold)     // endOfBin actually points to one beyond the bin
+			_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold,  Swapper > (begin + startOfBin[i], followBegin + startOfBin[i], numberOfElements, shiftRightAmount, linIdxMaker, comp);
+		else if (numberOfElements >= 50)
+			introsort_detail::IntrosortRec(begin + startOfBin[i], begin + startOfBin[i] + numberOfElements, introsort_detail::IntrosortDepth(begin + startOfBin[i], begin + startOfBin[i] + numberOfElements),
+			comp, Swapper(begin + startOfBin[i], followBegin + startOfBin[i]));
+
+	}
+
+}
+
+//MSD Radix Sort, this version is used to text the sorting for CO format. Implemented to test and graph sorting performance between CO and LCO formats
+template< class ForwardIt, class FollowIt,typename linIndexType,size_t co_length>
+inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  followBegin, size_t length, size_t max_size, const std::array<size_t, co_length> & sortOrder, const std::array<linIndexType, co_length>& dims)
 {
 
 	/*using namespace std::chrono;
@@ -127,30 +227,194 @@ inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  
     const unsigned long Log2ofPowerOfTwoRadix =   11;    // log( 2048 ) = 11
     auto current_bit_size=(unsigned long)std::ceil(std::log2(max_size));
 
-    auto number_shifts=(unsigned long)std::ceil((double)current_bit_size/Log2ofPowerOfTwoRadix);
+	auto number_shifts = (unsigned long)std::ceil((double)current_bit_size / Log2ofPowerOfTwoRadix);
 
-    unsigned long shiftRightAmount;
-    if(current_bit_size>=Log2ofPowerOfTwoRadix)
-        shiftRightAmount= (number_shifts-1)*Log2ofPowerOfTwoRadix;
-    else
-        shiftRightAmount=0;
+	unsigned long shiftRightAmount;
+	if (current_bit_size >= Log2ofPowerOfTwoRadix)
+		shiftRightAmount = (number_shifts - 1)*Log2ofPowerOfTwoRadix;
+	else
+		shiftRightAmount = 0;
+
+  
+	auto linIdxMaker = [sortOrder, dims](ForwardIt master_it){
+		auto it = master_it.m_iter;
+		linIndexType ret = *(it+sortOrder[0]);
+		auto mult = dims[sortOrder[0]];
+		static_for<1,co_length>::_do([&](int i)
+		{
+			ret += *(it + sortOrder[i])*mult;
+			mult *= dims[sortOrder[i]];
+		});
+		return ret;
+	};
+
+	
 
 
+	
+	auto sort_compare = [sortOrder](const index_type& idx1, const index_type& idx2){
+		const index_type* it = &idx1;
+		const index_type* it2 = &idx2;
+		for (int i = co_length-1; i >= 0; --i){
+			auto left = *(it + sortOrder[i]);
+			auto right = *(it2 + sortOrder[i]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+	
+	typedef CoSwapper<ForwardIt, FollowIt, co_length> Swapper;
+	
     if ( length >= Threshold )
-        _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix, Threshold >( begin, followBegin, length ,  shiftRightAmount );
+		_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold,Swapper >(begin, followBegin, length, shiftRightAmount , linIdxMaker, sort_compare);
     else
         introsort_detail::IntrosortRec(begin,begin+length,introsort_detail::IntrosortDepth(begin,begin+length),
-                    std::less<index_type>(),internal::DualSwapper<ForwardIt,FollowIt>(begin,followBegin));
+		sort_compare, Swapper(begin,followBegin));
+	
+	
 	//t2 = high_resolution_clock::now();
 	//std::cout << "Straight Before Insert:"  << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 	//t1 = high_resolution_clock::now();
     //clean up the last
     //InsertionSort(begin,begin+length,std::less<index_type>(),internal::DualSwapper<ForwardIt,FollowIt>(begin,followBegin));
-    InsertionSortImproved(begin,begin+length,followBegin,std::less<index_type>());
+	InsertionSort(begin, begin + length,  sort_compare, Swapper(begin, followBegin));
 	//t2 = high_resolution_clock::now();
 	//std::cout << "Straight Insert:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 }
 
+
+//MSD Radix Sort, this version is used to text the sorting for CO format, for the MTT version of the CO format. Implemented to test and graph sorting performance between CO and LCO formats
+template< class ForwardIt, class FollowIt, typename linIndexType, size_t co_length>
+inline void RadixSortInPlace_PowerOf2Radix_Unsigned_MTT(ForwardIt  begin, FollowIt  followBegin, size_t length, size_t max_size, const std::array<size_t, co_length> & sortOrder, const std::array<linIndexType, co_length>& dims)
+{
+
+	/*using namespace std::chrono;
+	typedef std::chrono::duration<float> float_seconds;
+	high_resolution_clock::time_point t1, t2;*/
+	//t1 = high_resolution_clock::now();
+	
+
+	const long Threshold = 3000;
+	const unsigned long PowerOfTwoRadix = 2048;    // Radix - must be a power of 2
+	const unsigned long Log2ofPowerOfTwoRadix = 11;    // log( 2048 ) = 11
+	auto current_bit_size = (unsigned long)std::ceil(std::log2(max_size));
+
+	auto number_shifts = (unsigned long)std::ceil((double)current_bit_size / Log2ofPowerOfTwoRadix);
+
+	unsigned long shiftRightAmount;
+	if (current_bit_size >= Log2ofPowerOfTwoRadix)
+		shiftRightAmount = (number_shifts - 1)*Log2ofPowerOfTwoRadix;
+	else
+		shiftRightAmount = 0;
+
+
+	
+
+
+	auto linIdxMaker = [sortOrder, dims](ForwardIt master_it){
+		auto it_array = master_it.m_iter_array;
+		linIndexType ret = *(it_array[sortOrder[0]]);
+		auto mult = dims[sortOrder[0]];
+		static_for<1, co_length>::_do([&](int i)
+		{
+
+			ret += *(it_array[sortOrder[i]])*mult;
+			mult *= dims[sortOrder[i]];
+
+
+		});
+		
+		return ret;
+	};
+
+
+	typedef typename std::iterator_traits<ForwardIt>::value_type it_value_type;
+	auto sort_compare = [sortOrder](const it_value_type& idx_array, const it_value_type& idx_array2){
+			
+		bool less_than = true;
+		
+		for (int i = co_length - 1; i >= 0; --i){
+			auto left = *(idx_array[sortOrder[i]]);
+			auto right = *(idx_array2[sortOrder[i]]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+
+	typedef CoSwapperMTT<ForwardIt, FollowIt, co_length> Swapper;
+
+	if (length >= Threshold)
+		_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, Swapper >(begin, followBegin, length, shiftRightAmount, linIdxMaker, sort_compare);
+	else
+		introsort_detail::IntrosortRec(begin, begin + length, introsort_detail::IntrosortDepth(begin, begin + length),
+		sort_compare, Swapper(begin, followBegin));
+
+
+	//t2 = high_resolution_clock::now();
+	//std::cout << "Straight Before Insert:"  << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+	//t1 = high_resolution_clock::now();
+	//clean up the last
+	//InsertionSort(begin,begin+length,std::less<index_type>(),internal::DualSwapper<ForwardIt,FollowIt>(begin,followBegin));
+	InsertionSort(begin, begin + length, sort_compare, Swapper(begin, followBegin));
+	//t2 = high_resolution_clock::now();
+	//std::cout << "Straight Insert:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+}
+
+//MSD Radix Sort
+template< class ForwardIt, class FollowIt>
+inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  followBegin, size_t length, size_t max_size)
+{
+
+	/*using namespace std::chrono;
+	typedef std::chrono::duration<float> float_seconds;
+	high_resolution_clock::time_point t1, t2;*/
+	//t1 = high_resolution_clock::now();
+	typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
+
+	const long Threshold = 3000;
+	const unsigned long PowerOfTwoRadix = 2048;    // Radix - must be a power of 2
+	const unsigned long Log2ofPowerOfTwoRadix = 11;    // log( 2048 ) = 11
+	auto current_bit_size = (unsigned long)std::ceil(std::log2(max_size));
+
+	auto number_shifts = (unsigned long)std::ceil((double)current_bit_size / Log2ofPowerOfTwoRadix);
+
+	unsigned long shiftRightAmount;
+	if (current_bit_size >= Log2ofPowerOfTwoRadix)
+		shiftRightAmount = (number_shifts - 1)*Log2ofPowerOfTwoRadix;
+	else
+		shiftRightAmount = 0;
+
+
+	if (length >= Threshold)
+		_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold >(begin, followBegin, length, shiftRightAmount);
+	else
+		introsort_detail::IntrosortRec(begin, begin + length, introsort_detail::IntrosortDepth(begin, begin + length),
+		std::less<index_type>(), internal::DualSwapper<ForwardIt, FollowIt>(begin, followBegin));
+
+
+	//t2 = high_resolution_clock::now();
+	//std::cout << "Straight Before Insert:"  << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+	//t1 = high_resolution_clock::now();
+	//clean up the last
+	//InsertionSort(begin,begin+length,std::less<index_type>(),internal::DualSwapper<ForwardIt,FollowIt>(begin,followBegin));
+	InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());
+	//t2 = high_resolution_clock::now();
+	//std::cout << "Straight Insert:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+}
 
 
 

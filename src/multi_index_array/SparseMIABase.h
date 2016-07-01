@@ -410,7 +410,7 @@ public:
         else if(option==10){
             scratch1.resize(this->size());
             scratch2.resize(this->size());
-            internal::RadixSort(this->index_begin(),this->index_end(),this->data_begin(),scratch1.begin(), scratch2.begin(),this->dimensionality());
+            internal::RadixSort(this->index_begin(),this->index_end(),this->data_begin(),scratch1.begin(), scratch2.begin(),this->dimensionality()); //MSD Radix Sort
         }
 
     }
@@ -695,7 +695,7 @@ public:
     //! Sort non-zero containers based on the current sort order
     /*!
 
-        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+      
 
     */
     void sort(){
@@ -707,7 +707,7 @@ public:
     /*!
 
         \param[in] comp a binary predicate that returns true if its first argument is less than its second
-        \param[in] _stable whether to use stable sort or not. Unless there's good reason to, do not use stable sort, as its much slower (b/c is uses tuples of iterators)
+        
 
     */
     template<typename Comp>
@@ -715,15 +715,18 @@ public:
     {
 
 
-        if(!boost::is_same<Comp,std::less<index_type>>::value || !mIsSorted) //if comp is not std::less, then mIsSorted is meaningless
+        if(!boost::is_same<Comp,std::less<index_type>>::value) //if comp is not std::less, then mIsSorted is meaningless
         {
 
 
-
+				
                 internal::Introsort(this->index_begin(),this->index_end(),comp,
                                     internal::DualSwapper<index_iterator,data_iterator>(this->index_begin(),this->data_begin()));
 
         }
+		else if (!mIsSorted) //if comp is std::less then check mIsSorted, and use Radix sort which can only handle (at this point) std::less
+			internal::RadixSortInPlace_PowerOf2Radix_Unsigned(this->index_begin(), this->data_begin(), this->size(), this->dimensionality());
+
         if(boost::is_same<Comp,std::less<index_type>>::value) //if comp is not std::less, then mIsSorted should be false
             mIsSorted=true;
 
@@ -855,11 +858,15 @@ public:
         if(!this->dimensionality()) //do nothing is dimensionality is zero
             return;
         using namespace boost::numeric;
-
-        boost::random::uniform_int_distribution<index_type> uni_dist(0,this->dimensionality()-1);
-
+		boost::random::uniform_int_distribution<index_type> uni_dist(0, this->dimensionality() - 1);
+		typedef boost::mt19937 RNGType;
+		RNGType rng(static_cast<uint32_t>(time(0)));
+		boost::variate_generator< RNGType, boost::random::uniform_int_distribution<index_type> >
+			dice(rng, uni_dist);
+        
+		
         for (auto i=derived().index_begin();i<derived().index_end();++i){
-            *i=uni_dist(LibMIA_gen());
+			*i = dice();
         }
         mIsSorted=false;
 

@@ -65,6 +65,7 @@
 #include <forward_list>
 //#include <boost/timer/timer.hpp>
 #include "LibMIATimSort.h"
+#include "IndexUtil.h"
 namespace LibMIA
 {
 
@@ -76,6 +77,77 @@ namespace LibMIA
 
 namespace internal
 {
+
+
+//little swapper structur for the CO format, just used as part of a benchmark comparison vs the LCO format for sorting
+template<typename MainIterator, typename FollowerIterator, size_t co_length>
+struct CoSwapper
+{
+	typedef FollowerIterator FollowerItType;
+	typedef MainIterator MainItType;
+	const MainIterator _mainBegin;
+	const FollowerIterator _followBegin;
+
+	CoSwapper(MainIterator _mainIt, FollowerIterator _followIt) : _mainBegin(_mainIt), _followBegin(_followIt)
+	{
+	}
+	void operator()(MainIterator it1, MainIterator it2) const
+	{
+		std::iter_swap(_followBegin + (it1 - _mainBegin), _followBegin + (it2 - _mainBegin));
+		auto it_raw = it1.m_iter; //now actually get the raw iterators pointing to the packed CO data
+		auto it_raw2 = it2.m_iter;
+
+
+
+		static_for<0, co_length>::_do([&](int i) //swap values, based on how many numbers are in each CO index
+		{
+
+			std::iter_swap(it_raw + i, it_raw2 + i);
+		});
+
+		
+
+	}
+	FollowerItType getFollowIt(MainIterator it) const
+	{
+		return  _followBegin + (it - _mainBegin);
+
+	}
+
+};
+
+//little swapper structur for the CO format as used by MTT, just used as part of a benchmark comparison vs the LCO format for sorting
+template<typename MainIterator, typename FollowerIterator, size_t co_length>
+struct CoSwapperMTT
+{
+	typedef FollowerIterator FollowerItType;
+	typedef MainIterator MainItType;
+	const MainIterator _mainBegin;
+	const FollowerIterator _followBegin;
+
+	CoSwapperMTT(MainIterator _mainIt, FollowerIterator _followIt) : _mainBegin(_mainIt), _followBegin(_followIt)
+	{
+	}
+	void operator()(MainIterator it1, MainIterator it2) const
+	{
+		std::iter_swap(_followBegin + (it1 - _mainBegin), _followBegin + (it2 - _mainBegin));
+		auto const it_array = *it1; //now actually get the raw iterators pointing to the packed CO data
+		auto const it_array2 = *it2;
+
+
+		static_for<0, co_length>::_do([&](int i)
+		{
+			std::iter_swap(it_array[i], it_array2[i]); //swap values, based on how many numbers are in each CO index
+		});
+
+	}
+	FollowerItType getFollowIt(MainIterator it) const
+	{
+		return  _followBegin + (it - _mainBegin);
+
+	}
+
+};
 
 //will also swap a second set of data. Two sets of data must correspond with each other.
 template<typename MainIterator, typename FollowerIterator>
@@ -628,6 +700,68 @@ inline void  InsertionSortImproved(RandomIterator begin, RandomIterator end,Foll
 }
 
 
+//tailored made to sort CO format
+template <typename RandomIterator, typename FollowIt, size_t co_length>
+void IntrosortCO(RandomIterator begin, RandomIterator end, FollowIt followBegin,const std::array<size_t, co_length> & sortOrder) {
+
+	typedef typename std::iterator_traits<RandomIterator>::value_type index_type;
+
+	auto sort_compare = [sortOrder](const index_type& idx1, const index_type& idx2){
+		const index_type* it = &idx1;
+		const index_type* it2 = &idx2;
+		for (int i = co_length - 1; i >= 0; --i){
+			auto left = *(it + sortOrder[i]);
+			auto right = *(it2 + sortOrder[i]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+	typedef CoSwapper<RandomIterator, FollowIt, co_length> Swapper;
+
+	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
+
+
+}
+
+
+//tailored made to sort CO format
+template <typename RandomIterator, typename FollowIt, size_t co_length>
+void IntrosortCO_MTT(RandomIterator begin, RandomIterator end, FollowIt followBegin, const std::array<size_t, co_length> & sortOrder) {
+
+	
+
+	typedef typename std::iterator_traits<RandomIterator>::value_type it_value_type;
+	auto sort_compare = [sortOrder](const it_value_type& idx_array, const it_value_type& idx_array2){
+
+		bool less_than = true;
+
+		for (int i = co_length - 1; i >= 0; --i){
+			auto left = *(idx_array[sortOrder[i]]);
+			auto right = *(idx_array2[sortOrder[i]]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+	typedef CoSwapperMTT<RandomIterator, FollowIt, co_length> Swapper;
+
+	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
+
+
+}
 
 
 /* Implementation of introsort. */
