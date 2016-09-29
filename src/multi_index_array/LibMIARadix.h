@@ -690,6 +690,7 @@ public:
 			mDivisorsShiftAmount[idx] = std::floor(std::log2(mDivisors[idx]));
 			//std::cout << "divisor " << mDivisors[idx] << " shiftDivisor " << mDivisorsShiftAmount[idx] << std::endl;
         }
+		
     }
 
     void mResize(size_t length){
@@ -720,6 +721,12 @@ public:
         if(mFirstSortOrFind==false)  //if we are currently finding and not sorting
         {
 
+			
+			
+			
+			/*_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold>(begin, followBegin, length, mTotalRightAmount);
+			
+			InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());*/
 			
 			if (mMaxDims.size()>1)
 				RadixShuffleFind(begin,followBegin,length);
@@ -777,7 +784,7 @@ private:
     void performRadixExtractDigit(RandomIt begin1,FollowIt followBegin1,RandomIt2 begin2,FollowIt2 followBegin2,size_t length,unsigned int cur_shiftRightAmount,int stage_index);
 
 	template<class RandomIt, class FollowIt, class RandomIt2, class FollowIt2>
-	void performRadixExtractDigit(RandomIt begin1, FollowIt followBegin1, RandomIt2 begin2, FollowIt2 followBegin2, size_t length, unsigned int cur_shiftRightAmount, bool isFinal, int stage_index);
+	void performRadixExtractDigitRotate(RandomIt begin1, FollowIt followBegin1, RandomIt2 begin2, FollowIt2 followBegin2, const size_t length, const unsigned int cur_shiftRightAmount, const int stage_index);
 
 
     void getNextShifts(int stage_index,unsigned int & straightshiftRightAmount,unsignedType & straightEliminatorMult,unsignedType & nextEliminatorMult,size_t & shuffleLengthThreshold );
@@ -836,12 +843,20 @@ inline void SiftDown(RandomIt it, FollowIt followIt, RandomIt begin, index_type 
 	*it = curElement;    // always necessary work/write
 	*followIt = followElement;    // always necessary work/write
 
+
+
+
+	
+
 }
 
 
 template<class RandomIt, class FollowIt, class RandomIt2, class FollowIt2>
 inline void InsertionSortWithMove(RandomIt begin, FollowIt followIt, RandomIt2 begin2, FollowIt2 followIt2, size_t length, bool destinationIsFirst) {
 
+	if (!length)
+		return;
+	
 	typedef typename std::iterator_traits<RandomIt>::value_type index_type;
 	if (destinationIsFirst){
 		InsertionSortImproved(begin, begin + length, followIt, std::less<index_type>());
@@ -878,6 +893,8 @@ inline void InsertionSortWithMove(RandomIt begin, FollowIt followIt, RandomIt2 b
 template <typename RandomIterator, typename FollowIt, typename index_type>
 inline void  InsertionSortImprovedEliminator(RandomIterator begin, RandomIterator end, FollowIt followBegin, index_type eliminator) {
 
+	if (end==begin)
+		return;
 	*begin += eliminator;
 	auto followIt = followBegin + 1;
 	for (auto it = begin + 1; it<end; ++it, ++followIt)
@@ -909,7 +926,8 @@ inline void  InsertionSortImprovedEliminator(RandomIterator begin, RandomIterato
 template<class RandomIt, class FollowIt, class RandomIt2, class FollowIt2, class index_type>
 inline void InsertionSortWithMoveAndEliminator(RandomIt begin, FollowIt followIt, RandomIt2 begin2, FollowIt2 followIt2, size_t length, index_type eliminator,bool destinationIsFirst) {
 
-
+	if (!length)
+		return;
 	if (destinationIsFirst){
 		InsertionSortImprovedEliminator(begin, begin + length, followIt, eliminator);
 		return;
@@ -1019,6 +1037,7 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
                 }
             }
             else{
+				//std::cout << " Intro/Insert " << curNumOfElements << std::endl;
 				if (curNumOfElements > InsertThreshold){ //otherwise, if we have enough to perform IntroSort, run it, otherwise do nothing, and let insertion sort do a final clean up at the end
 					//std::cout << "Intro" << std::endl;
 					introsort_detail::IntrosortRec(begin + curOffset, begin + curOffset + curNumOfElements, introsort_detail::IntrosortDepth(begin + curOffset, begin + curOffset + curNumOfElements),
@@ -1115,8 +1134,9 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     for(;curIt<begin+length;++curIt){
 
         if(*curIt>=nextValue){
+			//std::cout << *curIt << " numelemenst " << curNumOfElements << std::endl;
             if ( curNumOfElements >= Threshold ){
-
+				
 
                 if(curNumOfElements>shuffleLengthThreshold)
                     eliminator=curValue*nextEliminatorMult ;
@@ -1127,12 +1147,16 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
                     *it-=eliminator;
 
                 if(curNumOfElements>shuffleLengthThreshold){
-                    mResize(curNumOfElements);
-                    RadixShuffleSort(begin+curOffset,followBegin+curOffset,mScratch1.get(),mScratch2.get(),curNumOfElements,mShiftRightAmounts[1],1,false);	
-					AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
+					//std::cout << "Met the rp threshold" << std::endl;
 					
+					mResize(2*curNumOfElements);
+                    RadixShuffleSort(begin+curOffset,followBegin+curOffset,mScratch1.get(),mScratch2.get(),curNumOfElements,mShiftRightAmounts[1],1,false);	
+					////std::cout << "Shufflesorted" << std::endl;
+					AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
+					////std::cout << "Eliminator" << std::endl;
                 }
                 else{
+					//std::cout << "Met the straight radix sort threshold" << std::endl;
                     _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);
 					InsertionSortImprovedEliminator(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, eliminator);
                 }
@@ -1140,12 +1164,15 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
             }
             else {
+				//std::cout << "Have to intro/insert" << std::endl;
 				if (curNumOfElements > InsertThreshold){
-
+					//std::cout << "Met the intro thershold" << std::endl;
 					introsort_detail::IntrosortRec(begin + curOffset, begin + curOffset + curNumOfElements, introsort_detail::IntrosortDepth(begin + curOffset, begin + curOffset + curNumOfElements),
 						std::less<index_type>(), internal::DualSwapper<RandomIt, FollowIt>(begin + curOffset, followBegin + curOffset));
 				}
-				InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
+				if (curNumOfElements>1)
+
+					InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
             }
 
             curOffset=curIt-begin;
@@ -1153,7 +1180,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
             curValue=((unsignedType)*curIt)/cur_divisor;
             nextValue=(curValue+1)*cur_num_divisor;
-
+			
         }
         else{
             ++curNumOfElements;
@@ -1176,12 +1203,16 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 
         if(curNumOfElements>shuffleLengthThreshold){
 			//std::cout << "Radix shuff curNumOfElements " << curNumOfElements << " " << curOffset << std::endl;
-            mResize(curNumOfElements);
+			
+			//_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
+			//InsertionSortImprovedEliminator(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, eliminator);
+			
+			mResize(2 * curNumOfElements);
             RadixShuffleSort(begin+curOffset,followBegin+curOffset,mScratch1.get(),mScratch2.get(),curNumOfElements,mShiftRightAmounts[1],1,false);	
 			AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
         }
         else{
-
+			//std::cout << "Straight Radix sort curNumOfElements " << curNumOfElements << " " << curOffset << std::endl;
             _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);
 			InsertionSortImprovedEliminator(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, eliminator);
 			
@@ -1189,12 +1220,15 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 		
 
     }
-    else if(curNumOfElements>InsertThreshold)    {
+    else{
+		if (curNumOfElements > InsertThreshold)    {
 
 
-        introsort_detail::IntrosortRec(begin+curOffset, begin+curOffset+curNumOfElements,introsort_detail::IntrosortDepth(begin+curOffset, begin+curOffset+curNumOfElements),
-                                       std::less<index_type>(),internal::DualSwapper<RandomIt,FollowIt>(begin+curOffset,followBegin+curOffset));
-		InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
+			introsort_detail::IntrosortRec(begin + curOffset, begin + curOffset + curNumOfElements, introsort_detail::IntrosortDepth(begin + curOffset, begin + curOffset + curNumOfElements),
+				std::less<index_type>(), internal::DualSwapper<RandomIt, FollowIt>(begin + curOffset, followBegin + curOffset));
+		}
+		if (curNumOfElements>1)
+			InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
 		
 
     }
@@ -1207,13 +1241,13 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
 template<class index_type, class data_type, unsigned int PowerOfTwoRadix, unsigned int Log2ofPowerOfTwoRadix, unsigned int Threshold, unsigned int InsertThreshold>
 template<class RandomIt1, class FollowIt1, class RandomIt2, class FollowIt2>
 inline void RadixShuffle<index_type, data_type, PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold>::
-performRadixExtractDigit(RandomIt1  begin1, FollowIt1  followBegin1, RandomIt2  begin2, FollowIt2  followBegin2, const size_t length, const unsigned int cur_shiftRightAmount,bool isFinal,int stage_index){
+performRadixExtractDigitRotate(RandomIt1  begin1, FollowIt1  followBegin1, RandomIt2  begin2, FollowIt2  followBegin2, const size_t length, const unsigned int cur_shiftRightAmount,const int stage_index){
 
 	
 	/*if (isFinal)
 		std::cout << "Enetered Final Extract Digit" <<std::endl;*/
 	libmia_constexpr unsigned int numberOfBins = PowerOfTwoRadix;
-	
+	const unsigned int total_shift_amount = cur_shiftRightAmount + mDivisorsShiftAmount[stage_index]; //the total shift amount - standard radix shift plus the shift approximation to the divisor
 
 
 	//constexpr unsigned int BitMask =PowerOfTwoRadix-1;
@@ -1223,11 +1257,11 @@ performRadixExtractDigit(RandomIt1  begin1, FollowIt1  followBegin1, RandomIt2  
 	index_type cur_Digit;
 	auto end = begin1 + length;
 	for (auto it = begin1; it < end; ++it){ // Scan the array and count the number of times each value in the current bitMask appears
-		cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), cur_shiftRightAmount);
+		cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), total_shift_amount);
 		mCountBuffer[cur_Digit+ 1]++;
 		min_index = std::min(*it, min_index);
 	}
-	cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)min_index), cur_shiftRightAmount);
+	cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)min_index), total_shift_amount); //extract the approximate min digit, which we'll use to start our scan of when to rotate the extracted digits
 
 	for (auto idx = 1; idx<numberOfBins + 1; ++idx) // Turn the counts into starting offsets into the array
 		mCountBuffer[idx] += mCountBuffer[idx - 1];
@@ -1240,79 +1274,104 @@ performRadixExtractDigit(RandomIt1  begin1, FollowIt1  followBegin1, RandomIt2  
 	
 	
 
-	if (!isFinal){
+	//if (cur_shiftRightAmount){
 		for (auto it = begin1 ; it < end; ++it){ //perform radix sort on the current bitMask, using the starting offsets
-			cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), cur_shiftRightAmount);
+			cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), total_shift_amount);
 			*(begin2 + mCountBuffer2[cur_Digit]) = *it;
 			*(followBegin2 + mCountBuffer2[cur_Digit]++) = *followIt++;
 
 		}
-	}
-	else{
-		unsignedType trigger = ((unsignedType)min_index) / mFastDivisors[stage_index];// unsignedType(*begin1) / mFastDivisors[stage_index];// ((unsignedType)*begin1) / mFastDivisors[stage_index];
-		//std::cout << "trigger quotient of " << min_index << " divided by " << mDivisors[stage_index] << " is " << trigger << std::endl;
-		trigger = (trigger + 1)*mDivisors[stage_index];
-		unsignedType start = min_index >> unsignedType(mDivisorsShiftAmount[stage_index]);
-		//std::cout << "start quotient of " << min_index << " divided by " << mDivisorsShiftAmount[stage_index] << " is " << start << std::endl;
-		start = ((start + 1) << unsignedType(mDivisorsShiftAmount[stage_index])) - 1;
-		unsignedType inc = unsignedType(1) << unsignedType(mDivisorsShiftAmount[stage_index]);
-		
-		std::array<index_type, numberOfBins> bufferRotated;		
-		for (int i = 0; i < cur_Digit; ++i){
-			bufferRotated[i] = 0;
-		}		
-		//std::cout << "Trigger " << trigger;
-		for (int i = cur_Digit; i < numberOfBins; ++i){
-			//std::cout << "bin " << i << " start " << start << std::endl;
-			if (start > trigger){
 
-				bufferRotated[i] = trigger;
-				trigger += mDivisors[stage_index];
-				//std::cout << "Triggered new value " << trigger << std::endl;
-			}
-			else
-				bufferRotated[i] = 0;
-
-			start += inc;
-		}
-
-		for (auto it = begin1 ; it < end; ++it){ //perform radix sort on the current bitMask, using the starting offsets
-			cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), cur_shiftRightAmount);
-			if (bufferRotated[cur_Digit] && *it < bufferRotated[cur_Digit]){ //if we need to rotate shift right
-				/*if (cur_Digit == 1){
-					std::cout << "About to rotate 3 because " << *it << " < " << bufferRotated[cur_Digit] << std::endl;
-					for (auto i = mCountBuffer[cur_Digit]; i < mCountBuffer2[cur_Digit]; ++i){
-						std::cout << *(begin2 + i) << std::endl;
+		if (!cur_shiftRightAmount){
+			auto check_divisor = 1;
+			if (stage_index+1<mDivisors.size())
+				check_divisor=mDivisors[stage_index+1];
+			//std::cout << " check divisor" << check_divisor << std::endl;
+			for (auto idx = 0; idx < numberOfBins ; ++idx){				
+				auto followIt = followBegin2 + mCountBuffer[idx];
+				for (auto it = begin2 + mCountBuffer[idx]; it < begin2 + mCountBuffer[idx + 1]-1; ++it, ++followIt){
+					if (*it>*(it+1) && *it - *(it + 1) >= check_divisor){
+						//if (idx == 1){
+							//std::cout << "Rotating " << *(it + 1)<< " because " << *it << " is bigger, at position " << it + 1 - begin2 << std::endl;
+							//std::cout << *it - *(it + 1) << " " << mDivisors[stage_index + 1] << " " << check_divisor << std::endl;
+						//}
+						std::rotate(begin2 + mCountBuffer[idx], it + 1, begin2 + mCountBuffer[idx + 1]);
+						std::rotate(followBegin2 + mCountBuffer[idx], followIt + 1, followBegin2 + mCountBuffer[idx + 1]);
+						
+						break;
 					}
-				}*/
-				//*(begin2 + mCountBuffer2[cur_Digit] - 1) = -1;
-				//shift existing entries in the buffer right
-				std::copy(std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer2[cur_Digit]), std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer[cur_Digit]), std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer[cur_Digit+1]));
-				std::copy(std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer2[cur_Digit]), std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer[cur_Digit]), std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer[cur_Digit + 1]));
-				
-				/*if (cur_Digit == 1){
-					std::cout << "Rotated 3 because " << *it << " < " << bufferRotated[cur_Digit] << std::endl;
-					for (auto i = mCountBuffer[cur_Digit + 1] - (mCountBuffer2[cur_Digit] - mCountBuffer[cur_Digit]); i < mCountBuffer[cur_Digit + 1]; ++i){
-						std::cout << *(begin2 + i) << std::endl;
-					}
-				}*/
-				
-				//reset start of cur buffer
-				mCountBuffer2[cur_Digit] = mCountBuffer[cur_Digit];
-				bufferRotated[cur_Digit] = 0;
+
+				}
 			}
-			
-			*(begin2 + mCountBuffer2[cur_Digit]) = *it;
-			*(followBegin2 + mCountBuffer2[cur_Digit]++) = *followIt++;
-			//if (cur_Digit == 3){
-			//	//std::cout << "Added to 3" << std::endl;
-			//	/*for (auto i = mCountBuffer[cur_Digit]; i < mCountBuffer2[cur_Digit]; ++i){
-			//		std::cout << *(begin2 + i) << std::endl;
-			//	}*/
-			//}
-			
+
 		}
-	}
+	//}
+	//else{
+	//	unsignedType trigger = ((unsignedType)min_index / mFastDivisors[stage_index]);// >> cur_shiftRightAmount;//this is the true min digit 
+	//	//std::cout << "trigger quotient of " << min_index << " divided by " << mDivisors[stage_index] << " is " << trigger << std::endl;
+	//	unsignedType true_inc = mDivisors[stage_index];// << cur_shiftRightAmount;
+	//	trigger = (trigger + 1)*true_inc;
+	//	unsignedType start = min_index >> total_shift_amount;
+	//	//std::cout << "start quotient of " << min_index << " divided by " << mDivisorsShiftAmount[stage_index] << " is " << start << std::endl;
+	//	start = (start + 1) << total_shift_amount ;//-1;
+	//	unsignedType inc = unsignedType(1) << total_shift_amount;
+	//	
+	//	std::array<index_type, numberOfBins> bufferRotated;		
+	//	for (int i = 0; i < cur_Digit; ++i){
+	//		bufferRotated[i] = 0;
+	//	}		
+	//	//std::cout << "Trigger " << trigger;
+	//	for (int i = cur_Digit; i < numberOfBins; ++i){
+	//		//std::cout << "bin " << i << " start " << start << std::endl;
+	//		if (start > trigger){
+
+	//			bufferRotated[i] = trigger;
+	//			trigger += true_inc;
+	//			//std::cout << "Triggered new value " << trigger << std::endl;
+	//		}
+	//		else
+	//			bufferRotated[i] = 0;
+
+	//		start += inc;
+	//	}
+
+	//	for (auto it = begin1 ; it < end; ++it){ //perform radix sort on the current bitMask, using the starting offsets
+	//		cur_Digit = extractDigit<PowerOfTwoRadix - 1>(((unsignedType)*it), total_shift_amount);
+	//		if (bufferRotated[cur_Digit] && *it < bufferRotated[cur_Digit]){ //if we need to rotate shift right
+	//			/*if (cur_Digit == 1){
+	//				std::cout << "About to rotate 3 because " << *it << " < " << bufferRotated[cur_Digit] << std::endl;
+	//				for (auto i = mCountBuffer[cur_Digit]; i < mCountBuffer2[cur_Digit]; ++i){
+	//					std::cout << *(begin2 + i) << std::endl;
+	//				}
+	//			}*/
+	//			//*(begin2 + mCountBuffer2[cur_Digit] - 1) = -1;
+	//			//shift existing entries in the buffer right
+	//			std::copy(std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer2[cur_Digit]), std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer[cur_Digit]), std::reverse_iterator<RandomIt2>(begin2 + mCountBuffer[cur_Digit+1]));
+	//			std::copy(std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer2[cur_Digit]), std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer[cur_Digit]), std::reverse_iterator<FollowIt2>(followBegin2 + mCountBuffer[cur_Digit + 1]));
+	//			
+	//			/*if (cur_Digit == 1){
+	//				std::cout << "Rotated 3 because " << *it << " < " << bufferRotated[cur_Digit] << std::endl;
+	//				for (auto i = mCountBuffer[cur_Digit + 1] - (mCountBuffer2[cur_Digit] - mCountBuffer[cur_Digit]); i < mCountBuffer[cur_Digit + 1]; ++i){
+	//					std::cout << *(begin2 + i) << std::endl;
+	//				}
+	//			}*/
+	//			
+	//			//reset start of cur buffer
+	//			mCountBuffer2[cur_Digit] = mCountBuffer[cur_Digit];
+	//			bufferRotated[cur_Digit] = 0;
+	//		}
+	//		
+	//		*(begin2 + mCountBuffer2[cur_Digit]) = *it;
+	//		*(followBegin2 + mCountBuffer2[cur_Digit]++) = *followIt++;
+	//		//if (cur_Digit == 3){
+	//		//	//std::cout << "Added to 3" << std::endl;
+	//		//	/*for (auto i = mCountBuffer[cur_Digit]; i < mCountBuffer2[cur_Digit]; ++i){
+	//		//		std::cout << *(begin2 + i) << std::endl;
+	//		//	}*/
+	//		//}
+	//		
+	//	}
+	//}
 
 	//std::cout << "********************Final******************** " << std::endl;
 	//for (auto i = 0; i < mCountBuffer.size() - 1; ++i){
@@ -1347,8 +1406,13 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
     bool stageDone=false;
 	//t1 = high_resolution_clock::now();
 	//std::cout << "cur_shiftRightAmount " << cur_shiftRightAmount << std::endl;
-	performRadixExtractDigit(begin1, followBegin1, begin2, followBegin2, length, cur_shiftRightAmount + mDivisorsShiftAmount[stage_index], cur_shiftRightAmount==0,stage_index);
-	
+	performRadixExtractDigitRotate(begin1, followBegin1, begin2, followBegin2, length, cur_shiftRightAmount,stage_index);
+	/*std::cout << mCountBuffer[1] << std::endl;
+	for (auto it = begin2; it < begin2 + mCountBuffer[1]; ++it)
+		std::cout << *it << std::endl;
+	std::cout << "mDivisors" << mDivisors[stage_index + 1] << std::endl;*/
+	//std::copy(begin2, begin2 + length, begin1);
+	//return;
     if(cur_shiftRightAmount==0){
         if(stage_index+2>=mFastDivisors.size()){//if we have no more stages to perform, so just return, with a copy if needed
 			
@@ -1367,8 +1431,7 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
         cur_shiftRightAmount -= Log2ofPowerOfTwoRadix; //should always be a multiple of Log2ofPowerOfTwoRadix
     }
 	
-	/*for (auto it = begin2; it < begin2 + length; ++it)
-		std::cout << *it << std::endl;*/
+	
 
     auto count=mCountBuffer; //free up buffer for for use in lower recursions
 	inputArrayIsDestination = !inputArrayIsDestination;
@@ -1377,43 +1440,66 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 	//t2 = high_resolution_clock::now();
 	//std::cout << "Total Radix Move Time " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 	if (stageDone){
+		
+		
 		for (int i = 0; i < count.size() - 1; ++i)
 		{
 			offset = count[i];
 			numOfElements = count[i + 1] - count[i];
 			
+				
+
+
 			
-			//InsertionSortImproved(begin2 + offset, begin2 + offset + numOfElements, followBegin2 + offset, std::less<index_type>());
-			/*std::copy(begin2 + offset, begin2 + offset + numOfElements, begin1);
-			std::copy(followBegin2 + offset, followBegin2 + offset + numOfElements, followBegin1);*/
+			/*introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
+				std::less<index_type>(), internal::DualSwapper<RandomIt2, FollowIt2>(begin2 + offset, followBegin2 + offset));
+			InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);*/
+			if (!numOfElements){
+				continue;
+			}
+			else if (numOfElements >= InsertThreshold){
+				//std::cout << "Finding " << numOfElements << " " << offset << std::endl;
+				/*if (i == 0){
+					auto it2 = begin1;
+					for (auto it = begin2 + offset; it < begin2 + offset + numOfElements; ++it, ++it2)
+						std::cout << *it << " " << *it2 << std::endl;
+				}*/
+				//return;
+				RadixShuffleFind(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, stage_index, inputArrayIsDestination); //radix shufflefind will perform final insertion sort cleanup
+
+			}
+			else{
+				//std::cout << "Insert Sorting " << numOfElements << " " << offset << std::endl;
+				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination); //if we don't call the above, we need to perform our own cleanup
+			}
 			
-			if (numOfElements >= InsertThreshold){
-
-
-				RadixShuffleFind(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, stage_index, inputArrayIsDestination);
-
-			}			
 		}
 	}
 	else{
+		
 		for (int i = 0; i < count.size() - 1; ++i)
 		{
 			offset = count[i];
 			numOfElements = count[i + 1] - count[i];
-
-			if (numOfElements >= Threshold){
-
-
+			if (!numOfElements)
+				continue;
+			else if (numOfElements >= Threshold){
+				/*introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
+				std::less<index_type>(), internal::DualSwapper<RandomIt2, FollowIt2>(begin2 + offset, followBegin2 + offset));
+				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
+				*/
+				//std::cout << "Sorting " << *(begin2 + offset) << " " << *(begin2 + offset + numOfElements-1) << std::endl;
 				RadixShuffleSort(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, cur_shiftRightAmount, stage_index, inputArrayIsDestination);
 
 			}
 			else {
-
+				
 				if (numOfElements > InsertThreshold){
-
+					
 					introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
 						std::less<index_type>(), internal::DualSwapper<RandomIt2, FollowIt2>(begin2 + offset, followBegin2 + offset));
 				}
+				
 				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
 				
 			}

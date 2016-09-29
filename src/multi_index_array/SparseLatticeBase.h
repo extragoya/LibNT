@@ -733,6 +733,9 @@ public:
     template <bool ColSparse, class otherDerived>
     typename SparseProductReturnType<Derived,otherDerived>::type csc_no_accum(SparseLatticeBase<otherDerived> &b);
 
+	template <class otherDerived>
+	typename SparseProductReturnType<Derived, otherDerived>::type inner_product_mult(SparseLatticeBase<otherDerived> &b);
+
 #ifndef LIBMIA_TEST_CPS //for testing purposes it's useful to be able to access these members
 protected:
 #endif
@@ -1637,6 +1640,142 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     return this->csc_no_accum<true>(b);
 }
 
+
+
+template<class Derived>
+template<class otherDerived>
+typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<Derived>::inner_product_mult(SparseLatticeBase<otherDerived> &b){
+
+	this->check_mult_dims(b);
+	typedef typename ScalarPromoteType<Derived, otherDerived>::type super_data_type;
+
+	typedef typename SparseProductReturnType<Derived, otherDerived>::type RType;
+	typedef typename internal::index_type<otherDerived>::type b_index_type; //should be the same as index type, but just in case that changes in future versions
+	//iterators to the current tab start and end indexes
+
+
+	index_type old_m = this->height();
+	index_type cur_tab;
+	//initial estimate of size of C
+	typename RType::Indices c_indices;
+
+	c_indices.reserve(std::max(this->size(), b.size()));
+	typename RType::Data c_data;
+	c_data.reserve(c_indices.capacity());
+
+	Indices a_row_accumulator;
+	a_row_accumulator.resize(this->width(), 0);
+	Data a_row_data;
+	a_row_data.resize(a_row_accumulator.size());
+
+	this->sort(RowMajor);
+	b.sort(ColumnMajor);
+	
+	auto a_temp_begin = this->index_begin(), a_temp_end = this->index_begin();
+	auto a_index_end = this->index_end();
+	auto b_temp_begin = b.index_begin(), b_temp_end = b.index_begin();
+	auto b_index_end = b.index_end();
+
+	//determine whether we want to binary search or just scan through elements
+	bool a_search_flag = false, b_search_flag = false;
+	if (this->depth()*log2(this->size())<this->size())
+		a_search_flag = true;
+	if (b.depth()*log2(b.size())<b.size())
+		b_search_flag = true;
+
+
+	while (a_temp_begin<a_index_end && b_temp_begin<b_index_end){
+
+
+		//if we're at the same tab, no work
+		if (this->tab(*a_temp_begin) == b.tab(*b_temp_begin)){
+			cur_tab = this->tab(*a_temp_begin);
+		}
+		else if (this->tab(*a_temp_begin)<b.tab(*b_temp_begin)){ //if a's tab is less than b's tab - we need to try to find b's tab in a
+			cur_tab = b.tab(*b_temp_begin);
+			a_temp_begin = this->find_tab_start_idx(cur_tab, a_temp_begin, a_index_end, a_search_flag);
+			if (a_temp_begin == a_index_end) //no tab in A is greater than or equal to B's current tab - so we're finished the entire multiplication routine
+				break;
+			//couldn't find a tab in A equal to B's current tab, but we found one greater than it - so now we need to try to find a matching tab in b
+			if (this->tab(*a_temp_begin) != b.tab(*b_temp_begin))
+				continue;
+		}
+		else{
+			cur_tab = this->tab(*a_temp_begin);
+			b_temp_begin = b.find_tab_start_idx(cur_tab, b_temp_begin, b_index_end, b_search_flag);
+			if (b_temp_begin == b_index_end) //no tab in B is greater than or equal to A's current tab - so we're finished the entire multiplication routine
+				break;
+			//couldn't find a tab in B equal to A's current tab, but we found one greater than it - so now we need to try to find a matching tab in B
+			if (this->tab(*a_temp_begin) != b.tab(*b_temp_begin))
+				continue;
+		}
+
+
+		a_temp_end = this->find_tab_end_idx(cur_tab, a_temp_begin, a_index_end, a_search_flag);
+		b_temp_end = b.find_tab_end_idx(cur_tab, b_temp_begin, b_index_end, b_search_flag);	
+
+
+		
+		auto cur_tab_adder = cur_tab*this->height()*b.width();
+				
+		auto cur_a = a_temp_begin;
+		//iterate through all values of a
+		while (cur_a < a_temp_end){
+			auto cur_a_row = this->row(*cur_a);
+			//std::cout << "cur a row " << cur_a_row << std::endl;
+			auto a_temp_row_end = cur_a;
+			while (a_temp_row_end < a_temp_end && this->row(*a_temp_row_end) == cur_a_row){ //find the end of the current row
+				auto cur_a_column = this->column(*a_temp_row_end);	
+				
+				a_row_accumulator[cur_a_column] = cur_a_row + 1;	//set sparse accumulator with values of current row
+				a_row_data[cur_a_column] = this->data_at(a_temp_row_end);
+				a_temp_row_end++;
+			}
+			
+			auto cur_b = b_temp_begin;
+			auto cur_b_column = -1;
+			
+			decltype(b.row(*cur_b)) cur_b_row;
+			
+			while (cur_b < b_temp_end){	//for every row of a, iterate through all values of b
+				cur_b_row = b.row(*cur_b);
+				
+				if (a_row_accumulator[cur_b_row] == cur_a_row + 1){ //if we have a row value of b that matches a non-zero column of the current row of a
+					//std::cout << "cur_b_row " << cur_b_row << " cur_b_column " << cur_b_column << std::endl;
+					//compute the resulting value of c
+					if (b.column(*cur_b) == cur_b_column){
+						
+						c_data.back() += b.data_at(cur_b)*a_row_data[cur_b_row];
+					}
+					else{
+						
+						cur_b_column = b.column(*cur_b);
+						
+						c_indices.push_back(cur_b_column*this->height() + cur_a_row + cur_tab_adder);						
+						
+						
+						c_data.push_back(b.data_at(cur_b)*a_row_data[cur_b_row]);
+						
+					}
+					
+				}
+				cur_b++;
+			}
+			cur_a = a_temp_row_end;
+		}
+		
+		
+		//high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		//std::cout << "Pure mult time: " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+		a_temp_begin = a_temp_end;
+		b_temp_begin = b_temp_end;
+		//std::cout << "Pure Mult Time:" << boost::timer::format(hash_t.elapsed()) << std::endl;
+	}
+	
+	return RType(std::move(c_data), std::move(c_indices), this->height(), b.width(), this->depth(), true);
+
+
+}
 
 template <class Derived>
 template <bool ColumnSparse,class otherDerived>
