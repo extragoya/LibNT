@@ -57,7 +57,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	if (!a_data_length)
 		return;
 	
-	mex_index_type* a_indices = (mex_index_type *)mxGetData(prhs[1]);
+	//mex_index_type* a_indices = (mex_index_type *)mxGetData(prhs[1]);
 	unsigned char * current_permute_idx = (unsigned char *)mxGetData(prhs[2]);
 	unsigned char * desired_permute_idx = (unsigned char *)mxGetData(prhs[3]);
 	mex_index_type* _dims = (mex_index_type *)mxGetData(prhs[4]);

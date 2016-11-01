@@ -84,7 +84,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	
 
     //plhs[0]=mxCreateNumericArray(0, 0,   a_id, mxREAL);
-	double result;
+	double result(-1);
     switch (a_id)
     {
     case mxDOUBLE_CLASS:

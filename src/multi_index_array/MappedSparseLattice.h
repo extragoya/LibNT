@@ -59,7 +59,7 @@ struct data_type<MappedSparseLattice<T> >
 template<typename T>
 struct index_type<MappedSparseLattice<T> >
 {
-    typedef long long type;
+    typedef int64_t type;
 };
 
 template<typename T>

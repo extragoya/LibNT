@@ -1647,10 +1647,10 @@ template<class otherDerived>
 typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<Derived>::inner_product_mult(SparseLatticeBase<otherDerived> &b){
 
 	this->check_mult_dims(b);
-	typedef typename ScalarPromoteType<Derived, otherDerived>::type super_data_type;
+	//typedef typename ScalarPromoteType<Derived, otherDerived>::type super_data_type;
 
 	typedef typename SparseProductReturnType<Derived, otherDerived>::type RType;
-	typedef typename internal::index_type<otherDerived>::type b_index_type; //should be the same as index type, but just in case that changes in future versions
+	//typedef typename internal::index_type<otherDerived>::type b_index_type; //should be the same as index type, but just in case that changes in future versions
 	//iterators to the current tab start and end indexes
 
 
@@ -2238,7 +2238,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 			std::cout << "Tab " << cur_tab << " Column " << cur_column << ": old_c_size " << old_c_size << " *cur_b " << *cur_b << " cur_offset_end " << cur_offset_end << std::endl;
 #endif
 			auto beta = b.data_at(cur_b - b.index_begin());
-			auto test = b.row(*cur_b);
+			
 
 			//do the first entry in the current b column, as it can be done faster
 			index_type a_column_begin, a_column_end;			

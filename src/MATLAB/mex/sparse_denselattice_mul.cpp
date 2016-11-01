@@ -64,7 +64,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	mxClassID a_id,b_id;
 	mwSize b_subs[3];
 	mex_index_type *a_subs;
-	mwSize c_subs[3];
+	
 	a_id = check_sparse_data(nrhs, prhs, 0, &a_data_length);
 	a_index_length = check_sparse_indices(nrhs, prhs, 1);
 	a_degree = check_sparse_dims(nrhs, prhs, 2);
@@ -72,22 +72,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	a_subs = (mex_index_type *)mxGetData(prhs[2]);
 	if (dense_first){
 		
-		if (b_subs[1] != a_subs[0]){
+		if (b_subs[1] != (mwSize)a_subs[0]){
 			mexErrMsgTxt("Left operand width must match right operand height.");
 		}
-		c_subs[0] = b_subs[0];
-		c_subs[1] = a_subs[1];
-		c_subs[2] = b_subs[2];
+		
 	}
 	else{
 		
 		
-		if (a_subs[1] != b_subs[0]){
+		if ((mwSize)a_subs[1] != b_subs[0]){
 			mexErrMsgTxt("Left operand width must match right operand height.");
 		}
-		c_subs[0] = a_subs[0];
-		c_subs[1] = b_subs[1];
-		c_subs[2] = b_subs[2];
+		
 
 	}
 	if (a_degree != 3){
@@ -99,7 +95,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	if (a_id != b_id){
 		mexErrMsgTxt("Operands must be of the same datatype.");
 	}
-	if (a_subs[2] != b_subs[2]){
+	if ( (mwSize)a_subs[2] !=b_subs[2]){
 		mexErrMsgTxt("Depths of two lattices must be the same.");
 	}
 	
