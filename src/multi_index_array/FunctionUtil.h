@@ -196,7 +196,7 @@ auto latticeCopy(const MIA<Derived> &mia, const std::array<idx_typeR,R> & row_in
 {
 
 	using namespace std::chrono;
-	typedef std::chrono::duration<float> float_seconds;
+	//typedef std::chrono::duration<float> float_seconds;
 	high_resolution_clock::time_point t1, t2;
 	//t1 = high_resolution_clock::now();
     //print_array(row_indices,"row_indices");

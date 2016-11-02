@@ -123,7 +123,7 @@ inline void _RadixSort_Unsigned_PowerOf2Radix_L1(ForwardIt begin, FollowIt follo
 {
 
 	//std::cout << "shiftRightAmount " << shiftRightAmount << std::endl;
-	typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
+	
 
 	libmia_constexpr unsigned long BitMask = PowerOfTwoRadix - 1; //use constexpr workaround
 	std::array<unsigned long, PowerOfTwoRadix> count;
@@ -643,8 +643,8 @@ private:
     unsigned int mTotalRightAmount;
     const bool mFirstSortOrFind;
 	size_t curBufferLength;
-    typedef typename index_type* ScratchIt1;
-    typedef typename data_type* ScratchIt2;
+    typedef index_type* ScratchIt1;
+    typedef data_type* ScratchIt2;
 public:
 
     /**

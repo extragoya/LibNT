@@ -61,7 +61,7 @@ struct const_data_type_ref<SparseMIA<T,_order> >
 template<typename T,size_t _order>
 struct index_type<SparseMIA<T,_order> >
 {
-    typedef long long type;
+    typedef int64_t type;
 };
 
 template<typename T,size_t _order>

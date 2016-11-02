@@ -58,7 +58,7 @@ struct data_type<SparseLattice<T> >
 template<typename T>
 struct index_type<SparseLattice<T> >
 {
-    typedef long long type;
+    typedef int64_t type;
 };
 
 template<typename T>
@@ -682,7 +682,7 @@ template <class otherDerived,class Op>
 SparseLattice<T>& SparseLattice<T>::merge(SparseLatticeBase<otherDerived> &b, Op op)
 {
 
-    otherDerived& b_derived=b.derived();
+    
     this->sort();
     b.sort(this->linIdxSequence());
 

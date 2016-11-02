@@ -110,9 +110,9 @@ mxClassID check_sparse_params_merge(int nrhs, const mxArray *prhs[],  mwSize* a_
 	mwSize a_index_length, b_index_length;
 	mxClassID a_id = check_sparse_data(nrhs, prhs, 0, a_data_length);
 	a_index_length = check_sparse_indices(nrhs, prhs, 1);
-	mxClassID b_id = check_sparse_data(nrhs, prhs, 2, b_data_length);
+	check_sparse_data(nrhs, prhs, 2, b_data_length);
 	b_index_length = check_sparse_indices(nrhs, prhs, 3);
-	double value = check_passed_double(nrhs, prhs, 4);
+	check_passed_double(nrhs, prhs, 4);
 	bool _valid = (a_index_length == *a_data_length) && (b_index_length == *b_data_length);
 	if (!_valid)
 		mexErrMsgTxt("Data and index vectors must be the same length.");

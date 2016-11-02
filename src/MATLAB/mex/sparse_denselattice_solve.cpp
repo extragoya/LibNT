@@ -18,7 +18,7 @@ int perform_solve(T * C, T*a_data, mex_index_type* a_index, const mex_index_type
 	const LibMIA::MappedDenseLattice<T> latB(B, b_subs[0], b_subs[1], b_subs[2]);	
 	LibMIA::MappedDenseLattice<T> latC(C, c_subs[0], c_subs[1], c_subs[2]);
 	
-	int ret_code;
+	int ret_code(-1);
 
     try{
 		
@@ -67,7 +67,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	a_subs = (mex_index_type *)mxGetData(prhs[2]);
 	if (!dense_first){
 		
-		if (b_subs[0] != a_subs[0]){
+		if (b_subs[0] != (mwSize)a_subs[0]){
 			mexErrMsgTxt("Left operand height must match right operand height.");
 		}
 		
@@ -95,7 +95,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	if (a_id != b_id){
 		mexErrMsgTxt("Operands must be of the same datatype.");
 	}
-	if (a_subs[2] != b_subs[2]){
+	if ((mwSize)a_subs[2] != b_subs[2]){
 		mexErrMsgTxt("Depths of two lattices must be the same.");
 	}
 	
@@ -104,7 +104,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 	plhs[0] = mxCreateNumericArray(3, c_subs, a_id, mxREAL);
     
-	int result;
+	int result(-1);
     switch (a_id)
     {
     case mxDOUBLE_CLASS:

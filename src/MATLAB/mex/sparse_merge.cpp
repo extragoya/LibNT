@@ -10,7 +10,7 @@
 #include "LibMIAException.h"
 
 
-typedef long long index_type;
+typedef int64_t index_type;
 
 template<class T>
 mwSize perform_merge(mxArray *plhs[],mxClassID a_id, T*a_data, index_type  * a_indices,  T*b_data, index_type * b_indices, mwSize a_size,mwSize b_size,double op){
@@ -118,8 +118,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
 
 
-    double  a_subs[3]={0,0,0};
-    double  b_subs[3]={0,0,0};
+  
     mwSize a_data_length;
     mwSize b_data_length;
 
