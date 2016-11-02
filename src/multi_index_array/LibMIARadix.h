@@ -748,7 +748,7 @@ public:
 				//std::cout << "Resize Time:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 				//t1 = high_resolution_clock::now();
                 RadixShuffleSort(begin,followBegin,mScratch1.get(),mScratch2.get(),length,mShiftRightAmounts[0],0,false);	
-				
+				InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());
 
             }
             else
@@ -1004,7 +1004,7 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
 	//std::cout << "****Cur Value***** " << curValue;
 	
 	
-
+	
     for(;curIt<begin+length;++curIt){
 		
         if(*curIt>=nextValue){
@@ -1015,24 +1015,28 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
             if ( curNumOfElements >= Threshold ){ //if we've have enough elements to perform a radix sort
 
 				
-                if(curNumOfElements>shuffleLengthThreshold) //shuffeLengthThreshold determines how big size must be to perform Radix Permute, vs just straight radix sort
-                    eliminator=curValue*nextEliminatorMult;
-                else
-                    eliminator=curValue*straightEliminatorMult;
+                //if(curNumOfElements>shuffleLengthThreshold) //shuffeLengthThreshold determines how big size must be to perform Radix Permute, vs just straight radix sort
+                //    eliminator=curValue*nextEliminatorMult;
+                //else
+                //    eliminator=curValue*straightEliminatorMult;
 
-                for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it) //all sorting can be done modulo current index
-                    *it-=eliminator;
+                //for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it) //all sorting can be done modulo current index
+                //    *it-=eliminator;
 
                 if(curNumOfElements>shuffleLengthThreshold){
 					//perform radix permute
+					//std::cout << " Suffle " << curNumOfElements << std::endl;
 					RadixShuffleSort(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, mShiftRightAmounts[stage_index + 1], stage_index + 1, inputArrayIsDestination);
-					AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
+					//AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
 
                 }
                 else{
 					//perform straight sort
+					//std::cout << " STraight " << curNumOfElements << std::endl;
                     _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);                    
-					InsertionSortWithMoveAndEliminator(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, eliminator, !inputArrayIsDestination);					
+					//InsertionSortWithMoveAndEliminator(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, eliminator, !inputArrayIsDestination);					
+					//if (inputArrayIsDestination)
+					InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
 
                 }
             }
@@ -1040,10 +1044,15 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
 				//std::cout << " Intro/Insert " << curNumOfElements << std::endl;
 				if (curNumOfElements > InsertThreshold){ //otherwise, if we have enough to perform IntroSort, run it, otherwise do nothing, and let insertion sort do a final clean up at the end
 					//std::cout << "Intro" << std::endl;
+					//_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
 					introsort_detail::IntrosortRec(begin + curOffset, begin + curOffset + curNumOfElements, introsort_detail::IntrosortDepth(begin + curOffset, begin + curOffset + curNumOfElements),
 						std::less<index_type>(), internal::DualSwapper<RandomIt, FollowIt>(begin + curOffset, followBegin + curOffset));
 				}
-				InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
+				/*if (inputArrayIsDestination){
+					std::copy(begin + curOffset, begin + curOffset+curNumOfElements, begin2 + curOffset);
+					std::copy(followBegin + curOffset, followBegin +curOffset + curNumOfElements, followBegin2 + curOffset);
+				}*/
+					InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
             }			
 
             curOffset=curIt-begin;
@@ -1470,7 +1479,10 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 			}
 			else{
 				//std::cout << "Insert Sorting " << numOfElements << " " << offset << std::endl;
-				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination); //if we don't call the above, we need to perform our own cleanup
+				///if (inputArrayIsDestination){
+
+					InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination); //if we don't call the above, we need to perform our own cleanup
+				//}
 			}
 			
 		}
@@ -1499,8 +1511,9 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 					introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
 						std::less<index_type>(), internal::DualSwapper<RandomIt2, FollowIt2>(begin2 + offset, followBegin2 + offset));
 				}
-				
-				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
+				//if (inputArrayIsDestination){
+					InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
+				//}
 				
 			}
 		}

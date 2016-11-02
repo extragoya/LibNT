@@ -267,7 +267,7 @@ classdef (InferiorClasses = {?Lattice}) SparseLattice < Lattice
            
                   
             if max(inds)>m*n*p
-                error('Indices exceed valid range')
+                error(['Indices exceed valid range ' num2str(max(inds)) ' > ' num2str(m*n*p)] )
             end
             
            

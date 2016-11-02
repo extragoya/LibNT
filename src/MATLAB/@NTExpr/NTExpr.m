@@ -36,7 +36,7 @@ classdef NTExpr
                     obj.m_last_inter=varargin{3};
                 end
             else
-                error('Only one NT and string argument can be inputted as index expressions, e.g., ''ijk''')
+                error('Only one NT and string argument can be inputted as index expressions, e.g., ''i,j,k''')
             end
          end
          

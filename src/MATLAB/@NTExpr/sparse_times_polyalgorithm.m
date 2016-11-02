@@ -34,15 +34,38 @@ b_hyper_sparse=b_col_sparsity && b_row_sparsity;
 b_row_sparsity=b_row_sparsity&~b_hyper_sparse;
 b_col_sparsity=b_col_sparsity&~b_hyper_sparse;
 
+a_inner_outer_lexorder=A_nt.lexOrder(1:(length(a_inner_dims)+length(a_outer_dims)));
+b_inner_outer_lexorder=B_nt.lexOrder(1:(length(b_inner_dims)+length(b_outer_dims)));
+
 if a_sparse
     if b_sparse %both are normal sparse, so just do CSC or CSR
-        if(b_outer_size>a_outer_size)
+        if isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
             transposed=0;
             algorithm=1;
-            
-        else
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx  ])
             transposed=1;
             algorithm=1;
+        elseif isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && ~isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=0;
+            algorithm=1;
+        elseif ~isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=1;
+            algorithm=1;
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && ~isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=1;
+            algorithm=0;
+        elseif ~isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=0;
+            algorithm=1;
+        else
+            if(b_outer_size>a_outer_size)
+                transposed=0;
+                algorithm=1;
+            
+            else
+                transposed=1;
+                algorithm=1;
+            end
         end
     else    %if A is sparse, but B has some hyper-sparsity, do CSC
        transposed=0;
@@ -53,13 +76,35 @@ elseif b_sparse %in this case B is sparse, but A has some hyper-sparsity, so do 
     algorithm=1;
 elseif a_col_sparsity
     if b_row_sparsity %if A is col-sparse and B is row-sparse, we do DCSC or DCSR
-        if(b_outer_size>a_outer_size)
+        
+        if isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
             transposed=0;
             algorithm=2;
-            
-        else
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx  ])
             transposed=1;
             algorithm=2;
+        elseif isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && ~isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=0;
+            algorithm=2;
+        elseif ~isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=1;
+            algorithm=2;
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && ~isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=1;
+            algorithm=2;
+        elseif ~isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=0;
+            algorithm=2;
+        else
+        
+            if(b_outer_size>a_outer_size)
+                transposed=0;
+                algorithm=2;
+                
+            else
+                transposed=1;
+                algorithm=2;
+            end
         end
     else %A is col-sparse and B is col-sparse or hyper-sparse. so do DCSC
         transposed=0;
@@ -70,13 +115,34 @@ elseif b_row_sparsity %B is row sparse and A is row- or hyper-sparse, so do DCSR
     algorithm=2;
 elseif a_row_sparsity %A is row sparse, and B is col-sparse or hyper-sparse
     if b_col_sparsity %if B is col-sparse do CSCNA or CSRNA
-        if(b_outer_size>a_outer_size)
+        if isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
             transposed=0;
             algorithm=3;
-            
-        else
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx  ])
             transposed=1;
             algorithm=3;
+        elseif isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && ~isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=0;
+            algorithm=3;
+        elseif ~isequal(a_inner_outer_lexorder,[a_outer_idx a_inner_idx]) && isequal(b_inner_outer_lexorder,[b_outer_idx b_inner_idx])
+            transposed=1;
+            algorithm=3;
+        elseif isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && ~isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=1;
+            algorithm=3;
+        elseif ~isequal(a_inner_outer_lexorder,[a_inner_idx a_outer_idx ]) && isequal(b_inner_outer_lexorder,[b_inner_idx b_outer_idx ])
+            transposed=0;
+            algorithm=3;
+        else
+            
+            if(b_outer_size>a_outer_size)
+                transposed=0;
+                algorithm=3;
+                
+            else
+                transposed=1;
+                algorithm=3;
+            end
         end
     else %otherwise if B is hyper-sparse do CSCNA
         transposed=0;
