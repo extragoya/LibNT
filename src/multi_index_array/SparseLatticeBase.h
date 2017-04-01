@@ -360,7 +360,7 @@ public:
 
 
 
-		
+
         if(!is_sorted()) //if *this is not sorted, we need to do a straight-up sort
         {
 
@@ -844,18 +844,18 @@ protected:
 
     fast_divisor createDCSCVectors(index_iterator tab_begin, index_iterator tab_end);
 
-    
+
 
     fast_divisor createAUX(index_iterator tab_begin, index_iterator tab_end);
 
 
 
-    
 
 
 
 
-   
+
+
 
     template <class otherDerived, bool LSQR>
     typename SparseSolveReturnType<Derived,otherDerived>::type perform_solve(SparseLatticeBase<otherDerived> &b);
@@ -1173,7 +1173,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 		return ret;
 	}
 	this->sort(ColumnMajor);
-	
+
 	c_data_type cur_c_data;
 	c_index_type c_column_begin = 0;
 	c_index_type c_column_size = 0;
@@ -1186,26 +1186,26 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 	bool a_search_flag = false;
 	if (this->depth()*log2(this->size())<this->size())
 		a_search_flag = true;
-	
+
 	while (a_tab_begin < a_index_end){ //we iterate through each tab of A
 		index_type cur_tab = this->tab(*a_tab_begin); //get the current tab
 		a_temp_end = this->find_tab_end_idx(cur_tab, a_tab_begin, a_index_end, a_search_flag); //find the end of current tab
-		for (index_type b_cur_column = 0; b_cur_column < b.width(); ++b_cur_column){ //now iterate through each column of B			
+		for (index_type b_cur_column = 0; b_cur_column < b.width(); ++b_cur_column){ //now iterate through each column of B
 			a_cur_it = a_tab_begin;
 			old_c_size = ret.size();
 			while (a_cur_it < a_temp_end){ //for each column of B, we iterate completely through A, and accumulate values for corresponding column of C
 				a_cur_column = this->column(*a_cur_it);
-				
+
 				while (a_cur_it < a_temp_end && this->column(*a_cur_it) == a_cur_column){ //collect non-zeros of C arising form cur column of A
 					cur_c_data = this->data_at(a_cur_it)*b(a_cur_column, b_cur_column, cur_tab);
 					if (std::abs(cur_c_data)>SparseTolerance<double>::tolerance){
-						ret.push_back(cur_c_data, this->row(*a_cur_it));						
+						ret.push_back(cur_c_data, this->row(*a_cur_it));
 					}
 					a_cur_it++;
 				}
-				
-				
-				
+
+
+
 			}
 			//now sort and sum duplicate non-zero values, producing the resulting column of C
 			internal::RadixSortInPlace_PowerOf2Radix_Unsigned(ret.index_begin() + old_c_size, ret.data_begin() + old_c_size, ret.size() - old_c_size, this->height());
@@ -1531,10 +1531,10 @@ void SparseLatticeBase<Derived>::createJCCPIR(index_iterator tab_begin, index_it
 
 
         index_type localnzc = 0;
-        index_type cur_tab_adder=this->tab(*tab_begin)*this->width()*this->height();        
+        index_type cur_tab_adder=this->tab(*tab_begin)*this->width()*this->height();
         auto cur_it=tab_begin;
         //we count columns this way becuase although asymtotically slower, it's faster practically as it avoids divisions to get current column
-        
+
 		//need to fix all of these - right now running time is based on width, which is not what we want when we use DCSC
 		while(cur_it<tab_end){
 			auto cur_column = this->column(*cur_it);
@@ -1544,26 +1544,26 @@ void SparseLatticeBase<Derived>::createJCCPIR(index_iterator tab_begin, index_it
 				++cur_it;
             }
 			++localnzc;
-			
+
         }
 
         this->JC.resize(localnzc);
         this->CP.resize(localnzc+1);
         this->IR.resize(this->size());
-        index_type jspos = 0;        
-        cur_it=tab_begin;        
-		
+        index_type jspos = 0;
+        cur_it=tab_begin;
+
 		while (cur_it < tab_end){
 			auto cur_column = this->column(*cur_it);
 			this->JC[jspos] = cur_column;
 			this->CP[jspos++] = cur_it - tab_begin;
-			auto cur_val_end = cur_tab_adder + (cur_column+1)*this->height();			
+			auto cur_val_end = cur_tab_adder + (cur_column+1)*this->height();
 			while (cur_it < tab_end && *cur_it < cur_val_end){
 				this->IR[cur_it - tab_begin] = *cur_it - cur_val_end + this->height();
 				++cur_it;
 			}
 		}
-		
+
         this->CP[jspos] = tab_size;
 
 
@@ -1670,7 +1670,7 @@ typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<
 
 	this->sort(RowMajor);
 	b.sort(ColumnMajor);
-	
+
 	auto a_temp_begin = this->index_begin(), a_temp_end = this->index_begin();
 	auto a_index_end = this->index_end();
 	auto b_temp_begin = b.index_begin(), b_temp_end = b.index_begin();
@@ -1712,12 +1712,12 @@ typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<
 
 
 		a_temp_end = this->find_tab_end_idx(cur_tab, a_temp_begin, a_index_end, a_search_flag);
-		b_temp_end = b.find_tab_end_idx(cur_tab, b_temp_begin, b_index_end, b_search_flag);	
+		b_temp_end = b.find_tab_end_idx(cur_tab, b_temp_begin, b_index_end, b_search_flag);
 
 
-		
+
 		auto cur_tab_adder = cur_tab*this->height()*b.width();
-				
+
 		auto cur_a = a_temp_begin;
 		//iterate through all values of a
 		while (cur_a < a_temp_end){
@@ -1725,53 +1725,53 @@ typename SparseProductReturnType<Derived, otherDerived>::type SparseLatticeBase<
 			//std::cout << "cur a row " << cur_a_row << std::endl;
 			auto a_temp_row_end = cur_a;
 			while (a_temp_row_end < a_temp_end && this->row(*a_temp_row_end) == cur_a_row){ //find the end of the current row
-				auto cur_a_column = this->column(*a_temp_row_end);	
-				
+				auto cur_a_column = this->column(*a_temp_row_end);
+
 				a_row_accumulator[cur_a_column] = cur_a_row + 1;	//set sparse accumulator with values of current row
 				a_row_data[cur_a_column] = this->data_at(a_temp_row_end);
 				a_temp_row_end++;
 			}
-			
+
 			auto cur_b = b_temp_begin;
 			auto cur_b_column = -1;
-			
+
 			decltype(b.row(*cur_b)) cur_b_row;
-			
+
 			while (cur_b < b_temp_end){	//for every row of a, iterate through all values of b
 				cur_b_row = b.row(*cur_b);
-				
+
 				if (a_row_accumulator[cur_b_row] == cur_a_row + 1){ //if we have a row value of b that matches a non-zero column of the current row of a
 					//std::cout << "cur_b_row " << cur_b_row << " cur_b_column " << cur_b_column << std::endl;
 					//compute the resulting value of c
 					if (b.column(*cur_b) == cur_b_column){
-						
+
 						c_data.back() += b.data_at(cur_b)*a_row_data[cur_b_row];
 					}
 					else{
-						
+
 						cur_b_column = b.column(*cur_b);
-						
-						c_indices.push_back(cur_b_column*this->height() + cur_a_row + cur_tab_adder);						
-						
-						
+
+						c_indices.push_back(cur_b_column*this->height() + cur_a_row + cur_tab_adder);
+
+
 						c_data.push_back(b.data_at(cur_b)*a_row_data[cur_b_row]);
-						
+
 					}
-					
+
 				}
 				cur_b++;
 			}
 			cur_a = a_temp_row_end;
 		}
-		
-		
+
+
 		//high_resolution_clock::time_point t2 = high_resolution_clock::now();
 		//std::cout << "Pure mult time: " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 		a_temp_begin = a_temp_end;
 		b_temp_begin = b_temp_end;
 		//std::cout << "Pure Mult Time:" << boost::timer::format(hash_t.elapsed()) << std::endl;
 	}
-	
+
 	return RType(std::move(c_data), std::move(c_indices), this->height(), b.width(), this->depth(), true);
 
 
@@ -1788,7 +1788,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
     typedef typename SparseProductReturnType<Derived,otherDerived>::type RType;
     typedef typename internal::index_type<otherDerived>::type b_index_type; //should be the same as index type, but just in case that changes in future versions
     //iterators to the current tab start and end indexes
-    
+
 
 
 
@@ -1850,7 +1850,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 
         MultHelper<Derived,ColumnSparse> multHelper(*this);
         multHelper.initMultHelpers(a_temp_begin,a_temp_end);
-		
+
 
         //iterate through every element of b
         b_index_type cur_column;
@@ -1896,7 +1896,7 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
                 }
             }
         }
-		
+
         //high_resolution_clock::time_point t2 = high_resolution_clock::now();
         //std::cout << "Pure mult time: " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
         a_temp_begin=a_temp_end;
@@ -2232,16 +2232,16 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 		{
 			cur_column = b.column(*cur_b);
 			auto cur_offset_end=cur_tab_b_adder+(cur_column+1)*b.height();
-			
+
 			size_t old_c_size = c_indices.size();
 #ifdef LM_SPARSE_LATTICE_MULT_DEBUG
 			std::cout << "Tab " << cur_tab << " Column " << cur_column << ": old_c_size " << old_c_size << " *cur_b " << *cur_b << " cur_offset_end " << cur_offset_end << std::endl;
 #endif
 			auto beta = b.data_at(cur_b - b.index_begin());
-			
+
 
 			//do the first entry in the current b column, as it can be done faster
-			index_type a_column_begin, a_column_end;			
+			index_type a_column_begin, a_column_end;
 			multHelper.getColumnOffset(b.row(*cur_b), a_column_begin, a_column_end);
 			if (a_column_begin == a_column_end){
 				cur_b++;
@@ -2256,16 +2256,16 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 			auto _end = this->IR.begin() + a_column_end;
 			std::copy(_begin, _end, c_indices.begin() + old_c_size);
 
-			
+
 			auto _data_it = this->data_begin() + cur_a_tab_offset + a_column_begin;
-			
-			for (auto cur_row = _begin; cur_row<_end; ++cur_row){				
-				row_marker[*cur_row] = cur_column + 1;						
-				data_collector[*cur_row] = beta*(*_data_it++);				
-			}	
-			
-				
-			
+
+			for (auto cur_row = _begin; cur_row<_end; ++cur_row){
+				row_marker[*cur_row] = cur_column + 1;
+				data_collector[*cur_row] = beta*(*_data_it++);
+			}
+
+
+
 			cur_b++;
 
 			//now do the rest of the rows
@@ -2282,14 +2282,14 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 #ifdef LM_SPARSE_LATTICE_MULT_DEBUG
 			std::cout << "Tab " << cur_tab << " Column " << cur_column << ": new_c_size " << c_indices.size() << std::endl;
 #endif
-			
+
 			if (need_sorted){
 				std::sort(c_indices.begin() + old_c_size, c_indices.end()); //scatter doesn't put the rows in sorted order
 			}
-				
+
 			cur_offset_end = cur_tab_adder + this->height()*cur_column; //indices currently only store the rows, so convert them to full indices based on current column and current tab
 
-			
+
 			c_data.reserve(c_indices.capacity());
 			c_data.resize(c_indices.size());
 			for (auto it = c_indices.begin() + old_c_size; it < c_indices.end(); ++it)
@@ -2298,8 +2298,8 @@ typename SparseProductReturnType<Derived,otherDerived>::type SparseLatticeBase<D
 				*it += cur_offset_end;
 
 			}
-				
-			
+
+
 
 		}
 
@@ -2726,6 +2726,8 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef typename Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
+    //typedef typename Eigen::Map<const Eigen::SparseMatrix<data_type,Eigen::ColMajor,index_type> > MappedSparseMatrix_cm; //Sparse Matrix type for A
+
 
     std::vector<typename MappedSparseMatrix_cm::Index> a_rows; //we make it MappedSparseMatrix_cm::Index, incase index_type differs from MappedSparseMatrix_cm::Index
 
@@ -2860,7 +2862,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
 #ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
 	std::cout << "Entered sparse solve with dense " << std::endl;
 #endif
-	
+
 
     this->check_solve_dims(b);
     typedef typename SparseSolveReturnType<Derived,otherDerived>::type c_type;
@@ -2886,7 +2888,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
     a_columns.resize(this->width()+1);
 
     typedef const typename  Eigen::MappedSparseMatrix<data_type,Eigen::ColMajor,index_type> MappedSparseMatrix_cm; //Sparse Matrix type for A
-
+    //typedef typename Eigen::Map<const Eigen::SparseMatrix<data_type,Eigen::ColMajor,index_type> > MappedSparseMatrix_cm; //Sparse Matrix type for A
 
     c_type c(this->width(),b.width(),this->depth());   //create dense lattice to return and allocate memory
 #ifdef LM_SPARSE_LATTICE_SOLVE_DEBUG
@@ -2956,7 +2958,7 @@ typename SparseSolveReturnType<Derived,otherDerived>::type SparseLatticeBase<Der
                 auto c_vector=c.column_vector(col_idx,k);
                 auto b_vector=b.column_vector(col_idx,k);
                 _solver._solve(b_vector,c_vector);
-               
+
                 if(_solver.info()!=Eigen::Success)
                 {
                     this->mSolveInfo=RankDeficient;
