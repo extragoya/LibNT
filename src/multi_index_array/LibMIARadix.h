@@ -51,7 +51,7 @@ inline typename std::make_unsigned<_Type1>::type extractDigit( _Type1 a, unsigne
 // Adapted from Victor J. Duvanenko's article on In-Place Radix Sort http://www.drdobbs.com/parallel/parallel-in-place-radix-sort-simplified/229000734?pgno=1
 
 // Function template In-place MSD Radix Sort implementation (simplified).
-template<unsigned long PowerOfTwoRadix ,unsigned long Log2ofPowerOfTwoRadix, long Threshold, class ForwardIt, class FollowIt >
+template<unsigned long PowerOfTwoRadix ,unsigned long Log2ofPowerOfTwoRadix, long Threshold, long InsertThreshold, class ForwardIt, class FollowIt >
 inline void _RadixSort_Unsigned_PowerOf2Radix_L1( ForwardIt begin, FollowIt followBegin, size_t length, unsigned long shiftRightAmount )
 {
 
@@ -105,8 +105,8 @@ inline void _RadixSort_Unsigned_PowerOf2Radix_L1( ForwardIt begin, FollowIt foll
     {
         long numberOfElements = endOfBin[ i ] - startOfBin[ i ];
         if ( numberOfElements >= Threshold)     // endOfBin actually points to one beyond the bin
-            _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix, Threshold >( begin+ startOfBin[ i ],followBegin+startOfBin[i], numberOfElements , shiftRightAmount );
-        else if ( numberOfElements >= 50 )
+			_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold >(begin + startOfBin[i], followBegin + startOfBin[i], numberOfElements, shiftRightAmount);
+		else if (numberOfElements >= InsertThreshold)
             introsort_detail::IntrosortRec(begin+ startOfBin[ i ],begin+ startOfBin[ i ]+numberOfElements,introsort_detail::IntrosortDepth(begin+ startOfBin[ i ],begin+ startOfBin[ i ]+numberOfElements),
                     std::less<index_type>(),internal::DualSwapper<ForwardIt,FollowIt>(begin+ startOfBin[ i ],followBegin+ startOfBin[ i ]));
 
@@ -386,6 +386,7 @@ inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  
 	typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
 
 	const long Threshold = 3000;
+	const long InsertThreshold = 50;
 	const unsigned long PowerOfTwoRadix = 2048;    // Radix - must be a power of 2
 	const unsigned long Log2ofPowerOfTwoRadix = 11;    // log( 2048 ) = 11
 	auto current_bit_size = (unsigned long)std::ceil(std::log2(max_size));
@@ -400,7 +401,7 @@ inline void RadixSortInPlace_PowerOf2Radix_Unsigned(ForwardIt  begin, FollowIt  
 
 
 	if (length >= Threshold)
-		_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold >(begin, followBegin, length, shiftRightAmount);
+		_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold >(begin, followBegin, length, shiftRightAmount);
 	else
 		introsort_detail::IntrosortRec(begin, begin + length, introsort_detail::IntrosortDepth(begin, begin + length),
 		std::less<index_type>(), internal::DualSwapper<ForwardIt, FollowIt>(begin, followBegin));
@@ -542,25 +543,40 @@ inline void _RadixSort_Sort_Simple( ForwardIt  begin1, FollowIt  followBegin1,Sc
 
 }
 template<unsigned int  Threshold,unsigned int IntroThreshold, unsigned int Radix>
-inline int estimateNumberOfRuns(size_t length,size_t max_size){
+inline int estimateNumberOfRuns(size_t & length, size_t max_size){
 
-    int numberOfRuns=1;
-    int radixRuns=static_cast<int>(std::ceil(std::log2(max_size)/std::log2(Radix)));
-    size_t first_run=max_size/static_cast<size_t>(std::pow(Radix,radixRuns-1));
-    //std::cout << "First Run " << first_run << " radixRuns " << radixRuns << std::endl;
-    length/=first_run;
-    radixRuns--;
-    while(length>Threshold && radixRuns>0){
-        numberOfRuns++;
-        radixRuns--;
-        length/=Radix;
-    }
-    /*if(radixRuns>0 && length >IntroThreshold)
-        numberOfRuns++;*/
+	int numberOfRuns = 0;
+	int radixRuns = static_cast<int>(std::ceil(std::log2(max_size) / std::log2(Radix)));
+	size_t first_run = max_size / static_cast<size_t>(std::pow(Radix, radixRuns - 1));
+	//std::cout << "length " << length << "First Run " << first_run << " radixRuns " << radixRuns << " max_size " << max_size <<std::endl;
+	if (length > Threshold){
+		length /= first_run;
+		radixRuns--;
+		numberOfRuns++;
+		//std::cout << "did first run length " << length << "numberOfRuns " << numberOfRuns << std::endl;
+		while (length > Threshold && radixRuns > 0){
+			numberOfRuns++;
+			radixRuns--;
+			length /= Radix;
+			//std::cout << "did normal run length " << length << "numberOfRuns " << numberOfRuns << std::endl;
+		}
+	}
+	//std::cout << "radixRuns" << radixRuns << std::endl;
+	if (radixRuns > 0 && length <= Threshold){
+		if (length > IntroThreshold)
+			numberOfRuns += 2;
+		else if (length > 0)
+			numberOfRuns++;
+		length = 0;
+	}
+
 
 	//std::cout << "Number of Runs " << numberOfRuns << std::endl;
     return numberOfRuns;
 }
+
+
+
 
 template<unsigned int IntroThreshold, unsigned int Radix>
 inline size_t getLengthThreshold(size_t max_size){
@@ -700,6 +716,27 @@ public:
         }
     }
 	
+	
+	inline int estimateNumberOfRunsShuffle(size_t t_length, int start_index=0){
+
+
+		int num_runs = 0;
+		for (int i = start_index; i < mMaxDims.size(); i += 2){
+			size_t cur_max_dim = (size_t)(mMaxDims[i] * mDivisors[i]) >> mDivisorsShiftAmount[i]; //account for the fact that we use truncated divisors for the power of two trick
+			//std::cout << cur_max_dim << " " << mMaxDims[i] << " " << mDivisors[i] << " " << mDivisorsShiftAmount[i] << std::endl;
+			num_runs += estimateNumberOfRuns<Threshold, InsertThreshold, PowerOfTwoRadix>(t_length, cur_max_dim);
+			if (!t_length)
+				break;
+			if (i + 1 < mMaxDims.size()){
+				t_length = std::max(std::ceil((float)t_length / mMaxDims[i + 1]), float(2));
+			}
+		}
+
+
+		//std::cout << "Number of Runs " << numberOfRuns << std::endl;
+		return num_runs;
+	}
+
 
     //!Perform the permutation
     template<class RandomIt, class FollowIt>
@@ -707,9 +744,9 @@ public:
     {
         
 		
-		//using namespace std::chrono;
-		//typedef std::chrono::duration<float> float_seconds;
-		//high_resolution_clock::time_point t1, t2,t3,t4;
+		using namespace std::chrono;
+		typedef std::chrono::duration<float> float_seconds;
+		high_resolution_clock::time_point t1, t2,t3,t4;
 		//t3 = high_resolution_clock::now();
 		if(length<Threshold){
 			//std::cout << length << " < " << Threshold << std::endl;
@@ -735,29 +772,41 @@ public:
         }
         else
         {
-            //std::cout << "max size " << mMaxDims.front() << " length " << length << " estimate of runs " << estimateNumberOfRuns<Threshold,InsertThreshold,PowerOfTwoRadix>(length,mMaxDims.front()) << std::endl;
-            //std::cout << "total_max_size " << mTotalMax << " estimate of runs " << estimateNumberOfRuns<Threshold,InsertThreshold,PowerOfTwoRadix>(length,mTotalMax) << std::endl;
+            
+			
+			int num_runs = estimateNumberOfRunsShuffle(length);
+			size_t t_length = length;
+			int num_straight_runs = estimateNumberOfRuns<Threshold, InsertThreshold, PowerOfTwoRadix>(t_length, mTotalMax);
+			//std::cout << "max size " << mMaxDims.front() << " length " << length << " estimate of runs " << num_runs << std::endl;
+			//std::cout << "total_max_size " << mTotalMax << " estimate of runs " << num_straight_runs << std::endl;
 
-            if (estimateNumberOfRuns<Threshold,InsertThreshold,PowerOfTwoRadix>(length,mMaxDims.front()) < estimateNumberOfRuns<Threshold,InsertThreshold,PowerOfTwoRadix>(length,mTotalMax))
+			if (num_runs < num_straight_runs)
             {
 				//std::cout << "Doing shuffle " << std::endl;
-				//t1 = high_resolution_clock::now();
+				t1 = high_resolution_clock::now();
                 mResize(length);
-				//t2 = high_resolution_clock::now();
+				t2 = high_resolution_clock::now();
 				
 				//std::cout << "Resize Time:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 				//t1 = high_resolution_clock::now();
                 RadixShuffleSort(begin,followBegin,mScratch1.get(),mScratch2.get(),length,mShiftRightAmounts[0],0,false);	
-				InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());
+				//InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());
 
             }
             else
             {
                 //std::cout << "Doing straight radix - not worth it " << mTotalRightAmount << std::endl;
                 //RadixSortInPlace_PowerOf2Radix_Unsigned( begin,  followBegin,length,total_max_size );
-                _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin,followBegin, length, mTotalRightAmount );
+				t1 = high_resolution_clock::now();
+				_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold,InsertThreshold>( begin,followBegin, length, mTotalRightAmount );
+				t2 = high_resolution_clock::now();
+
+				//std::cout << "Radix time Time:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
                 //RadixSortStraight<PowerOfTwoRadix, Log2ofPowerOfTwoRadix,Threshold>(  begin,  followBegin, scratch1.begin(),scratch2.begin(),length,total_max_size);
+				t1 = high_resolution_clock::now();
 				InsertionSortImproved(begin, begin + length, followBegin, std::less<index_type>());
+				t2 = high_resolution_clock::now();
+				//std::cout << "Insert Time:" << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
             }
 
 			
@@ -1015,29 +1064,29 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
             if ( curNumOfElements >= Threshold ){ //if we've have enough elements to perform a radix sort
 
 				
-                //if(curNumOfElements>shuffleLengthThreshold) //shuffeLengthThreshold determines how big size must be to perform Radix Permute, vs just straight radix sort
-                //    eliminator=curValue*nextEliminatorMult;
-                //else
-                //    eliminator=curValue*straightEliminatorMult;
+                if(curNumOfElements>shuffleLengthThreshold) //shuffeLengthThreshold determines how big size must be to perform Radix Permute, vs just straight radix sort
+                    eliminator=curValue*nextEliminatorMult;
+                else
+                    eliminator=curValue*straightEliminatorMult;
 
-                //for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it) //all sorting can be done modulo current index
-                //    *it-=eliminator;
+                for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it) //all sorting can be done modulo current index
+                    *it-=eliminator;
 
                 if(curNumOfElements>shuffleLengthThreshold){
 					//perform radix permute
 					//std::cout << " Suffle " << curNumOfElements << std::endl;
 					RadixShuffleSort(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, mShiftRightAmounts[stage_index + 1], stage_index + 1, inputArrayIsDestination);
-					//AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
+					AddEliminator(begin + curOffset, begin + curOffset + curNumOfElements, eliminator);
 
                 }
                 else{
 					//perform straight sort
 					//std::cout << " STraight " << curNumOfElements << std::endl;
-                    _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);                    
-					//InsertionSortWithMoveAndEliminator(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, eliminator, !inputArrayIsDestination);					
+                    _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold,InsertThreshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);                    
+					InsertionSortWithMoveAndEliminator(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, eliminator, !inputArrayIsDestination);					
 					//if (inputArrayIsDestination)
-					InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
-
+					//InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
+					
                 }
             }
             else{
@@ -1053,6 +1102,7 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
 					std::copy(followBegin + curOffset, followBegin +curOffset + curNumOfElements, followBegin2 + curOffset);
 				}*/
 					InsertionSortWithMove(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, !inputArrayIsDestination);
+					//InsertionSortImproved(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, std::less<index_type>());
             }			
 
             curOffset=curIt-begin;
@@ -1063,7 +1113,7 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
 				
 			}
 			else{
-				curValue = ((unsignedType)*curIt) / cur_divisor;
+				curValue = ((unsignedType)*curIt) / cur_num_divisor;// cur_divisor;
 				nextValue = (curValue + 1)*cur_num_divisor;
 			}
 			//std::cout << "****Cur Value***** " << curValue;
@@ -1095,7 +1145,7 @@ RadixShuffleFind(RandomIt begin, FollowIt followBegin, RandomIt2 begin2, FollowI
 			
         }
         else{
-            _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);            
+			_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
 			InsertionSortWithMoveAndEliminator(begin + curOffset, followBegin + curOffset, begin2 + curOffset, followBegin2 + curOffset, curNumOfElements, eliminator, !inputArrayIsDestination);
         }
 
@@ -1128,7 +1178,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     auto cur_num_divisor=mDivisors[0];
 	index_type curValue = ((unsignedType)*begin) / cur_divisor; //get current value that defines to block to find
     index_type nextValue=(curValue+1)*cur_num_divisor; //get the next value that defines the end of current block
-	//std::cout << "nextValue " << nextValue << " curValue " << curValue << " cur_num_divisor " << cur_num_divisor << std::endl;
+	//
     size_t curOffset=0; //offset and number of elements in current block
     size_t curNumOfElements=1;
     index_type eliminator;
@@ -1136,6 +1186,13 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     unsignedType straightEliminatorMult, nextEliminatorMult;
     size_t shuffleLengthThreshold;
     getNextShifts(0,straightshiftRightAmount,straightEliminatorMult,nextEliminatorMult,shuffleLengthThreshold );
+	size_t est_length = length / mMaxDims[0];
+	int num_runs = estimateNumberOfRunsShuffle(est_length, 1);
+	size_t t_length = est_length;
+	//std::cout << " cur_num_divisor " << cur_num_divisor << std::endl;
+	int num_straight_runs = estimateNumberOfRuns<Threshold, InsertThreshold, PowerOfTwoRadix>(t_length, mTotalMax/mMaxDims[0]);
+
+
     //std::cout << " nextMaxSize " << nextMaxSize << " newStraightMaxSize " << newStraightMaxSize << std::endl;
 	//std::cout << " nextEliminatorMult " << nextEliminatorMult << " straightEliminatorMult " << straightEliminatorMult << std::endl;
     //std::cout << "next_bit_size " << next_bit_size << " number_shifts " << number_shifts << " straightshiftRightAmount " << straightshiftRightAmount << " shuffleLengthThreshold " << shuffleLengthThreshold << std::endl;
@@ -1147,7 +1204,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
             if ( curNumOfElements >= Threshold ){
 				
 
-                if(curNumOfElements>shuffleLengthThreshold)
+				if (num_runs<num_straight_runs)
                     eliminator=curValue*nextEliminatorMult ;
                 else
                     eliminator=curValue*straightEliminatorMult;
@@ -1155,7 +1212,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
                 for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
                     *it-=eliminator;
 
-                if(curNumOfElements>shuffleLengthThreshold){
+				if (num_runs<num_straight_runs){
 					//std::cout << "Met the rp threshold" << std::endl;
 					
 					mResize(2*curNumOfElements);
@@ -1166,7 +1223,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
                 }
                 else{
 					//std::cout << "Met the straight radix sort threshold" << std::endl;
-                    _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);
+					_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
 					InsertionSortImprovedEliminator(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, eliminator);
                 }
 				
@@ -1202,7 +1259,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
     if ( curNumOfElements >= Threshold )
     {
 		
-		if(curNumOfElements>shuffleLengthThreshold)
+		if (num_runs<num_straight_runs)
             eliminator=curValue*nextEliminatorMult ;
         else
             eliminator=curValue*straightEliminatorMult;
@@ -1210,7 +1267,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
         for(auto it=begin+curOffset;it< begin+curOffset+curNumOfElements;++it)
             *it-=eliminator;
 
-        if(curNumOfElements>shuffleLengthThreshold){
+		if (num_runs<num_straight_runs){
 			//std::cout << "Radix shuff curNumOfElements " << curNumOfElements << " " << curOffset << std::endl;
 			
 			//_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
@@ -1222,7 +1279,7 @@ void RadixShuffle<index_type, data_type,PowerOfTwoRadix, Log2ofPowerOfTwoRadix,T
         }
         else{
 			//std::cout << "Straight Radix sort curNumOfElements " << curNumOfElements << " " << curOffset << std::endl;
-            _RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix,Log2ofPowerOfTwoRadix,Threshold>( begin+curOffset,followBegin+curOffset, curNumOfElements, straightshiftRightAmount);
+			_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold, InsertThreshold>(begin + curOffset, followBegin + curOffset, curNumOfElements, straightshiftRightAmount);
 			InsertionSortImprovedEliminator(begin + curOffset, begin + curOffset + curNumOfElements, followBegin + curOffset, eliminator);
 			
         }
@@ -1408,9 +1465,9 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 
 
 
-	/*using namespace std::chrono;
+	using namespace std::chrono;
 	typedef std::chrono::duration<float> float_seconds;
-	high_resolution_clock::time_point t1, t2;*/
+	high_resolution_clock::time_point t1, t2;
     //std::cout << "Entered radix sort - length " << length << " cur_shiftRightAmount " << cur_shiftRightAmount << " shiftRightAmounts[stage_index] " << mShiftRightAmounts[stage_index] << std::endl;
     bool stageDone=false;
 	//t1 = high_resolution_clock::now();
@@ -1424,8 +1481,9 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 	//return;
     if(cur_shiftRightAmount==0){
         if(stage_index+2>=mFastDivisors.size()){//if we have no more stages to perform, so just return, with a copy if needed
-			
+			//std::cout << "STage done " << std::endl;
 			if (!inputArrayIsDestination){
+				//std::cout << "Doing copy " << std::endl;
 				std::copy(begin2, begin2 + length, begin1);
 				std::copy(followBegin2, followBegin2 + length, followBegin1);
 			}
@@ -1448,6 +1506,7 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 	size_t numOfElements;
 	//t2 = high_resolution_clock::now();
 	//std::cout << "Total Radix Move Time " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
+	//t1 = high_resolution_clock::now();
 	if (stageDone){
 		
 		
@@ -1466,7 +1525,7 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 			if (!numOfElements){
 				continue;
 			}
-			else if (numOfElements >= InsertThreshold){
+			else if (numOfElements >= Threshold){
 				//std::cout << "Finding " << numOfElements << " " << offset << std::endl;
 				/*if (i == 0){
 					auto it2 = begin1;
@@ -1478,6 +1537,11 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 
 			}
 			else{
+				if (numOfElements > InsertThreshold){
+
+					introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
+						std::less<index_type>(), internal::DualSwapper<RandomIt2, FollowIt2>(begin2 + offset, followBegin2 + offset));
+				}
 				//std::cout << "Insert Sorting " << numOfElements << " " << offset << std::endl;
 				///if (inputArrayIsDestination){
 
@@ -1493,6 +1557,7 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 		{
 			offset = count[i];
 			numOfElements = count[i + 1] - count[i];
+			//std::cout << "Sorting again " << numOfElements << std::endl;
 			if (!numOfElements)
 				continue;
 			else if (numOfElements >= Threshold){
@@ -1501,11 +1566,12 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 				InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
 				*/
 				//std::cout << "Sorting " << *(begin2 + offset) << " " << *(begin2 + offset + numOfElements-1) << std::endl;
+				//std::cout << "Double shuffle" << std::endl;
 				RadixShuffleSort(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, cur_shiftRightAmount, stage_index, inputArrayIsDestination);
 
 			}
 			else {
-				
+				//std::cout << "Introing" << std::endl;
 				if (numOfElements > InsertThreshold){
 					
 					introsort_detail::IntrosortRec(begin2 + offset, begin2 + offset + numOfElements, introsort_detail::IntrosortDepth(begin2 + offset, begin2 + offset + numOfElements),
@@ -1513,12 +1579,14 @@ unsigned int cur_shiftRightAmount, int stage_index, bool inputArrayIsDestination
 				}
 				//if (inputArrayIsDestination){
 					InsertionSortWithMove(begin2 + offset, followBegin2 + offset, begin1 + offset, followBegin1 + offset, numOfElements, !inputArrayIsDestination);
+
 				//}
 				
 			}
 		}
 	}
-	
+	//t2 = high_resolution_clock::now();
+	//std::cout << "Next stage Time " << duration_cast<float_seconds>(t2 - t1).count() << std::endl;
 }
 
 

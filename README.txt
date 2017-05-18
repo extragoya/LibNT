@@ -21,7 +21,7 @@ Note: an example file can be found in <libmia_root>/example with a CMake configu
 
 --------
 First, like above, you need to obtain the following two header-only libraries and a C++11 compliant compiler
-1. Eigen http://eigen.tuxfamily.org/: latest version LibNT has been tested on is Eigen 3.2.5. Older versions will not work, as Eigen's previous sparseQR and sparseCholesky didn't work with outside data. Include the root directory within your build.   
+1. Eigen http://eigen.tuxfamily.org/: latest version LibNT has been tested on is Eigen 3.2.5. Older and newer versions WILL NOT work, as Eigen's previous sparseQR and sparseCholesky didn't work with outside data. Include the root directory within your build.   
 2. Boost http://www.boost.org/: you only need the headers, don't bother compiling any of the binary libraries, unless you have a need to/want to. Include the Boost root directory within your include directories.
 3. A C++11 compliant compiler. As of writing MSVC 2015 has just been released and should meet the requirements. Intel and GCC definitely work. 
 --------    

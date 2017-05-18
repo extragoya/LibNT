@@ -21,6 +21,7 @@
 
 
 #include <boost/mpl/and.hpp>
+#include <boost/mpl/size_t.hpp>
 #include <boost/mpl/logical.hpp>
 #include <boost/mpl/bool.hpp>
 #include <boost/mpl/vector.hpp>
