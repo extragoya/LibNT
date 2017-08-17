@@ -25,6 +25,7 @@ set (SPARSE_PERMUTE_SOURCES sparse_permute.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_DENSE_LATTICE_MULT_SOURCES sparse_denselattice_mul.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_DENSE_LATTICE_SOLVE_SOURCES sparse_denselattice_solve.cpp ${SPARSE_CHECK_SOURCES})
 LINK_DIRECTORIES(${MATLAB_LIB_DIR})
+
 find_library(libmx_location libmx ${MATLAB_LIB_DIR})
 message("libmx is at: ${libmx_location}")
 find_library(libmex_location libmex ${MATLAB_LIB_DIR})
@@ -47,6 +48,7 @@ else(WIN32)
 	set_property(TARGET libmex PROPERTY IMPORTED_LOCATION "${libmex_location}")
 	set_property(TARGET libmat PROPERTY IMPORTED_LOCATION "${libmat_location}")
 endif(WIN32)
+
 
 
 #we set the EXPORT_MACRO_NAME to DLL_EXPORT_SYM, b/c mex.h uses that define. This allows us to export dll symbols without .def file

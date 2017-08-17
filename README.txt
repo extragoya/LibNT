@@ -21,7 +21,7 @@ Note: an example file can be found in <libmia_root>/example with a CMake configu
 
 --------
 First, like above, you need to obtain the following two header-only libraries and a C++11 compliant compiler
-1. Eigen http://eigen.tuxfamily.org/: latest version LibNT has been tested on is Eigen 3.2.5. Older versions will not work, as Eigen's previous sparseQR and sparseCholesky didn't work with outside data. Include the root directory within your build.   
+1. Eigen http://eigen.tuxfamily.org/: latest version LibNT has been tested on is Eigen 3.2.5. Older and newer versions WILL NOT work, as Eigen's previous sparseQR and sparseCholesky didn't work with outside data. Include the root directory within your build.   
 2. Boost http://www.boost.org/: you only need the headers, don't bother compiling any of the binary libraries, unless you have a need to/want to. Include the Boost root directory within your include directories.
 3. A C++11 compliant compiler. As of writing MSVC 2015 has just been released and should meet the requirements. Intel and GCC definitely work. 
 --------    
@@ -36,7 +36,7 @@ The recommended way to build the MATLAB mex files is through the CMake build sys
 5. Point MATLAB_INCLUDE to the MATLAB header directory, usually <MATLAB_install>/extern/include. Point MATLAB_LIB_DIR to the MATLAB library directory, e.g., <MATLAB_install>extern/lib/win64/microsoft
 6. <Optional> If you have Intel MKL, you can use the library to speed up execution of Eigen's routines. Turn USE_MKL on and point MKL_ROOT to the root directory of the Intel MKL installation.
 5. You should be able to now successfully generate your build using CMake. Open up the generated project (or if using command line, navigate to the build directory). Build the MATLAB project, this will build your .mex files. 
-6. Add the MATLAB classes in <libnt_root>/src/MATLAB to MATLAB's search path. Also add your build directory for the .mex files to MATLAB's search path. Now you should be good to go to use the NT classes. 
+6. Add the MATLAB classes in <libnt_root>/src/MATLAB to MATLAB's search path. Also add your build directory for the .mex files to MATLAB's search path, i.e., <libnt_BUILD_root>/src/MATLAB/mex. Now you should be good to go to use the NT classes. 
 
 
 Instead of using the CMake build system, these options can all be manually performed, but you will have to perform several extra steps. You can consult the CMakeLists.txt files in the LibNT source for guidance on this. But, the CMake build system remains the best option. 

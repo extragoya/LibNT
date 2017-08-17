@@ -57,7 +57,7 @@ class to_std_array
     
 	typedef boost::mpl::vector_c<int> numbers;
 	//convert to a mpl::vector_c, as the intel compiler seemed to pass mpl::vector instead to this struct, so just make sure we are actually working with an mpl vector_c
-	typedef boost::mpl::copy<
+	typedef typename boost::mpl::copy<
 		MPLVectorType
 		, boost::mpl::back_inserter< numbers >
 	>::type result;

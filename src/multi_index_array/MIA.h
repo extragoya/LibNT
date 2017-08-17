@@ -125,6 +125,7 @@ typename MIANonlinearFuncType<MIA_Type>::type negate(const MIA_Type& mia){
 template<typename index_type,size_t order>
 struct dimsContainer{
     std::array<index_type,order> m_dims;
+	std::array<size_t, order> temp_m_dims;
     index_type m_dimensionality;
     dimsContainer(){
         m_dims.fill(0);
@@ -146,8 +147,8 @@ struct dimsContainer{
 
 
     template<typename ...E>
-    dimsContainer(E...e):m_dims{{e...}}{
-
+    dimsContainer(E...e):temp_m_dims{{e...}}{
+		std::copy(temp_m_dims.begin(), temp_m_dims.end(), m_dims.begin());
         calculate_dimensionality();
     }
     bool operator==(const std::array<index_type,order> & _dims)const{

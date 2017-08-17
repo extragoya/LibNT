@@ -19,6 +19,7 @@
 #define LIBMIA_LOG2E 1.44269504088896340736
 #include <chrono>
 #include <iostream>
+#include <algorithm>
 #include <boost/numeric/conversion/converter.hpp>
 
 #include "LibMIAUtil.h"
@@ -691,7 +692,8 @@ inline bool isEqualFuzzy(T a, T2 b, T3 prec = Tolerance<T>::tolerance)
   if(std::abs(a) < 1 || std::abs(b) < 1)
     return std::abs(a-b)<=prec;
   else{
-    return std::abs(a - b) <= std::min(std::abs(a), std::abs(b)) * prec;
+	  return std::abs(a - b)<= std::min(std::abs(a), std::abs(b))*prec;
+	  
   }
 }
 
