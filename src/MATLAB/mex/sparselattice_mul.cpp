@@ -55,9 +55,15 @@ mwSize perform_mult(mxArray *plhs[], mxClassID a_id, T*a_data, mex_index_type  *
 			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2], LibMIA::RowMajor); //your b data must be in row major
 			latC = latA.outer_times(latB);
 		}
+		case 5: //mtt style
+		{
+			LibMIA::MappedSparseLattice<T> latA(a_data, a_indices, a_size, a_subs[0], a_subs[1], a_subs[2]);
+			LibMIA::MappedSparseLattice<T> latB(b_data, b_indices, b_size, b_subs[0], b_subs[1], b_subs[2]); //your b data must be in row major
+			latC = latA.template mtt_times(latB);
+		}
 			break;
 		default:
-			mexErrMsgTxt("Must specify a multiplication algorithm between 0 and 4.");
+			mexErrMsgTxt("Must specify a multiplication algorithm between 0 and 5.");
 		}
         c_data = (T *)mxCalloc(latC.size() , sizeof(T));
 		c_indices = (mex_index_type *)mxCalloc(latC.size(), sizeof(mex_index_type));

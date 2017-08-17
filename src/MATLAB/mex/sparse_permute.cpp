@@ -24,7 +24,7 @@ void perform_permute(T*a_data, mex_index_type  * a_indices, mwSize a_size, const
 	reorder_from(dims, desiredIdx, shuffled_dims);
 	bool first_stage = setupPermute(reverseShuffleSequence, shuffled_dims, divisors, max_sizes);
 	auto dimensionality = std::accumulate(dims.begin(), dims.end(), mex_index_type(1), std::multiplies<mex_index_type>());
-	
+	//mexPrintf("Dimensionality %d.",dimensionality);
 	//create RadixShuffle object
 	RadixShuffle<mex_index_type, T, 2048, 11, 3000> radixShuffle(max_sizes, divisors, dimensionality, first_stage);
 	//permute the sparse data based on the stage information provided

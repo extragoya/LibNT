@@ -2,9 +2,10 @@
 #define CHECK_SPARSE_H_INCLUDED
 #include <algorithm>
 #include <type_traits>
+#include <stdint.h>
 
 #include "mex.h"
-typedef int64_T mex_index_type;
+typedef int64_t mex_index_type;
 typedef std::make_unsigned<mex_index_type>::type mex_unsigned_type;
 mxClassID check_sparse_params_lattice(int nrhs, const mxArray *prhs[], mex_index_type  *a_subs[], mex_index_type  *b_subs[], mwSize* a_data_length, mwSize* b_data_length, bool allowed_seven=false);
 

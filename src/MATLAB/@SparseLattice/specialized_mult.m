@@ -1,7 +1,7 @@
 function C = specialized_mult(A,B,algorithm)
 %will execute one of the specialized multiplication algorithms
-if algorithm<0 || algorithm>4
-    error('Multiplication algorithm can only be between 1 and 4');
+if algorithm<0 || algorithm>5
+    error('Multiplication algorithm can only be between 1 and 5');
 end
 m=A.m;
 

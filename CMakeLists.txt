@@ -140,12 +140,14 @@ install(EXPORT libMIAExport NAMESPACE Upstream::
 )
 
 set(LibMIA_headers ${PROJECT_BINARY_DIR}/MIAConfig.h ${SRCS})
+
 add_custom_target(LibMIA SOURCES ${LibMIA_headers})
 
 install(FILES
     ${LibMIA_headers}
   DESTINATION include/LibMIAHeaders
 )
+INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/multi_index_array/kennytm DESTINATION include/LibMIAHeaders)
 
 # # Add all targets to the build-tree export set
 # export(TARGETS LibMIA

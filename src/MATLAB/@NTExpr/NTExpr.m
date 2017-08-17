@@ -46,14 +46,15 @@ classdef NTExpr
          
     end
     methods (Access=protected)
-        [a_inner_idx, a_inter_idx, a_outer_idx, b_inner_idx, b_inter_idx, b_outer_idx]=pull_mult_indices(A,B);
-        error_check_mult(A,B,a_inner_idx, a_inter_idx, b_inner_idx, b_inter_idx)
+        
+        
         error_check_mldivide(A,B,a_inter_idx,b_inter_idx);
         error_check_merge(A,B,permute_idx);
         error_check_flatten(A,row_idx,col_idx);
         C=sparse_times_polyalgorithm(A,B,a_inner_idx,a_outer_idx,a_inter_idx,b_outer_idx,b_inner_idx, b_inter_idx);
     end
-    methods(Static)
-        
+    methods(Access=public)
+        [a_inner_idx, a_inter_idx, a_outer_idx, b_inner_idx, b_inter_idx, b_outer_idx]=pull_mult_indices(A,B);
+        error_check_mult(A,B,a_inner_idx, a_inter_idx, b_inner_idx, b_inter_idx)
     end
 end

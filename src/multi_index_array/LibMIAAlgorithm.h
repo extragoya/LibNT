@@ -65,7 +65,6 @@
 #include <forward_list>
 //#include <boost/timer/timer.hpp>
 #include "LibMIATimSort.h"
-#include "IndexUtil.h"
 namespace LibMIA
 {
 
@@ -105,7 +104,7 @@ struct CoSwapper
 			std::iter_swap(it_raw + i, it_raw2 + i);
 		});
 
-		
+
 
 	}
 	FollowerItType getFollowIt(MainIterator it) const
@@ -148,6 +147,7 @@ struct CoSwapperMTT
 	}
 
 };
+
 
 //will also swap a second set of data. Two sets of data must correspond with each other.
 template<typename MainIterator, typename FollowerIterator>
@@ -580,7 +580,7 @@ namespace introsort_detail {
 
     /* Cache how many elements there are. */
     const size_t numElems = size_t(end - begin);
-	
+
     /* If there are fewer elements in the range than the block size, we're
      * done.
      */
@@ -603,7 +603,7 @@ namespace introsort_detail {
 
     /* Swap the pivot in place. */
     swapper(pivot, begin);
-	
+
     /* Get the partition point and sort both halves. */
     RandomIterator partitionPoint = Partition(begin, end, comp,swapper);
     IntrosortRec(begin, partitionPoint, depth - 1, comp,swapper);
@@ -675,7 +675,9 @@ inline void  InsertionSortImproved(RandomIterator begin, RandomIterator end,Foll
                      Comparator comp) {
 
 
-    auto followIt=followBegin+1;
+	if (end == begin)
+		return;
+	auto followIt=followBegin+1;
     for (auto it=begin+1;it<end;++it,++followIt)
     {
         if (comp(*it,*(it-1)))       // no need to do (j > 0) compare for the first iteration
@@ -697,68 +699,50 @@ inline void  InsertionSortImproved(RandomIterator begin, RandomIterator end,Foll
         }
         // Perform no work at all if the first comparison fails - i.e. never assign an element to itself!
     }
-}
 
 
-//tailored made to sort CO format
-template <typename RandomIterator, typename FollowIt, size_t co_length>
-void IntrosortCO(RandomIterator begin, RandomIterator end, FollowIt followBegin,const std::array<size_t, co_length> & sortOrder) {
-
-	typedef typename std::iterator_traits<RandomIterator>::value_type index_type;
-
-	auto sort_compare = [sortOrder](const index_type& idx1, const index_type& idx2){
-		const index_type* it = &idx1;
-		const index_type* it2 = &idx2;
-		for (int i = co_length - 1; i >= 0; --i){
-			auto left = *(it + sortOrder[i]);
-			auto right = *(it2 + sortOrder[i]);
-			if (left < right){
-				return true;
-			}
-			else if (left > right){
-				return false;
-			}
-
-		}
-		return false;
-	};
-
-	typedef CoSwapper<RandomIterator, FollowIt, co_length> Swapper;
-
-	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
 
 
 }
 
+/**
+* Function: InsertionSortImproved(RandomIterator begin, RandomIterator end,FollowIt followBegin,
+*                         Comparator comp);
+* ----------------------------------------------------------------------
+* Sorts the range [begin, end) into ascending order (according to comp)
+* using insertion sort. Uses improvements found in http://www.drdobbs.com/architecture-and-design/algorithm-improvement-through-performanc/220000504?pgno=1
+*/
+template <typename RandomIterator, typename Comparator>
+inline void  InsertionSortImproved(RandomIterator begin, RandomIterator end,
+	Comparator comp) {
 
-//tailored made to sort CO format
-template <typename RandomIterator, typename FollowIt, size_t co_length>
-void IntrosortCO_MTT(RandomIterator begin, RandomIterator end, FollowIt followBegin, const std::array<size_t, co_length> & sortOrder) {
 
+	if (end == begin)
+		return;
 	
+	for (auto it = begin + 1; it<end; ++it)
+	{
+		if (comp(*it, *(it - 1)))       // no need to do (j > 0) compare for the first iteration
+		{
+			auto curElement = *it;
+			
+			*it = *(it - 1);
+			
+			auto it2 = it - 1;
+			
+			for (; it2>begin && curElement < *(it2 - 1); --it2)
+			{
+				*it2 = *(it2 - 1);
+				
 
-	typedef typename std::iterator_traits<RandomIterator>::value_type it_value_type;
-	auto sort_compare = [sortOrder](const it_value_type& idx_array, const it_value_type& idx_array2){
-
-		bool less_than = true;
-
-		for (int i = co_length - 1; i >= 0; --i){
-			auto left = *(idx_array[sortOrder[i]]);
-			auto right = *(idx_array2[sortOrder[i]]);
-			if (left < right){
-				return true;
 			}
-			else if (left > right){
-				return false;
-			}
-
+			*it2 = curElement;    // always necessary work/write
+			
 		}
-		return false;
-	};
+		// Perform no work at all if the first comparison fails - i.e. never assign an element to itself!
+	}
 
-	typedef CoSwapperMTT<RandomIterator, FollowIt, co_length> Swapper;
 
-	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
 
 
 }
@@ -797,7 +781,68 @@ void Introsort(RandomIterator begin, RandomIterator end) {
             std::less<typename std::iterator_traits<RandomIterator>::value_type>());
 }
 
+//tailored made to sort CO format
+template <typename RandomIterator, typename FollowIt, size_t co_length>
+void IntrosortCO(RandomIterator begin, RandomIterator end, FollowIt followBegin, const std::array<size_t, co_length> & sortOrder) {
 
+	typedef typename std::iterator_traits<RandomIterator>::value_type index_type;
+
+	auto sort_compare = [sortOrder](const index_type& idx1, const index_type& idx2){
+		const index_type* it = &idx1;
+		const index_type* it2 = &idx2;
+		for (int i = co_length - 1; i >= 0; --i){
+			auto left = *(it + sortOrder[i]);
+			auto right = *(it2 + sortOrder[i]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+	typedef CoSwapper<RandomIterator, FollowIt, co_length> Swapper;
+
+	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
+
+
+}
+
+
+//tailored made to sort CO format
+template <typename RandomIterator, typename FollowIt, size_t co_length>
+void IntrosortCO_MTT(RandomIterator begin, RandomIterator end, FollowIt followBegin, const std::array<size_t, co_length> & sortOrder) {
+
+
+
+	typedef typename std::iterator_traits<RandomIterator>::value_type it_value_type;
+	auto sort_compare = [sortOrder](const it_value_type& idx_array, const it_value_type& idx_array2){
+
+		bool less_than = true;
+
+		for (int i = co_length - 1; i >= 0; --i){
+			auto left = *(idx_array[sortOrder[i]]);
+			auto right = *(idx_array2[sortOrder[i]]);
+			if (left < right){
+				return true;
+			}
+			else if (left > right){
+				return false;
+			}
+
+		}
+		return false;
+	};
+
+	typedef CoSwapperMTT<RandomIterator, FollowIt, co_length> Swapper;
+
+	Introsort(begin, end, sort_compare, Swapper(begin, followBegin));
+
+
+}
 
 /**************************************************************************
  * File: NaturalMergesort.hh

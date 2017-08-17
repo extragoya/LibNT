@@ -25,14 +25,29 @@ set (SPARSE_PERMUTE_SOURCES sparse_permute.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_DENSE_LATTICE_MULT_SOURCES sparse_denselattice_mul.cpp ${SPARSE_CHECK_SOURCES})
 set (SPARSE_DENSE_LATTICE_SOLVE_SOURCES sparse_denselattice_solve.cpp ${SPARSE_CHECK_SOURCES})
 LINK_DIRECTORIES(${MATLAB_LIB_DIR})
+find_library(libmx_location libmx ${MATLAB_LIB_DIR})
+message("libmx is at: ${libmx_location}")
+find_library(libmex_location libmex ${MATLAB_LIB_DIR})
+message("libmex is at: ${libmex_location}")
+find_library(libmat_location libmat ${MATLAB_LIB_DIR})
+message("libmat is at: ${libmat_location}")
 add_library(libmx SHARED IMPORTED)
-set_property(TARGET libmx PROPERTY IMPORTED_LOCATION "${MATLAB_LIB_DIR}/libmx.so")
+
 add_library(libmex SHARED IMPORTED)
-set_property(TARGET libmex PROPERTY IMPORTED_LOCATION "${MATLAB_LIB_DIR}/libmex.so")
+
 add_library(libmat SHARED IMPORTED)
-set_property(TARGET libmat PROPERTY IMPORTED_LOCATION "${MATLAB_LIB_DIR}/libmat.so")
-#find_library(libmx_location libmx ${MATLAB_LIB_DIR})
-#message("libmx is at: ${libmx_location}")
+
+
+if(WIN32)
+	set_property(TARGET libmx PROPERTY IMPORTED_IMPLIB "${libmx_location}")
+	set_property(TARGET libmex PROPERTY IMPORTED_IMPLIB "${libmex_location}")
+	set_property(TARGET libmat PROPERTY IMPORTED_IMPLIB "${libmat_location}")
+else(WIN32)
+	set_property(TARGET libmx PROPERTY IMPORTED_LOCATION "${libmx_location}")
+	set_property(TARGET libmex PROPERTY IMPORTED_LOCATION "${libmex_location}")
+	set_property(TARGET libmat PROPERTY IMPORTED_LOCATION "${libmat_location}")
+endif(WIN32)
+
 
 #we set the EXPORT_MACRO_NAME to DLL_EXPORT_SYM, b/c mex.h uses that define. This allows us to export dll symbols without .def file
 add_library(DenseLatticeMultMex SHARED ${DENSE_LATTICE_MULT_SOURCES})
