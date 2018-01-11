@@ -44,7 +44,72 @@ namespace internal
 
 
 
+// Adapted from Victor J. Duvanenko's article on In-Place Radix Sort http://www.drdobbs.com/parallel/parallel-in-place-radix-sort-simplified/229000734?pgno=1
 
+// Function template In-place MSD Radix Sort implementation (simplified).
+template<unsigned long PowerOfTwoRadix, unsigned long Log2ofPowerOfTwoRadix, long Threshold, class ForwardIt>
+inline void _RadixSort_Unsigned_PowerOf2Radix_L1(ForwardIt begin, size_t length, unsigned long shiftRightAmount)
+{
+
+
+	typedef typename std::iterator_traits<ForwardIt>::value_type index_type;
+
+	libmia_constexpr unsigned long BitMask = PowerOfTwoRadix - 1; //use constexpr workaround
+	std::array<unsigned long, PowerOfTwoRadix> count;
+
+	for (auto &e : count)
+		e = 0;
+
+	for (auto it = begin; it< begin + length; ++it)
+		count[((*it) >> shiftRightAmount) & BitMask]++; // Scan the array and count the number of times each value appears
+
+	std::array<long, PowerOfTwoRadix + 1> startOfBin;
+	std::array< long, PowerOfTwoRadix + 1> endOfBin;
+	long nextBin = 1;
+
+	startOfBin[0] = endOfBin[0] = 0;    startOfBin[PowerOfTwoRadix] = -1;         // sentinal
+	for (unsigned long i = 1; i < PowerOfTwoRadix; ++i)
+		startOfBin[i] = endOfBin[i] = startOfBin[i - 1] + count[i - 1];
+
+	for (long _current = 0; _current < length;)
+	{
+		unsigned long digit;
+		auto _current_element = *(begin + _current); // get the compiler to recognize that a register can be used for the loop instead of a[_current] memory location
+		
+		while (endOfBin[digit = (unsigned long)((_current_element) >> shiftRightAmount& BitMask)] != _current){
+			std::swap(_current_element, *(begin + endOfBin[digit]));
+			
+		}
+		*(begin + _current) = _current_element;
+		
+
+		endOfBin[digit]++;
+		while (endOfBin[nextBin - 1] == startOfBin[nextBin])
+			++nextBin;   // skip over empty and full bins, when the end of the current bin reaches the start of the next bin
+		_current = endOfBin[nextBin - 1];
+	}
+	if (shiftRightAmount == 0){
+		return;
+
+	}
+	else{
+		shiftRightAmount -= Log2ofPowerOfTwoRadix; //should always be a multiple of Log2ofPowerOfTwoRadix
+	}
+
+
+
+	for (unsigned long i = 0; i < PowerOfTwoRadix; ++i)
+	{
+		long numberOfElements = endOfBin[i] - startOfBin[i];
+		if (numberOfElements >= Threshold)     // endOfBin actually points to one beyond the bin
+			_RadixSort_Unsigned_PowerOf2Radix_L1<PowerOfTwoRadix, Log2ofPowerOfTwoRadix, Threshold >(begin + startOfBin[i], numberOfElements, shiftRightAmount);
+		else if (numberOfElements >= 50)
+			introsort_detail::IntrosortRec(begin + startOfBin[i], begin + startOfBin[i] + numberOfElements, introsort_detail::IntrosortDepth(begin + startOfBin[i], begin + startOfBin[i] + numberOfElements),
+			std::less<index_type>());
+
+	}
+
+}
 
 
 
