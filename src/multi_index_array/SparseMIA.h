@@ -25,7 +25,7 @@
 
 #include "tupleit.hh"
 
-#include "LibMiaException.h"
+#include "LibMIAException.h"
 #include "LibMIAUtil.h"
 #include "IndexUtil.h"
 #include "SparseMIABase.h"
